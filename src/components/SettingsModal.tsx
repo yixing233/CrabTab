@@ -21,7 +21,8 @@ import {
   SettingOutlined, 
   BgColorsOutlined, 
   InfoCircleOutlined,
-  LinkOutlined
+  LinkOutlined,
+  GithubOutlined
 } from '@ant-design/icons';
 import { 
   RotateCw, 
@@ -1178,7 +1179,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="font-bold text-base">
             <Text strong className="text-base">CrabTab</Text>
           </div>
-          <div className="mt-1 flex items-center justify-center gap-2">
+          <div className="mt-1 flex items-center justify-center gap-2 flex-wrap">
             <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 font-semibold border border-blue-500/20">
               v{CURRENT_VERSION}
             </span>
@@ -1191,6 +1192,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               className="!text-xs !h-6 !px-2 !rounded-lg"
             >
               {checkingUpdate ? t.checkingUpdate : t.checkUpdate}
+            </Button>
+            <Button
+              type="text"
+              size="small"
+              icon={<GithubOutlined className="text-xs" />}
+              onClick={() => window.open(GITHUB_REPO_URL, '_blank')}
+              className="!text-xs !h-6 !px-2 !rounded-lg"
+            >
+              {t.viewOnGitHub}
             </Button>
           </div>
         </div>
