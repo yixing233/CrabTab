@@ -1288,10 +1288,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               href={lib.url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all hover:scale-[1.01] group ${
+              className={`p-2.5 rounded-xl border flex flex-col justify-between transition-colors duration-150 group ${
                 isDark
-                  ? 'border-white/8 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/15'
-                  : 'border-gray-200/80 bg-gray-50/60 hover:bg-white hover:shadow-sm'
+                  ? 'border-white/8 bg-white/[0.03] hover:bg-white/[0.05] hover:border-blue-500/40'
+                  : 'border-gray-200/80 bg-gray-50/60 hover:bg-white hover:border-blue-400/60 hover:shadow-none'
               }`}
             >
               <div className="flex items-center justify-between">
@@ -1358,10 +1358,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               href={api.url}
               target="_blank"
               rel="noopener noreferrer"
-              className={`p-2.5 rounded-xl border flex flex-col justify-between transition-all hover:scale-[1.01] group ${
+              className={`p-2.5 rounded-xl border flex flex-col justify-between transition-colors duration-150 group ${
                 isDark
-                  ? 'border-white/8 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/15'
-                  : 'border-gray-200/80 bg-gray-50/60 hover:bg-white hover:shadow-sm'
+                  ? 'border-white/8 bg-white/[0.03] hover:bg-white/[0.05] hover:border-blue-500/40'
+                  : 'border-gray-200/80 bg-gray-50/60 hover:bg-white hover:border-blue-400/60 hover:shadow-none'
               }`}
             >
               <div className="flex items-center justify-between">
