@@ -2,7 +2,7 @@
  * 版本检测工具：基于 GitHub Releases 官方开放 API
  */
 
-export const CURRENT_VERSION = '1.0.0';
+export const CURRENT_VERSION = '1.0.1';
 export const REPO_OWNER = 'yixing233';
 export const REPO_NAME = 'CrabTab';
 export const GITHUB_REPO_URL = `https://github.com/${REPO_OWNER}/${REPO_NAME}`;
