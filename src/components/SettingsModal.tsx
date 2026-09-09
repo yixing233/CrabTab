@@ -57,6 +57,7 @@ import {
   clearAllFavoriteWallpapers,
   FavoriteWallpaperItem
 } from '../utils/wallpaperStorage';
+import { checkLatestVersion, ReleaseInfo, CURRENT_VERSION, GITHUB_REPO_URL } from '../utils/versionCheck';
 import { i18n } from '../i18n';
 import { SearchEngineIcon } from './SearchEngineIcons';
 
@@ -88,6 +89,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [uploading, setUploading] = useState(false);
   const [fetchingSourceId, setFetchingSourceId] = useState<string | null>(null);
   const [customUrlInput, setCustomUrlInput] = useState<string>('');
+  const [checkingUpdate, setCheckingUpdate] = useState<boolean>(false);
+  const [releaseInfo, setReleaseInfo] = useState<ReleaseInfo | null>(null);
   const t = i18n[settings.language];
   const { Text } = Typography;
 
@@ -111,8 +114,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       getLocalMediaInfo().then((info) => {
         setLocalMedia(info);
       });
+      // 静默读取版本缓存
+      checkLatestVersion(false).then((res) => {
+        setReleaseInfo(res);
+      });
     }
   }, [open, currentWallpaperUrl]);
+
+  const handleCheckUpdate = async () => {
+    setCheckingUpdate(true);
+    try {
+      const res = await checkLatestVersion(true);
+      setReleaseInfo(res);
+      if (res.hasUpdate) {
+        message.info(`${t.newVersionAvailable}: v${res.version}`);
+      } else {
+        message.success(t.isLatestVersion);
+      }
+    } catch {
+      message.error(settings.language === 'zh' ? '检测更新失败，请检查网络' : 'Check update failed, please check network');
+    } finally {
+      setCheckingUpdate(false);
+    }
+  };
 
   // 恢复一级子标签：在线壁纸(online) / 本地壁纸(local) / 网络外链(custom_url) / 我的收藏(favorites)
   const currentSubTab: 'online' | 'local' | 'custom_url' | 'favorites' =
@@ -1154,14 +1178,53 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <div className="font-bold text-base">
             <Text strong className="text-base">CrabTab</Text>
           </div>
-          <div className="mt-0.5">
-            <Text type="secondary" className="text-xs">Version 1.0.0</Text>
+          <div className="mt-1 flex items-center justify-center gap-2">
+            <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-400 font-semibold border border-blue-500/20">
+              v{CURRENT_VERSION}
+            </span>
+            <Button
+              type="text"
+              size="small"
+              loading={checkingUpdate}
+              onClick={handleCheckUpdate}
+              icon={!checkingUpdate ? <RotateCw className="w-3 h-3" /> : undefined}
+              className="!text-xs !h-6 !px-2 !rounded-lg"
+            >
+              {checkingUpdate ? t.checkingUpdate : t.checkUpdate}
+            </Button>
           </div>
         </div>
         <p className="max-w-md mx-auto leading-relaxed text-xs opacity-75">
           {t.aboutDesc}
         </p>
       </div>
+
+      {/* New Version Alert Banner */}
+      {releaseInfo?.hasUpdate && (
+        <div className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
+          isDark ? 'bg-blue-950/30 border-blue-500/30' : 'bg-blue-50 border-blue-200'
+        }`}>
+          <div className="min-w-0">
+            <div className="text-xs font-semibold text-blue-400 flex items-center gap-1.5">
+              <span>{t.newVersionAvailable}: v{releaseInfo.version}</span>
+            </div>
+            {releaseInfo.notes && (
+              <div className="text-[11px] opacity-75 mt-0.5 line-clamp-1 truncate">
+                {releaseInfo.notes}
+              </div>
+            )}
+          </div>
+          <Button
+            type="primary"
+            size="small"
+            icon={<ExternalLink className="w-3 h-3" />}
+            onClick={() => window.open(releaseInfo.releaseUrl || GITHUB_REPO_URL, '_blank')}
+            className="!text-xs !rounded-lg shrink-0"
+          >
+            {t.viewReleaseNotes}
+          </Button>
+        </div>
+      )}
 
       {/* Open Source Libraries Grid */}
       <div className="space-y-2.5">

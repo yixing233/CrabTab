@@ -24,6 +24,7 @@
     "https://suggestion.baidu.com/*",
     "https://*.google.com/*",
     "https://duckduckgo.com/*",
+    "https://api.github.com/*",
     "https://v1.hitokoto.cn/*",
     "https://*.hitokoto.cn/*",
     "https://*.yumus.cn/*",

@@ -212,6 +212,12 @@ export const i18n = {
 
     // About
     aboutDesc: '基于 Ant Design 深度定制的现代毛玻璃极简起始页扩展，专注于极简美学与高生产力体验。',
+    versionLabel: '当前版本',
+    checkUpdate: '检查更新',
+    checkingUpdate: '正在检查...',
+    isLatestVersion: '已是最新版本',
+    newVersionAvailable: '发现新版本',
+    viewReleaseNotes: '前往 GitHub 查看并下载更新',
     openSourceComponents: '核心组件与技术栈',
     openSourceComponentsDesc: '感谢优秀的开源生态与社区技术提供支持',
     dataAndServices: '数据服务与开放接口',
@@ -430,6 +436,12 @@ export const i18n = {
 
     // About
     aboutDesc: 'A modern, frosted-glass minimalist new tab extension powered by Ant Design, designed for aesthetics and efficiency.',
+    versionLabel: 'Version',
+    checkUpdate: 'Check for Updates',
+    checkingUpdate: 'Checking...',
+    isLatestVersion: 'Latest Version',
+    newVersionAvailable: 'Update Available',
+    viewReleaseNotes: 'View & Download on GitHub',
     openSourceComponents: 'Core Stack & Open Source Libraries',
     openSourceComponentsDesc: 'Powered by excellent open-source libraries and developer community',
     dataAndServices: 'Data Services & Open APIs',
