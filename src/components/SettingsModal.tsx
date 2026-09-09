@@ -1145,9 +1145,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     <div className="py-2 space-y-5">
       {/* Brand Header */}
       <div className="text-center space-y-2">
-        <div className="w-14 h-14 mx-auto rounded-2xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white text-xl font-bold shadow-md">
-          Crab
-        </div>
+        <img
+          src="/icon.png"
+          alt="CrabTab Logo"
+          className="w-16 h-16 mx-auto rounded-2xl shadow-lg border border-white/10 object-cover select-none"
+        />
         <div>
           <div className="font-bold text-base">
             <Text strong className="text-base">CrabTab</Text>
