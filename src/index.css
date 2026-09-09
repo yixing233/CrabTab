@@ -1,0 +1,244 @@
+@import "tailwindcss";
+
+@variant dark (&:where(.dark, .dark *));
+
+/* 极简精致滚动条 */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(150, 150, 150, 0.35) transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(150, 150, 150, 0.3);
+  border-radius: 9999px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(150, 150, 150, 0.55);
+}
+
+/* 隐藏滚动条 */
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+.scrollbar-none {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+/* 彻底杜绝全局滚动条与横向滚动 */
+html, body, #root {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  user-select: none;
+}
+
+/* 坚决移除 Ant Design Input 在 focus 时产生的 outline 与双层边框 */
+.search-input-clean,
+.search-input-clean.ant-input,
+.search-input-clean.ant-input-affix-wrapper,
+.search-input-clean.ant-input-affix-wrapper-focused,
+.search-input-clean.ant-input-affix-wrapper:focus,
+.search-input-clean.ant-input-affix-wrapper:focus-within,
+.search-input-clean input:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
+/* 移除 ant-input-affix-wrapper 聚焦伪元素及 outline */
+.ant-input-affix-wrapper-borderless,
+.ant-input-affix-wrapper-borderless:focus,
+.ant-input-affix-wrapper-borderless-focused {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+/* 搜索历史面板展开动画 (优雅的弹性展开与透明度渐入) */
+@keyframes historyDropdownExpand {
+  0% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+    filter: blur(4px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0px);
+  }
+}
+
+.history-dropdown-enter {
+  animation: historyDropdownExpand 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transform-origin: top center;
+  will-change: transform, opacity, filter;
+}
+
+/* 条目纯透明度渐现（杜绝任何左右方向位移） */
+@keyframes historyItemFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.history-item-enter {
+  animation: historyItemFadeIn 0.15s ease-out forwards;
+  will-change: opacity;
+}
+
+/* 保证 Ant Design Segmented 内部图文绝对垂直与水平居中，并强化选中状态的对比度与清晰度 */
+.ant-segmented .ant-segmented-item-label {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 100% !important;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+/* 深色模式下强化 Segmented 选中滑块与文字的高对比度 */
+.dark .ant-segmented {
+  background-color: rgba(255, 255, 255, 0.07) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .ant-segmented .ant-segmented-item {
+  color: rgba(255, 255, 255, 0.65) !important;
+}
+
+.dark .ant-segmented .ant-segmented-item:hover {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+.dark .ant-segmented .ant-segmented-thumb {
+  background-color: #2a313d !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.15) !important;
+  border-radius: 8px !important;
+}
+
+.dark .ant-segmented .ant-segmented-item-selected {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
+/* 浅色模式下同样保持饱满清爽的高清选中状态 */
+:not(.dark) .ant-segmented .ant-segmented-thumb {
+  background-color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+  border-radius: 8px !important;
+}
+
+:not(.dark) .ant-segmented .ant-segmented-item-selected {
+  color: #1677ff !important;
+  font-weight: 600 !important;
+}
+
+/* 对话框背景遮罩：不透明度改为 0，仅保留 1px 轻微高斯模糊 */
+:root {
+  --ant-color-bg-mask: rgba(0, 0, 0, 0) !important;
+}
+
+.ant-modal-mask {
+  background-color: transparent !important;
+  --ant-color-bg-mask: rgba(0, 0, 0, 0) !important;
+}
+
+.ant-modal-mask,
+.ant-modal-wrap {
+  backdrop-filter: blur(1px) !important;
+}
+
+@supports (-webkit-backdrop-filter: none) {
+  .ant-modal-mask,
+  .ant-modal-wrap {
+    -webkit-backdrop-filter: blur(1px) !important;
+  }
+}
+
+/* 彻底杜绝模态框外层全屏容器 (.ant-modal-wrap) 溢出与 Windows 粗白滚动条 */
+.ant-modal-wrap,
+.custom-settings-wrap {
+  overflow: hidden !important;
+  scrollbar-width: none !important;
+}
+
+.ant-modal-wrap::-webkit-scrollbar,
+.custom-settings-wrap::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* 全站容器与模态框内部极细半透明毛玻璃滑块 */
+.ant-modal-body,
+.ant-modal-content,
+.custom-settings-modal .ant-modal-body {
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent !important;
+}
+
+.ant-modal-body::-webkit-scrollbar,
+.ant-modal-content::-webkit-scrollbar,
+.custom-settings-modal .ant-modal-body::-webkit-scrollbar {
+  width: 5px !important;
+  height: 5px !important;
+}
+
+.ant-modal-body::-webkit-scrollbar-track,
+.ant-modal-content::-webkit-scrollbar-track,
+.custom-settings-modal .ant-modal-body::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.ant-modal-body::-webkit-scrollbar-thumb,
+.ant-modal-content::-webkit-scrollbar-thumb,
+.custom-settings-modal .ant-modal-body::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18) !important;
+  border-radius: 9999px !important;
+}
+
+.ant-modal-body::-webkit-scrollbar-thumb:hover,
+.ant-modal-content::-webkit-scrollbar-thumb:hover,
+.custom-settings-modal .ant-modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4) !important;
+}
+
+.ant-modal-content {
+  border-radius: 24px !important;
+  box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6) !important;
+}
+
+/* 设置对话框：头部固定，内容区域独立垂直平滑滚动 */
+.custom-settings-modal .ant-modal-body {
+  overflow: hidden !important;
+  padding-top: 4px !important;
+  padding-bottom: 4px !important;
+}
+
+.custom-settings-modal .ant-tabs-nav {
+  margin-bottom: 8px !important;
+  flex-shrink: 0 !important;
+}
+
+
+
+
+
