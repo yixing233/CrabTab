@@ -32,3 +32,4 @@ dist-ssr
 .dsh
 *.tmp
 *.bak
+*.zip
