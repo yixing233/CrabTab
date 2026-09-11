@@ -44,6 +44,7 @@ import {
   Gauge,
 } from 'lucide-react';
 import { Language, ThemeMode } from '../types';
+import { loadTodosFromStorage, saveTodosToStorage } from '../utils/storage';
 
 interface UtilityDrawerProps {
   language: Language;
@@ -515,11 +516,21 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({ language, theme, g
     localStorage.setItem(STORAGE_TAB, newTab);
   };
 
-  // 保存待办列表
+  // 双写保存待办列表（同时写入 chrome.storage.local 与 localStorage，并生成快照备份）
   const saveTodos = (newTodos: TodoItem[]) => {
     setTodos(newTodos);
-    localStorage.setItem(STORAGE_TODO, JSON.stringify(newTodos));
+    void saveTodosToStorage(newTodos);
   };
+
+  // 启动时从双层持久化中对齐待办数据（防止升级或换环境后未迁移）
+  useEffect(() => {
+    void (async () => {
+      const stored = await loadTodosFromStorage<TodoItem>();
+      if (Array.isArray(stored) && stored.length > 0) {
+        setTodos((prev) => (prev.length > 0 ? prev : stored));
+      }
+    })();
+  }, []);
 
   // 开启新建模式
   // 开启新建模式
