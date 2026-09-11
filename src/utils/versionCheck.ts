@@ -1,8 +1,8 @@
 /**
- * 版本检测工具：基于 GitHub Releases 官方开放 API
+ * 版本检测工具：从项目静态元数据源读取线上版本
  */
 
-export const CURRENT_VERSION = '1.0.1';
+export const CURRENT_VERSION = '1.0.2';
 export const REPO_OWNER = 'yixing233';
 export const REPO_NAME = 'CrabTab';
 export const GITHUB_REPO_URL = `https://github.com/${REPO_OWNER}/${REPO_NAME}`;
@@ -18,6 +18,28 @@ export interface ReleaseInfo {
 
 const VERSION_CACHE_KEY = 'crab_home_version_check_cache';
 const VERSION_CACHE_TTL = 60 * 60 * 1000; // 缓存 1 小时，防止频繁触发 GitHub Rate Limit
+const VERSION_SOURCES = [
+  `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/package.json`,
+  `https://cdn.jsdelivr.net/gh/${REPO_OWNER}/${REPO_NAME}@main/package.json`,
+];
+
+function normalizeVersion(version: string): string {
+  const normalized = version.replace(/^[vV]/, '').trim();
+  if (!/^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/.test(normalized)) {
+    throw new Error(`Invalid version: ${version}`);
+  }
+  return normalized;
+}
+
+function toReleaseInfo(version: string, details: Partial<ReleaseInfo> = {}): ReleaseInfo {
+  const cleanVersion = normalizeVersion(version);
+  return {
+    version: cleanVersion,
+    hasUpdate: compareSemver(cleanVersion, CURRENT_VERSION) > 0,
+    releaseUrl: `${GITHUB_RELEASES_URL}/tag/v${cleanVersion}`,
+    ...details,
+  };
+}
 
 /**
  * 比较两个语义化版本号，若 vA > vB 返回 1，vA < vB 返回 -1，相等返回 0
@@ -50,7 +72,10 @@ export async function checkLatestVersion(force = false): Promise<ReleaseInfo> {
       if (cachedRaw) {
         const cached = JSON.parse(cachedRaw);
         if (cached && Date.now() - cached.timestamp < VERSION_CACHE_TTL) {
-          return cached.data;
+          return {
+            ...cached.data,
+            hasUpdate: compareSemver(cached.data.version, CURRENT_VERSION) > 0,
+          };
         }
       }
     } catch {
@@ -58,60 +83,44 @@ export async function checkLatestVersion(force = false): Promise<ReleaseInfo> {
     }
   }
 
-  // 2. 发起请求
-  const apiUrl = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/releases/latest`;
-  try {
-    const response = await fetch(apiUrl, {
-      headers: {
-        Accept: 'application/vnd.github.v3+json',
-      },
-    });
+  // 2. 从不受 GitHub API 匿名限流影响的静态源读取线上版本
+  const errors: string[] = [];
 
-    if (!response.ok) {
-      // 仓库刚创建或暂无正式 Release 时返回 404
-      if (response.status === 404) {
-        return {
-          version: CURRENT_VERSION,
-          hasUpdate: false,
-          releaseUrl: GITHUB_RELEASES_URL,
-        };
-      }
-      throw new Error(`GitHub API HTTP error: ${response.status}`);
-    }
-
-    const data = await response.json();
-    const latestTag = data.tag_name || data.name || CURRENT_VERSION;
-    const cleanLatest = latestTag.replace(/^[vV]/, '').trim();
-    const hasUpdate = compareSemver(cleanLatest, CURRENT_VERSION) > 0;
-
-    const result: ReleaseInfo = {
-      version: cleanLatest,
-      hasUpdate,
-      releaseUrl: data.html_url || GITHUB_RELEASES_URL,
-      publishedAt: data.published_at,
-      notes: data.body,
-    };
-
-    // 写入缓存
+  for (const versionUrl of VERSION_SOURCES) {
     try {
-      localStorage.setItem(
-        VERSION_CACHE_KEY,
-        JSON.stringify({
-          timestamp: Date.now(),
-          data: result,
-        })
-      );
-    } catch {
-      // 忽略本地存储写入失败
+      const response = await fetch(versionUrl, {
+        cache: force ? 'no-store' : 'default',
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!response.ok) {
+        errors.push(`${versionUrl} HTTP ${response.status}`);
+        continue;
+      }
+      const data = await response.json();
+      if (!data || typeof data.version !== 'string') {
+        throw new Error(`${versionUrl} returned an invalid version`);
+      }
+      const result = toReleaseInfo(data.version);
+      cacheReleaseInfo(result);
+      return result;
+    } catch (error) {
+      errors.push(error instanceof Error ? error.message : String(error));
     }
+  }
 
-    return result;
-  } catch (error) {
-    console.warn('[VersionCheck] Failed to fetch latest release:', error);
-    return {
-      version: CURRENT_VERSION,
-      hasUpdate: false,
-      releaseUrl: GITHUB_RELEASES_URL,
-    };
+  throw new Error(`Failed to check latest version: ${errors.join('; ')}`);
+}
+
+function cacheReleaseInfo(result: ReleaseInfo): void {
+  try {
+    localStorage.setItem(
+      VERSION_CACHE_KEY,
+      JSON.stringify({
+        timestamp: Date.now(),
+        data: result,
+      })
+    );
+  } catch {
+    // 忽略本地存储写入失败
   }
 }

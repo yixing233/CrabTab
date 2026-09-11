@@ -27,6 +27,7 @@ import { Shortcuts } from './components/Shortcuts';
 import { Weather } from './components/Weather';
 import { SettingsModal } from './components/SettingsModal';
 import { BrowserHistoryDrawer } from './components/BrowserHistoryDrawer';
+import { UtilityDrawer } from './components/UtilityDrawer';
 
 export const App: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings | null>(null);
@@ -414,6 +415,12 @@ export const App: React.FC = () => {
             </div>
           )}
         </main>
+
+        <UtilityDrawer
+          language={settings.language}
+          theme={settings.theme}
+          glassStyle={settings.glassStyle}
+        />
 
         {/* Ant Design Settings Modal */}
         <SettingsModal

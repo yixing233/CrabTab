@@ -70,7 +70,38 @@ export const WeatherHourlyChart: React.FC<WeatherHourlyChartProps> = ({
   isDark,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef({ pointerId: -1, startX: 0, startScrollLeft: 0 });
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== 'mouse' || event.button !== 0 || dragRef.current.pointerId !== -1) return;
+    const container = containerRef.current;
+    if (!container || container.scrollWidth <= container.clientWidth) return;
+
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startScrollLeft: container.scrollLeft,
+    };
+    container.setPointerCapture(event.pointerId);
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current.pointerId !== event.pointerId || !containerRef.current) return;
+    const distance = event.clientX - dragRef.current.startX;
+    if (!isDragging && Math.abs(distance) > 3) setIsDragging(true);
+    containerRef.current.scrollLeft = dragRef.current.startScrollLeft - distance;
+  };
+
+  const stopDragging = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    dragRef.current.pointerId = -1;
+    setIsDragging(false);
+  };
 
   if (!data || data.length === 0) return null;
 
@@ -130,7 +161,15 @@ export const WeatherHourlyChart: React.FC<WeatherHourlyChartProps> = ({
       {/* 滚动容器 */}
       <div
         ref={containerRef}
-        className="w-full overflow-x-auto select-none custom-scrollbar pb-1"
+        className={`weather-chart-drag w-full overflow-x-auto select-none custom-scrollbar pb-1 ${
+          isDragging ? 'is-dragging' : ''
+        }`}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={stopDragging}
+        onPointerCancel={stopDragging}
+        onLostPointerCapture={stopDragging}
+        onDragStart={(event) => event.preventDefault()}
       >
         <div
           className="relative"

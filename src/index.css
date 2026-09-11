@@ -238,7 +238,211 @@ html, body, #root {
   flex-shrink: 0 !important;
 }
 
+/* 天气卡片：仅动画 opacity 与 clip-path，不在毛玻璃祖先层创建 transform 合成层 */
+.weather-popover-shell {
+  pointer-events: none;
+}
+
+.weather-popover-shell--open {
+  pointer-events: auto;
+}
+
+.weather-popover-card {
+  opacity: 0;
+  clip-path: inset(0 0 94% 0 round 16px);
+  transition:
+    opacity 180ms ease-out,
+    clip-path 320ms cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, clip-path;
+}
+
+.weather-popover-card--open {
+  opacity: 1;
+  clip-path: inset(0 0 0 0 round 16px);
+}
+
+.weather-popover-card--closing {
+  opacity: 0;
+  clip-path: inset(0 0 94% 0 round 16px);
+  transition:
+    opacity 150ms ease-in,
+    clip-path 200ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .weather-popover-card {
+    transition-duration: 1ms;
+  }
+}
+
+/* 天气趋势图支持鼠标/触控横向抓取浏览 */
+.weather-chart-drag {
+  cursor: grab;
+  touch-action: auto;
+  overscroll-behavior-x: contain;
+  scroll-behavior: auto;
+}
+
+.weather-chart-drag.is-dragging {
+  cursor: grabbing;
+  scroll-snap-type: none;
+}
+
+.weather-chart-drag.is-dragging * {
+  pointer-events: none;
+}
+
+/* 工具箱分段器深浅色样式精修 */
+.custom-utility-segmented {
+  padding: 3px !important;
+  border-radius: 10px !important;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background: rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+/* 仅针对文字颜色做轻微过渡；严禁使用 all，彻底避免到位添加 selected 类名时产生背景淡入闪烁 */
+.custom-utility-segmented .ant-segmented-item {
+  color: rgba(0, 0, 0, 0.65);
+  transition: color 0.15s ease !important;
+  border-radius: 7px !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.custom-utility-segmented .ant-segmented-item:hover {
+  color: rgba(0, 0, 0, 0.9);
+}
+
+/* 选中项高亮底色：确保激活样式始终存在，同时取消 background 与 box-shadow 的额外渐变过渡，杜绝到位闪烁 */
+.custom-utility-segmented .ant-segmented-item-selected {
+  background-color: #ffffff !important;
+  color: #18181b !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+  transition: none !important;
+}
+
+.custom-utility-segmented .ant-segmented-item-selected,
+.custom-utility-segmented .ant-segmented-item-selected * {
+  color: #18181b !important;
+}
+
+.custom-utility-segmented .ant-segmented-thumb {
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+  border-radius: 7px !important;
+}
+
+/* 深色模式分段器精修 */
+.dark .custom-utility-segmented {
+  background: rgba(18, 20, 24, 0.6) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+.dark .custom-utility-segmented .ant-segmented-item {
+  color: rgba(255, 255, 255, 0.65) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.dark .custom-utility-segmented .ant-segmented-item:hover {
+  color: rgba(255, 255, 255, 0.95) !important;
+}
+
+/* 深色选中项高亮底色：与滑块保持像素级一致外观，禁止 transition，到位即无缝定格 */
+.dark .custom-utility-segmented .ant-segmented-item-selected {
+  background-color: rgba(255, 255, 255, 0.16) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.12) !important;
+  transition: none !important;
+}
+
+.dark .custom-utility-segmented .ant-segmented-item-selected,
+.dark .custom-utility-segmented .ant-segmented-item-selected * {
+  color: #ffffff !important;
+}
+
+.dark .custom-utility-segmented .ant-segmented-thumb {
+  background-color: rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.12) !important;
+  border-radius: 7px !important;
+}
+/* Ant Design 下拉组件与日期选择器浮层 */
+.utility-ant-dropdown .ant-select-dropdown,
+.utility-ant-dropdown.ant-select-dropdown {
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4), inset 0 0 0 1px rgba(255, 255, 255, 0.1) !important;
+  overflow: hidden;
+}
+
+.dark .utility-ant-dropdown .ant-select-dropdown,
+.dark .utility-ant-dropdown.ant-select-dropdown {
+  background: rgba(22, 24, 30, 0.95) !important;
+}
+
+/* 日期选择器浮层：必须为实底且自适应日历面板宽度，防止右侧留白和背景透视 */
+.utility-ant-dropdown.ant-picker-dropdown,
+.utility-ant-dropdown .ant-picker-dropdown {
+  width: fit-content !important;
+  min-width: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+.utility-ant-dropdown .ant-picker-panel-container {
+  background: #ffffff !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(0, 0, 0, 0.1) !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.25) !important;
+  overflow: hidden !important;
+}
+
+.dark .utility-ant-dropdown .ant-picker-panel-container {
+  background: #1e2128 !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6) !important;
+}
+
+.dark .utility-ant-dropdown .ant-picker-panel,
+.dark .utility-ant-dropdown .ant-picker-header,
+.dark .utility-ant-dropdown .ant-picker-body,
+.dark .utility-ant-dropdown .ant-picker-footer {
+  background: transparent !important;
+}
 
 
+/* 待办一二级页面丝滑切换动画（仿原生移动端/笔记导航栈） */
+@keyframes todoSlideInForward {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
 
+@keyframes todoSlideInBackward {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
 
+.todo-page-anim-forward {
+  animation: todoSlideInForward 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+.todo-page-anim-backward {
+  animation: todoSlideInBackward 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}

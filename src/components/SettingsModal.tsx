@@ -115,12 +115,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       getLocalMediaInfo().then((info) => {
         setLocalMedia(info);
       });
-      // 静默读取版本缓存
-      checkLatestVersion(false).then((res) => {
-        setReleaseInfo(res);
-      });
     }
   }, [open, currentWallpaperUrl]);
+
+  // 打开设置时静默检查一次；壁纸切换不应触发版本网络请求
+  useEffect(() => {
+    if (!open) return;
+    checkLatestVersion(false)
+      .then((res) => {
+        setReleaseInfo(res);
+      })
+      .catch((error) => {
+        console.warn('[VersionCheck] Automatic check failed:', error);
+      });
+  }, [open]);
 
   const handleCheckUpdate = async () => {
     setCheckingUpdate(true);

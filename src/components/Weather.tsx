@@ -72,6 +72,9 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
   const [loading, setLoading] = useState<boolean>(() => !getCachedWeather(language));
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  // 关闭时保留浮层，待退场动画完成后再卸载，避免卡片瞬间消失。
+  const [isPopoverMounted, setIsPopoverMounted] = useState<boolean>(false);
+  const [isPopoverVisible, setIsPopoverVisible] = useState<boolean>(false);
   const [activeAlertIndex, setActiveAlertIndex] = useState<number>(0);
   const [isAlertExpanded, setIsAlertExpanded] = useState<boolean>(false);
   const [isAlertHovered, setIsAlertHovered] = useState<boolean>(false);
@@ -91,6 +94,32 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
 
     return () => clearInterval(timer);
   }, [data?.alerts?.length, isAlertExpanded, isAlertHovered]);
+
+  // 先挂载关闭态，等待浏览器完成一帧绘制后再切换为展开态，确保过渡可见。
+  // 关闭时则保留节点至退场动画结束，快速重复点击会自动取消旧任务。
+  useEffect(() => {
+    let firstFrame = 0;
+    let secondFrame = 0;
+    let unmountTimer = 0;
+
+    if (isOpen) {
+      setIsPopoverMounted(true);
+      firstFrame = window.requestAnimationFrame(() => {
+        secondFrame = window.requestAnimationFrame(() => setIsPopoverVisible(true));
+      });
+    } else {
+      setIsPopoverVisible(false);
+      if (isPopoverMounted) {
+        unmountTimer = window.setTimeout(() => setIsPopoverMounted(false), 220);
+      }
+    }
+
+    return () => {
+      window.cancelAnimationFrame(firstFrame);
+      window.cancelAnimationFrame(secondFrame);
+      window.clearTimeout(unmountTimer);
+    };
+  }, [isOpen]);
 
   // 点击外部和按 Esc 关闭天气卡片
   useEffect(() => {
@@ -209,7 +238,9 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
   // 主天气卡片详细内容 (对应截屏)
   const popoverContent = (
     <div
-      className={`w-[360px] max-h-[82vh] overflow-y-auto custom-scrollbar p-5 select-none rounded-2xl shadow-xl transition-all duration-200 animate-in fade-in zoom-in-95 ${
+      className={`weather-popover-card ${
+        isPopoverVisible ? 'weather-popover-card--open' : 'weather-popover-card--closing'
+      } w-[360px] max-h-[82vh] overflow-y-auto custom-scrollbar p-5 select-none rounded-2xl shadow-xl ${
         isDark ? 'text-white' : 'text-neutral-800'
       }`}
       style={{
@@ -657,9 +688,12 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
       </button>
 
       {/* 原生浮层天气详情卡片 */}
-      {isOpen && (
+      {isPopoverMounted && (
         <div
-          className="absolute top-[calc(100%+8px)] left-0 z-50"
+          className={`weather-popover-shell absolute top-[calc(100%+8px)] left-0 z-50 ${
+            isPopoverVisible ? 'weather-popover-shell--open' : 'weather-popover-shell--closing'
+          }`}
+          aria-hidden={!isOpen}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
         >

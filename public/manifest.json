@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CrabTab - 现代毛玻璃极简起始页",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "极简精致、现代毛玻璃美学的智能新标签页与主页扩展",
   "chrome_url_overrides": {
     "newtab": "index.html"
@@ -9,35 +9,22 @@
   "permissions": [
     "storage",
     "history",
-    "topSites",
-    "geolocation",
-    "tabs"
+    "geolocation"
   ],
   "host_permissions": [
     "https://weatherapi.market.xiaomi.com/*",
-    "http://weatherapi.market.xiaomi.com/*",
-    "https://geocoding-api.open-meteo.com/*",
     "https://api.open-meteo.com/*",
-    "https://*.unsplash.com/*",
     "https://*.bing.com/*",
-    "https://*.baidu.com/*",
     "https://suggestion.baidu.com/*",
-    "https://*.google.com/*",
+    "https://suggestqueries.google.com/*",
     "https://duckduckgo.com/*",
-    "https://api.github.com/*",
+    "https://raw.githubusercontent.com/*",
+    "https://cdn.jsdelivr.net/*",
     "https://v1.hitokoto.cn/*",
-    "https://*.hitokoto.cn/*",
-    "https://*.yumus.cn/*",
-    "https://yumus.cn/*",
     "https://wp.upx8.com/*",
-    "http://*.shanhutech.cn/*",
-    "https://*.shanhutech.cn/*",
-    "http://*.birdpaper.com.cn/*",
-    "https://*.birdpaper.com.cn/*",
-    "http://*.360.cn/*",
-    "https://*.360.cn/*",
-    "https://*.qhimg.com/*",
-    "http://*.qhimg.com/*"
+    "http://wallpaper.apc.360.cn/*",
+    "https://speed.cloudflare.com/*",
+    "https://registry.npmmirror.com/*"
   ],
   "action": {
     "default_title": "打开新标签页"

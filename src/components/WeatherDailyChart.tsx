@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+﻿import React, { useRef, useState } from 'react';
 import {
   Sun,
   Cloud,
@@ -20,9 +20,20 @@ interface WeatherDailyChartProps {
 // 对应 weather condition 的图标获取
 function getConditionIcon(weatherDesc: string = '', conditionCode?: number, className = 'w-4 h-4') {
   const desc = weatherDesc.toLowerCase();
+  // 优先依据描述判断，避免不同数据源对 1/2 编码的含义不一致。
+  if (desc.includes('雷') || desc.includes('thunder')) return <CloudLightning className={`${className} text-amber-500`} />;
+  if (desc.includes('雪') || desc.includes('snow')) return <CloudSnow className={`${className} text-indigo-300`} />;
+  if (desc.includes('雨') || desc.includes('rain') || desc.includes('shower')) return <CloudRain className={`${className} text-sky-400`} />;
+  if (desc.includes('雾') || desc.includes('霾') || desc.includes('fog')) return <CloudFog className={`${className} text-neutral-400`} />;
+  if (desc.includes('晴间多云') || desc.includes('多云') || desc.includes('partly cloud') || desc.includes('mainly clear')) {
+    return <CloudSun className={`${className} text-amber-300`} />;
+  }
+  if (desc.includes('阴') || desc.includes('overcast') || desc.includes('cloudy')) {
+    return <Cloud className={`${className} text-neutral-400`} />;
+  }
   if (conditionCode !== undefined) {
-    if (conditionCode === 0 || conditionCode === 1) return <Sun className={`${className} text-amber-400`} />;
-    if (conditionCode === 2) return <CloudSun className={`${className} text-amber-300`} />;
+    if (conditionCode === 0) return <Sun className={`${className} text-amber-400`} />;
+    if (conditionCode === 1 || conditionCode === 2) return <CloudSun className={`${className} text-amber-300`} />;
     if (conditionCode === 3) return <Cloud className={`${className} text-neutral-400`} />;
     if (conditionCode >= 45 && conditionCode <= 48) return <CloudFog className={`${className} text-neutral-400`} />;
     if (conditionCode >= 51 && conditionCode <= 67) return <CloudRain className={`${className} text-sky-400`} />;
@@ -31,11 +42,6 @@ function getConditionIcon(weatherDesc: string = '', conditionCode?: number, clas
     if (conditionCode >= 85 && conditionCode <= 86) return <CloudSnow className={`${className} text-indigo-300`} />;
     if (conditionCode >= 95) return <CloudLightning className={`${className} text-amber-500`} />;
   }
-  if (desc.includes('雷') || desc.includes('thunder')) return <CloudLightning className={`${className} text-amber-500`} />;
-  if (desc.includes('雪') || desc.includes('snow')) return <CloudSnow className={`${className} text-indigo-300`} />;
-  if (desc.includes('雨') || desc.includes('rain')) return <CloudRain className={`${className} text-sky-400`} />;
-  if (desc.includes('雾') || desc.includes('霾') || desc.includes('fog')) return <CloudFog className={`${className} text-neutral-400`} />;
-  if (desc.includes('多云') || desc.includes('阴') || desc.includes('cloud')) return <Cloud className={`${className} text-neutral-400`} />;
   return <Sun className={`${className} text-amber-400`} />;
 }
 
@@ -88,7 +94,39 @@ export const WeatherDailyChart: React.FC<WeatherDailyChartProps> = ({
   isDark,
   language: _language,
 }) => {
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef({ pointerId: -1, startX: 0, startScrollLeft: 0 });
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const handlePointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (event.pointerType !== 'mouse' || event.button !== 0 || dragRef.current.pointerId !== -1) return;
+    const container = scrollRef.current;
+    if (!container || container.scrollWidth <= container.clientWidth) return;
+
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startScrollLeft: container.scrollLeft,
+    };
+    container.setPointerCapture(event.pointerId);
+  };
+
+  const handlePointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current.pointerId !== event.pointerId || !scrollRef.current) return;
+    const distance = event.clientX - dragRef.current.startX;
+    if (!isDragging && Math.abs(distance) > 3) setIsDragging(true);
+    scrollRef.current.scrollLeft = dragRef.current.startScrollLeft - distance;
+  };
+
+  const stopDragging = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current.pointerId !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    dragRef.current.pointerId = -1;
+    setIsDragging(false);
+  };
 
   if (!forecast || forecast.length === 0) {
     return null;
@@ -142,7 +180,18 @@ export const WeatherDailyChart: React.FC<WeatherDailyChartProps> = ({
 
   return (
     <div className="w-full">
-      <div className="overflow-x-auto custom-scrollbar pb-1.5 -mx-1 px-1">
+      <div
+        ref={scrollRef}
+        className={`weather-chart-drag overflow-x-auto custom-scrollbar pb-1.5 -mx-1 px-1 ${
+          isDragging ? 'is-dragging' : ''
+        }`}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={stopDragging}
+        onPointerCancel={stopDragging}
+        onLostPointerCapture={stopDragging}
+        onDragStart={(event) => event.preventDefault()}
+      >
         <div
           className="relative select-none"
           style={{ width: `${Math.max(totalWidth, 340)}px` }}
