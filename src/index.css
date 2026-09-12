@@ -446,3 +446,209 @@ html, body, #root {
   animation: todoSlideInBackward 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
   will-change: transform, opacity;
 }
+
+/* iOS 风格文件夹展开与缩回平滑连贯动画 */
+@keyframes folderBackdropIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+}
+
+@keyframes folderBackdropOut {
+  from {
+    opacity: 1;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  to {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+  }
+}
+
+/* iOS 风格文件夹真实原位连贯形变动画 */
+/* iOS 风格单体连贯无缝原位形变 */
+@keyframes folderMorphIn {
+  0% {
+    opacity: 0.2;
+    transform: translate3d(var(--morph-from-x, 0px), var(--morph-from-y, 0px), 0) scale(var(--morph-scale-x, 0.16), var(--morph-scale-y, 0.16));
+    border-radius: 18px;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1, 1);
+    border-radius: 28px;
+  }
+}
+
+@keyframes folderMorphOut {
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1, 1);
+    border-radius: 28px;
+  }
+  75% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(var(--morph-from-x, 0px), var(--morph-from-y, 0px), 0) scale(var(--morph-scale-x, 0.16), var(--morph-scale-y, 0.16));
+    border-radius: 18px;
+  }
+}
+
+@keyframes folderItemsSpread {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  30% {
+    opacity: 0.3;
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.folder-morph-open {
+  animation: folderMorphIn 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
+  transform-origin: center center;
+  will-change: transform, opacity, border-radius;
+}
+
+.folder-morph-close {
+  animation: folderMorphOut 0.22s cubic-bezier(0.4, 0, 0.2, 1) both;
+  transform-origin: center center;
+  will-change: transform, opacity, border-radius;
+}
+
+.folder-items-spread {
+  animation: folderItemsSpread 0.26s cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+/* 快捷方式拖拽意图反馈：边缘表示排序插入，中心呼吸光环表示文件夹吸附。 */
+
+/* 固定快捷方式网格：窄屏 4 列 × 3 行，桌面 7 列 × 3 行。 */
+.shortcut-grid {
+  --shortcut-cell-width: clamp(52px, calc((100vw - 68px) / 4), 72px);
+  --shortcut-cell-height: 80px;
+  --shortcut-grid-gap: clamp(4px, calc((100vw - 288px) / 3), 12px);
+  --shortcut-columns: 4;
+  --shortcut-rows: 3;
+  --shortcut-row-height: 80px;
+  width: calc(var(--shortcut-columns) * var(--shortcut-cell-width) + (var(--shortcut-columns) - 1) * var(--shortcut-grid-gap));
+  height: calc(var(--shortcut-rows) * var(--shortcut-row-height) + (var(--shortcut-rows) - 1) * var(--shortcut-grid-gap));
+  margin-inline: auto;
+  box-sizing: border-box;
+  display: grid;
+  grid-template-columns: repeat(var(--shortcut-columns), var(--shortcut-cell-width));
+  grid-template-rows: repeat(var(--shortcut-rows), var(--shortcut-row-height));
+  grid-auto-rows: var(--shortcut-row-height);
+  grid-auto-flow: row;
+  justify-content: center;
+  align-content: start;
+  align-items: start;
+  gap: var(--shortcut-grid-gap);
+  overflow-x: clip;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.shortcut-grid::-webkit-scrollbar {
+  display: none;
+}
+
+.shortcut-grid-item {
+  width: var(--shortcut-cell-width);
+  height: var(--shortcut-cell-height);
+}
+
+.shortcut-grid-item-large {
+  width: calc(2 * var(--shortcut-cell-width) + var(--shortcut-grid-gap));
+  height: calc(2 * var(--shortcut-row-height) + var(--shortcut-grid-gap));
+  grid-column: span 2;
+  grid-row: span 2;
+  align-self: start;
+}
+
+.shortcut-grid-item-large > .folder-icon-box {
+  width: calc(2 * var(--shortcut-cell-width) + var(--shortcut-grid-gap));
+  height: calc(2 * var(--shortcut-cell-width) + var(--shortcut-grid-gap));
+  aspect-ratio: 1 / 1;
+  flex: none;
+}
+
+@media (min-width: 768px) {
+  .shortcut-grid {
+    --shortcut-cell-width: 80px;
+    --shortcut-cell-height: 92px;
+    --shortcut-grid-gap: 20px;
+    --shortcut-columns: 7;
+    --shortcut-row-height: 92px;
+  }
+}
+
+.shortcut-drop-preview {
+  grid-column: var(--preview-column) / span var(--preview-span);
+  grid-row: var(--preview-row) / span var(--preview-span);
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border: 2px dashed;
+  border-radius: 18px;
+  pointer-events: none;
+  z-index: 30;
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+
+.shortcut-drop-preview.is-valid {
+  border-color: rgb(96 165 250);
+  background: rgb(96 165 250 / 0.16);
+  box-shadow: inset 0 0 18px rgb(96 165 250 / 0.18);
+}
+
+.shortcut-drop-preview.is-invalid {
+  border-color: rgb(248 113 113);
+  background: rgb(248 113 113 / 0.14);
+}
+.shortcut-insert-before::before,
+.shortcut-insert-after::after {
+  content: '';
+  position: absolute;
+  top: 8px;
+  bottom: 24px;
+  width: 3px;
+  border-radius: 999px;
+  background: rgb(96 165 250);
+  box-shadow: 0 0 12px rgba(96, 165, 250, 0.9);
+  pointer-events: none;
+}
+
+.shortcut-insert-before::before { left: -7px; }
+.shortcut-insert-after::after { right: -7px; }
+
+@keyframes shortcutMergePulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.18); }
+}
+
+.shortcut-merge-target {
+  animation: shortcutMergePulse 500ms ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shortcut-merge-target { animation: none; }
+}

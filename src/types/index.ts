@@ -77,6 +77,13 @@ export interface SiteShortcut {
   url: string;
   icon?: string;
   color?: string;
+  isFolder?: boolean;
+  folderSize?: '1x1' | '2x2';
+  gridPosition?: {
+    column: number;
+    row: number;
+  };
+  children?: SiteShortcut[];
 }
 
 export interface WeatherForecastItem {

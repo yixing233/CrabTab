@@ -244,6 +244,10 @@ export const App: React.FC = () => {
     setShortcuts(next);
     saveShortcuts(next);
   };
+  const handleReorderShortcuts = (reordered: SiteShortcut[]) => {
+    setShortcuts(reordered);
+    saveShortcuts(reordered);
+  };
 
   const handleUpdateClockStyle = (newStyle: Partial<AppSettings['clockStyle']>) => {
     if (!settings) return;
@@ -411,6 +415,7 @@ export const App: React.FC = () => {
                 onAddShortcut={handleAddShortcut}
                 onEditShortcut={handleEditShortcut}
                 onDeleteShortcut={handleDeleteShortcut}
+                onReorderShortcuts={handleReorderShortcuts}
               />
             </div>
           )}

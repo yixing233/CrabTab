@@ -18,6 +18,16 @@ export const DEFAULT_SHORTCUTS: SiteShortcut[] = [
   { id: '6', title: 'ChatGPT', url: 'https://chatgpt.com', icon: 'https://chatgpt.com/favicon.ico' },
   { id: '7', title: 'Twitter / X', url: 'https://x.com', icon: 'https://abs.twimg.com/favicons/twitter.3.ico' },
   { id: '8', title: 'Notion', url: 'https://www.notion.so', icon: 'https://www.notion.so/images/favicon.ico' },
+  { id: '9', title: 'Google', url: 'https://www.google.com', icon: 'https://www.google.com/favicon.ico' },
+  { id: '10', title: '百度', url: 'https://www.baidu.com', icon: 'https://www.baidu.com/favicon.ico' },
+  { id: '11', title: '知乎', url: 'https://www.zhihu.com', icon: 'https://static.zhihu.com/heifetz/favicon.ico' },
+  { id: '12', title: '掘金', url: 'https://juejin.cn', icon: 'https://lf3-cdn-tos.bytescm.com/obj/static/xitu_juejin_web/static/favicons/favicon-32x32.png' },
+  { id: '13', title: '少数派', url: 'https://sspai.com', icon: 'https://cdn.sspai.com/sspai/assets/img/favicon/icon.ico' },
+  { id: '14', title: 'Stack Overflow', url: 'https://stackoverflow.com', icon: 'https://cdn.sstatic.net/Sites/stackoverflow/Img/favicon.ico' },
+  { id: '15', title: 'Figma', url: 'https://www.figma.com', icon: 'https://static.figma.com/app/icon/1/favicon.svg' },
+  { id: '16', title: 'Steam', url: 'https://store.steampowered.com', icon: 'https://store.steampowered.com/favicon.ico' },
+  { id: '17', title: '网易云音乐', url: 'https://music.163.com', icon: 'https://s1.music.126.net/style/favicon.ico' },
+  { id: '18', title: 'DeepSeek', url: 'https://chat.deepseek.com', icon: 'https://www.deepseek.com/favicon.ico' },
 ];
 
 export const RANDOM_WALLPAPER_POOL = [
