@@ -110,7 +110,7 @@ const FolderThumbnailView: React.FC<{
 
   return (
     <div
-      className={`w-full h-full rounded-[inherit] grid ${
+      className={`folder-thumbnail-grid w-full h-full rounded-[inherit] grid ${
         isNineGrid
           ? isLarge ? 'grid-cols-3 grid-rows-3 gap-1.5 p-3 sm:gap-2 sm:p-4' : 'grid-cols-3 gap-0.5 p-1.5'
           : 'grid-cols-2 gap-1 p-1.5'
@@ -2242,7 +2242,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
 
       {/* 桌面模式底部毛玻璃分页指示器 */}
       {isDesktop && (
-        <div className="flex items-center justify-center mt-3 select-none">
+        <div className="desktop-pagination-container flex items-center justify-center mt-3 select-none">
           <div
             className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border shadow-sm backdrop-blur-xl transition-all ${
               isDark

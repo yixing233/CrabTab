@@ -1195,7 +1195,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
 
       {/* 底部右下角独立倒数日胶囊区（纵向靠右堆叠，统一定宽与两端对齐，保证边距与视觉间距完全均匀） */}
       {!open && pinnedCountdowns.length > 0 && (
-        <div className="fixed right-6 bottom-4 z-40 flex flex-col items-end gap-2 max-h-[42vh] overflow-y-auto custom-scrollbar pointer-events-auto p-1 select-none">
+        <div className="pinned-countdown-container fixed right-6 bottom-4 z-40 flex flex-col items-end gap-2 max-h-[42vh] overflow-y-auto custom-scrollbar pointer-events-auto p-1 select-none">
           {pinnedCountdowns.map((item) => {
             const status = calculateCountdownStatus(item, language);
             return (

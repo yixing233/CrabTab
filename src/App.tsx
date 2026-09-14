@@ -401,7 +401,7 @@ export const App: React.FC = () => {
         <Wallpaper config={settings.wallpaper} theme={settings.theme} />
 
         {/* Top Navigation Bar - 高层叠层级 z-30 确保弹出的天气卡片与操作浮层绝对置顶，绝不被 main 遮挡 */}
-        <header className="relative z-30 w-full px-6 py-4 flex items-center justify-between pointer-events-auto">
+        <header className="header-bar-responsive relative z-30 w-full px-6 py-4 flex items-center justify-between pointer-events-auto">
           {/* Weather Widget (Top Left) */}
           <div>
             {settings.showWeather && (
@@ -493,9 +493,9 @@ export const App: React.FC = () => {
         </header>
 
         {/* Central Core Layout: Clock, Search Box & Shortcuts - 基于页面顶部定位 */}
-        <main className="relative z-10 w-full max-w-5xl mx-auto px-4 flex-1 flex flex-col items-center justify-start pointer-events-auto min-h-0 pt-3 sm:pt-4 md:pt-6 pb-6">
+        <main className="main-layout-responsive relative z-10 w-full max-w-5xl mx-auto px-4 flex-1 flex flex-col items-center justify-start pointer-events-auto min-h-0 pt-3 sm:pt-4 md:pt-6 pb-6">
           {/* Digital Clock with Interactive Popover - 固定高度插槽与底部锚定，确保时间参数修改绝不引起下方搜索框位置变动 */}
-          <div className="w-full flex items-end justify-center h-[140px] sm:h-[156px] mb-4 sm:mb-6 flex-shrink-0 select-none">
+          <div className="clock-slot-responsive w-full flex items-end justify-center h-[140px] sm:h-[156px] mb-4 sm:mb-6 flex-shrink-0 select-none">
             <Clock
               language={settings.language}
               theme={settings.theme}
@@ -509,7 +509,7 @@ export const App: React.FC = () => {
           </div>
 
           {/* Frosted Glass Search Bar */}
-          <div className="w-full flex justify-center mb-6 sm:mb-8 flex-shrink-0">
+          <div className="searchbox-slot-responsive w-full flex justify-center mb-6 sm:mb-8 flex-shrink-0">
             <SearchBox
               currentEngineId={settings.searchEngine}
               suggestionEngine={settings.suggestionEngine}

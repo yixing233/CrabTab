@@ -345,7 +345,7 @@ export const Clock: React.FC<ClockProps> = ({
         >
           {/* Time Display with dynamic font & size */}
           <div
-            className={`flex items-baseline tracking-tight select-none ${weightClass}`}
+            className={`clock-time-display flex items-baseline tracking-tight select-none ${weightClass}`}
             style={{ ...fontStyle, ...fontWeightStyle, fontSize: `${currentSizePx}px`, lineHeight: 1 }}
           >
             <span className="tabular-nums drop-shadow-lg text-white/95">
@@ -372,7 +372,7 @@ export const Clock: React.FC<ClockProps> = ({
       </Popover>
 
       {/* Date Display */}
-      <div className="mt-2 text-sm sm:text-base font-normal tracking-wide text-white/85 drop-shadow-sm select-none">
+      <div className="clock-date-display mt-2 text-sm sm:text-base font-normal tracking-wide text-white/85 drop-shadow-sm select-none">
         <span 
           className="cursor-pointer hover:text-white transition-colors"
           onClick={() => setPopoverOpen(true)}
@@ -384,7 +384,7 @@ export const Clock: React.FC<ClockProps> = ({
       {/* Hitokoto (一言) 金句展示区 - 独立于时间弹窗，支持点击刷新与查看出处 */}
       {showGreeting && (
         <div 
-          className="mt-1.5 flex items-center justify-center gap-1.5 text-xs sm:text-sm font-light tracking-wide text-white/80 max-w-xl px-4 py-1 rounded-full cursor-pointer hover:bg-white/10 active:scale-[0.99] transition-all group duration-200 select-none"
+          className="hitokoto-container mt-1.5 flex items-center justify-center gap-1.5 text-xs sm:text-sm font-light tracking-wide text-white/80 max-w-xl px-4 py-1 rounded-full cursor-pointer hover:bg-white/10 active:scale-[0.99] transition-all group duration-200 select-none"
           onClick={(e) => {
             e.stopPropagation();
             loadSentence(true);
