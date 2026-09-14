@@ -105,10 +105,10 @@ export const Clock: React.FC<ClockProps> = ({
     ? clockStyle.verticalOffset
     : clockStyle.verticalOffset === 'top' ? -36 : clockStyle.verticalOffset === 'bottom' ? 24 : 0;
 
-  // Vertical Offset Spacing (使用 marginTop 避免为子元素创建 GPU 复合层及 backdrop-filter 阻断)
+  // Vertical Offset Spacing (使用相对定位 top 属性精确位移，负数偏上，正数偏下，完全避免 flex items-end 约束失效问题，且不影响外部布局流与 GPU 复合层)
   const getVerticalOffsetStyle = (): React.CSSProperties => {
     if (currentOffsetPx === 0) return {};
-    return { marginTop: `${currentOffsetPx}px` };
+    return { top: `${currentOffsetPx}px` };
   };
 
   // Font Family inline styling
@@ -330,6 +330,7 @@ export const Clock: React.FC<ClockProps> = ({
         placement="bottom"
         autoAdjustOverflow={false}
         arrow={{ pointAtCenter: true }}
+        getPopupContainer={(trigger) => trigger.parentElement || document.body}
       >
         <div
           role="button"
