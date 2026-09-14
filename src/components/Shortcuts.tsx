@@ -2244,7 +2244,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
       {isDesktop && (
         <div className="flex items-center justify-center mt-3 select-none">
           <div
-            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border shadow-sm backdrop-blur-xl transition-all ${
+            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border shadow-sm backdrop-blur-xl transition-all ${
               isDark
                 ? 'bg-black/30 border-white/10 text-white'
                 : 'bg-white/45 border-black/10 text-neutral-800'
@@ -2332,7 +2332,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                     }
                     finishDrag();
                   }}
-                  className="flex items-center justify-center p-1.5 cursor-pointer"
+                  className="flex items-center justify-center px-0.5 py-1 cursor-pointer"
                 >
                   <span
                     className={`block transition-all duration-300 rounded-full ${
@@ -2390,11 +2390,11 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                 }}
                 className={`flex items-center justify-center rounded-full transition-all cursor-pointer ${
                   hoveredDotPage === -1
-                    ? 'h-5 w-5 bg-blue-500 text-white scale-125 shadow-md ring-2 ring-blue-400/50'
-                    : 'h-4 w-4 text-neutral-400 hover:text-blue-500 dark:text-neutral-400 dark:hover:text-blue-400 hover:bg-black/5 dark:hover:bg-white/10'
+                    ? 'h-4.5 w-4.5 bg-blue-500 text-white scale-110 shadow-md ring-2 ring-blue-400/50'
+                    : 'h-3.5 w-3.5 text-neutral-400 hover:text-blue-500 dark:text-neutral-400 dark:hover:text-blue-400 hover:bg-black/5 dark:hover:bg-white/10'
                 }`}
               >
-                <Plus size={13} strokeWidth={2.6} />
+                <Plus size={12} strokeWidth={2.5} />
               </button>
             )}
           </div>
