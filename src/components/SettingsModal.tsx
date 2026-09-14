@@ -815,9 +815,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <div
                     key={fav.id}
                     onClick={() => handleApplyFavoriteItem(fav)}
-                    className={`group relative h-24 rounded-xl overflow-hidden cursor-pointer border transition-all duration-200 ${
+                    className={`group relative h-24 rounded-xl overflow-hidden cursor-pointer border-2 transition-all duration-200 ${
                       isSelected
-                        ? 'border-rose-500 ring-2 ring-rose-500/40 shadow-lg scale-[1.01]'
+                        ? 'border-rose-500 shadow-md'
                         : isDark
                           ? 'border-white/10 hover:border-rose-400/50'
                           : 'border-gray-200 hover:border-rose-400/70'
