@@ -173,6 +173,14 @@ export const Clock: React.FC<ClockProps> = ({
   const authorAndSource = (quoteAuthor || quoteSource) ? `${quoteAuthor}${quoteSource}`.trim() : '';
 
   // Settings Card Inside Popover
+  const fontFamilyLabels: Record<string, string> = {
+    mono: t.clockFontMono,
+    sans: t.clockFontSans,
+    serif: t.clockFontSerif,
+    rounded: t.clockFontRounded,
+    handwriting: t.clockFontHandwriting,
+  };
+
   const settingCardContent = (
     <div className="w-80 p-2 space-y-4 text-white/90">
       <div className="flex items-center justify-between pb-2 border-b border-white/10">
@@ -180,7 +188,7 @@ export const Clock: React.FC<ClockProps> = ({
           <SettingOutlined />
           {t.clockCustomization}
         </span>
-        <span className="text-xs text-white/50">{clockStyle.fontFamily}</span>
+        <span className="text-xs text-white/50">{fontFamilyLabels[clockStyle.fontFamily] || clockStyle.fontFamily}</span>
       </div>
 
       {/* 1. Size Slider & Exact Input */}
@@ -266,11 +274,11 @@ export const Clock: React.FC<ClockProps> = ({
           value={clockStyle.fontFamily}
           onChange={(val) => onUpdateClockStyle?.({ fontFamily: val as ClockStyleConfig['fontFamily'] })}
           options={[
-            { label: 'Mono', value: 'mono' },
-            { label: 'Sans', value: 'sans' },
-            { label: 'Serif', value: 'serif' },
-            { label: 'Round', value: 'rounded' },
-            { label: 'Art', value: 'handwriting' },
+            { label: t.clockFontMono, value: 'mono' },
+            { label: t.clockFontSans, value: 'sans' },
+            { label: t.clockFontSerif, value: 'serif' },
+            { label: t.clockFontRounded, value: 'rounded' },
+            { label: t.clockFontHandwriting, value: 'handwriting' },
           ]}
         />
       </div>
