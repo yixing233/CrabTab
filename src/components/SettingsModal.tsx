@@ -80,7 +80,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [activeTab, setActiveTab] = useState('wallpaper');
   const [favorites, setFavorites] = useState<FavoriteWallpaperItem[]>([]);
   const [isFavorited, setIsFavorited] = useState<boolean>(false);
-  const [localMedia, setLocalMedia] = useState<{ url: string; isVideo: boolean; name?: string } | null>(null);
+  const [localMedia, setLocalMedia] = useState<{ url: string; isVideo: boolean; name?: string; isCustom?: boolean } | null>(null);
 
   const [providerOverride, setProviderOverride] = useState<WallpaperProviderId | null>(null);
   const activeProvider: WallpaperProviderId = providerOverride ?? (

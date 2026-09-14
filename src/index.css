@@ -621,13 +621,52 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
   align-content: start;
   align-items: start;
   gap: var(--shortcut-grid-gap);
-  overflow-x: clip;
-  overflow-y: auto;
+  overflow: visible;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
 .shortcut-grid::-webkit-scrollbar {
   display: none;
+}
+
+/* 桌面分页平滑过渡动效 (GPU 加速) */
+@keyframes desktopPageSlideInRight {
+  0% {
+    opacity: 0.1;
+    transform: translate3d(36px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes desktopPageSlideInLeft {
+  0% {
+    opacity: 0.1;
+    transform: translate3d(-36px, 0, 0);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+.desktop-page-slide-left {
+  animation: desktopPageSlideInRight 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+.desktop-page-slide-right {
+  animation: desktopPageSlideInLeft 240ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .desktop-page-slide-left,
+  .desktop-page-slide-right {
+    animation: none;
+  }
 }
 
 .shortcut-grid-item {

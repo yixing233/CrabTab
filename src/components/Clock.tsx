@@ -105,44 +105,67 @@ export const Clock: React.FC<ClockProps> = ({
     ? clockStyle.verticalOffset
     : clockStyle.verticalOffset === 'top' ? -36 : clockStyle.verticalOffset === 'bottom' ? 24 : 0;
 
-  // Vertical Offset Spacing
-  const getVerticalTransformStyle = (): React.CSSProperties => {
-    return { transform: `translateY(${currentOffsetPx}px)` };
+  // Vertical Offset Spacing (使用 marginTop 避免为子元素创建 GPU 复合层及 backdrop-filter 阻断)
+  const getVerticalOffsetStyle = (): React.CSSProperties => {
+    if (currentOffsetPx === 0) return {};
+    return { marginTop: `${currentOffsetPx}px` };
   };
 
   // Font Family inline styling
   const getFontFamilyStyle = (): React.CSSProperties => {
     switch (clockStyle.fontFamily) {
       case 'sans':
-        return { fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif' };
+        return {
+          fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+        };
       case 'serif':
-        return { fontFamily: '"Times New Roman", Times, Georgia, "Noto Serif SC", serif' };
+        return {
+          fontFamily: '"Noto Serif SC", "Sitka Banner", "Sitka Display", "Sitka Text", "New York", "Didot", "Songti SC", "Baskerville", "Garamond", Georgia, "Times New Roman", serif',
+        };
       case 'rounded':
-        return { fontFamily: 'ui-rounded, "PingFang SC Round", system-ui, -apple-system, sans-serif' };
+        return {
+          fontFamily: 'ui-rounded, "SF Pro Rounded", "Bahnschrift", "Quicksand", "Comfortaa", "Varela Round", "PingFang SC Round", "Segoe UI Variable Display", system-ui, sans-serif',
+        };
       case 'handwriting':
-        return { fontFamily: 'cursive, "Brush Script MT", "KaiTi", "STKaiti", serif' };
+        return {
+          fontFamily: '"Ink Free", "Gabriola", "Caveat", "Segoe Script", "Segoe Print", "Snell Roundhand", "Bradley Hand", "KaiTi", "STKaiti", cursive, serif',
+        };
       case 'mono':
       default:
-        return { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace' };
+        return {
+          fontFamily: '"Cascadia Code", "Cascadia Mono", "SF Mono", "JetBrains Mono", "Fira Code", "Source Code Pro", ui-monospace, Menlo, Monaco, Consolas, monospace',
+        };
     }
   };
 
-  // Weight styling
+  // Weight styling: 提供精确数值 fontWeight，完美激活可变字体 (Variable Fonts) 与系统字体的细体/特细轴 (Weight 200)
+  const getFontWeightStyle = (): React.CSSProperties => {
+    switch (clockStyle.fontWeight) {
+      case 'thin':
+        return { fontWeight: 200 };
+      case 'bold':
+        return { fontWeight: 700 };
+      case 'normal':
+      default:
+        return { fontWeight: 400 };
+    }
+  };
+
   const getFontWeightClass = (): string => {
     switch (clockStyle.fontWeight) {
       case 'thin':
-        return 'font-light';
+        return 'font-extralight';
       case 'bold':
         return 'font-bold';
       case 'normal':
       default:
-        return 'font-medium';
+        return 'font-normal';
     }
   };
 
   const fontStyle = getFontFamilyStyle();
+  const fontWeightStyle = getFontWeightStyle();
   const weightClass = getFontWeightClass();
-  const verticalTransformStyle = getVerticalTransformStyle();
 
   // 一言出处格式化
   const quoteSource = hitokoto?.from ? `「${hitokoto.from}」` : '';
@@ -274,7 +297,7 @@ export const Clock: React.FC<ClockProps> = ({
   );
 
   return (
-    <div className="w-full flex flex-col items-center justify-end relative">
+    <div className="w-full flex flex-col items-center justify-end relative" style={getVerticalOffsetStyle()}>
       <Popover
         content={settingCardContent}
         trigger="click"
@@ -286,14 +309,12 @@ export const Clock: React.FC<ClockProps> = ({
         <div
           role="button"
           tabIndex={0}
-          className="flex flex-col items-center text-center cursor-pointer group transition-transform duration-100 px-4 py-2 rounded-3xl border border-transparent hover:border-white/25 hover:bg-white/5 active:bg-white/10 select-none text-white drop-shadow-md outline-none" 
-          style={verticalTransformStyle}
-          title={t.clockCardHint}
+          className="flex flex-col items-center text-center cursor-pointer select-none text-white outline-none"
         >
           {/* Time Display with dynamic font & size */}
           <div
-            className={`flex items-baseline tracking-tight backdrop-blur-xs select-none ${weightClass}`}
-            style={{ ...fontStyle, fontSize: `${currentSizePx}px`, lineHeight: 1 }}
+            className={`flex items-baseline tracking-tight select-none ${weightClass}`}
+            style={{ ...fontStyle, ...fontWeightStyle, fontSize: `${currentSizePx}px`, lineHeight: 1 }}
           >
             <span className="tabular-nums drop-shadow-lg text-white/95">
               {hours}:{minutes}
@@ -315,13 +336,18 @@ export const Clock: React.FC<ClockProps> = ({
               </span>
             )}
           </div>
-
-          {/* Date */}
-          <div className="mt-2 text-sm sm:text-base font-normal tracking-wide text-white/85">
-            {dateStr}
-          </div>
         </div>
       </Popover>
+
+      {/* Date Display */}
+      <div className="mt-2 text-sm sm:text-base font-normal tracking-wide text-white/85 drop-shadow-sm select-none">
+        <span 
+          className="cursor-pointer hover:text-white transition-colors"
+          onClick={() => setPopoverOpen(true)}
+        >
+          {dateStr}
+        </span>
+      </div>
 
       {/* Hitokoto (一言) 金句展示区 - 独立于时间弹窗，支持点击刷新与查看出处 */}
       {showGreeting && (
@@ -332,7 +358,6 @@ export const Clock: React.FC<ClockProps> = ({
             loadSentence(true);
           }}
           title={t.hitokotoRefresh}
-          style={verticalTransformStyle}
         >
           <Quote className="w-3 h-3 text-white/50 group-hover:text-white/80 shrink-0 rotate-180 transition-colors" />
           <span className="truncate drop-shadow-sm text-white/90">

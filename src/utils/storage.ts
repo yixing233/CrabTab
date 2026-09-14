@@ -18,6 +18,9 @@ export const TODOS_KEY = 'crab_utility_todos';
 export const TODOS_BACKUP_KEY = 'crab_utility_todos_backup';
 const LEGACY_TODOS_KEYS = ['crab_home_todo_items_v1', 'crab_todos'];
 
+export const COUNTDOWNS_KEY = 'crab_utility_countdowns_v1';
+export const COUNTDOWNS_BACKUP_KEY = 'crab_utility_countdowns_backup';
+
 const LOCAL_MEDIA_KEY = 'crab_home_local_wallpaper_blob';
 
 // 辅助：从 chrome.storage.local 安全读取指定 key
@@ -333,6 +336,50 @@ export async function saveTodosToStorage<T>(todos: T[]): Promise<void> {
     writeLocalStorage(TODOS_KEY, todos);
   } catch (err) {
     console.warn('[Storage] Failed to save todos:', err);
+  }
+}
+
+// ==================== 倒数日（Countdowns）双层存储 ====================
+export async function loadCountdownsFromStorage<T>(): Promise<T[] | null> {
+  try {
+    const chromeData = await readChromeStorage<T[]>(COUNTDOWNS_KEY);
+    if (Array.isArray(chromeData) && chromeData.length > 0) {
+      writeLocalStorage(COUNTDOWNS_KEY, chromeData);
+      writeLocalStorage(COUNTDOWNS_BACKUP_KEY, chromeData);
+      return chromeData;
+    }
+
+    const localData = readLocalStorage<T[]>(COUNTDOWNS_KEY);
+    if (Array.isArray(localData) && localData.length > 0) {
+      await writeChromeStorage(COUNTDOWNS_KEY, localData);
+      writeLocalStorage(COUNTDOWNS_BACKUP_KEY, localData);
+      return localData;
+    }
+
+    const backupData = readLocalStorage<T[]>(COUNTDOWNS_BACKUP_KEY);
+    if (Array.isArray(backupData) && backupData.length > 0) {
+      await writeChromeStorage(COUNTDOWNS_KEY, backupData);
+      writeLocalStorage(COUNTDOWNS_KEY, backupData);
+      return backupData;
+    }
+  } catch (err) {
+    console.warn('[Storage] Failed to load countdowns:', err);
+  }
+  return null;
+}
+
+export async function saveCountdownsToStorage<T>(countdowns: T[]): Promise<void> {
+  try {
+    const existing = readLocalStorage<T[]>(COUNTDOWNS_KEY);
+    if (Array.isArray(existing) && existing.length > 0) {
+      writeLocalStorage(COUNTDOWNS_BACKUP_KEY, existing);
+      await writeChromeStorage(COUNTDOWNS_BACKUP_KEY, existing);
+    }
+
+    await writeChromeStorage(COUNTDOWNS_KEY, countdowns);
+    writeLocalStorage(COUNTDOWNS_KEY, countdowns);
+  } catch (err) {
+    console.warn('[Storage] Failed to save countdowns:', err);
   }
 }
 

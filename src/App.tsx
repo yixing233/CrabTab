@@ -8,15 +8,21 @@ import {
   HistoryOutlined, 
   ReloadOutlined
 } from '@ant-design/icons';
-import { AppSettings, SiteShortcut, SearchEngineId } from './types';
+import { AppSettings, SiteShortcut, SearchEngineId, CountdownItem } from './types';
 import { 
   loadSettings, 
   saveSettings, 
   loadShortcuts, 
   saveShortcuts, 
   loadSearchHistory, 
-  saveSearchHistory 
+  saveSearchHistory,
+  loadCountdownsFromStorage,
+  saveCountdownsToStorage,
+  SETTINGS_KEY,
+  SHORTCUTS_KEY,
+  SEARCH_HISTORY_KEY
 } from './utils/storage';
+import { getDefaultCountdowns } from './utils/countdown';
 import { getAntdTheme } from './theme';
 import { SEARCH_ENGINES, RANDOM_WALLPAPER_POOL } from './constants';
 import { fetchFromOnlineSource, ONLINE_WALLPAPER_SOURCES } from './utils/wallpaperSources';
@@ -34,6 +40,7 @@ export const App: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [shortcuts, setShortcuts] = useState<SiteShortcut[]>([]);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  const [countdowns, setCountdowns] = useState<CountdownItem[]>([]);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
   const [refreshingWallpaper, setRefreshingWallpaper] = useState(false);
@@ -42,18 +49,57 @@ export const App: React.FC = () => {
   // Initialize data
   useEffect(() => {
     async function initData() {
-      const [s, sc, sh] = await Promise.all([
+      const [s, sc, sh, cd] = await Promise.all([
         loadSettings(),
         loadShortcuts(),
         loadSearchHistory(),
+        loadCountdownsFromStorage<CountdownItem>(),
       ]);
       setSettings(s);
       setShortcuts(sc);
       setSearchHistory(sh);
+      setCountdowns(cd !== null ? cd : getDefaultCountdowns(s.language));
       setInitialized(true);
     }
     initData();
   }, []);
+
+  const handleUpdateCountdowns = (newCountdowns: CountdownItem[]) => {
+    setCountdowns(newCountdowns);
+    saveCountdownsToStorage(newCountdowns);
+  };
+
+  // 监听多标签页同步：当用户在其他标签页修改设置、快捷方式或搜索历史时实时同步，避免多标签页陈旧数据互相覆盖
+  useEffect(() => {
+    if (!initialized) return;
+
+    const handleStorageChange = (
+      changes: { [key: string]: chrome.storage.StorageChange },
+      areaName: string
+    ) => {
+      if (areaName !== 'local') return;
+
+      if (changes[SETTINGS_KEY]?.newValue) {
+        setSettings(changes[SETTINGS_KEY].newValue as AppSettings);
+      }
+      if (changes[SHORTCUTS_KEY]?.newValue) {
+        setShortcuts(changes[SHORTCUTS_KEY].newValue as SiteShortcut[]);
+      }
+      if (changes[SEARCH_HISTORY_KEY]?.newValue) {
+        setSearchHistory(changes[SEARCH_HISTORY_KEY].newValue as string[]);
+      }
+      if (changes['crab_utility_countdowns_v1']?.newValue) {
+        setCountdowns(changes['crab_utility_countdowns_v1'].newValue as CountdownItem[]);
+      }
+    };
+
+    if (typeof chrome !== 'undefined' && chrome.storage?.onChanged) {
+      chrome.storage.onChanged.addListener(handleStorageChange);
+      return () => {
+        chrome.storage.onChanged.removeListener(handleStorageChange);
+      };
+    }
+  }, [initialized]);
 
   // 壁纸定时自动轮换调度 (每次打开新标签页 / 每小时 / 每天)
   useEffect(() => {
@@ -149,10 +195,12 @@ export const App: React.FC = () => {
 
   // Update Settings
   const handleUpdateSettings = (newPartial: Partial<AppSettings>) => {
-    if (!settings) return;
-    const updated = { ...settings, ...newPartial };
-    setSettings(updated);
-    saveSettings(updated);
+    setSettings((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...newPartial };
+      saveSettings(updated);
+      return updated;
+    });
   };
 
   // Switch Language
@@ -265,38 +313,47 @@ export const App: React.FC = () => {
 
   // Shortcuts Operations
   const handleAddShortcut = (shortcut: SiteShortcut) => {
-    const next = [...shortcuts, shortcut];
-    setShortcuts(next);
-    saveShortcuts(next);
+    setShortcuts((prev) => {
+      const next = [...prev, shortcut];
+      saveShortcuts(next);
+      return next;
+    });
   };
 
   const handleEditShortcut = (updated: SiteShortcut) => {
-    const next = shortcuts.map((s) => (s.id === updated.id ? updated : s));
-    setShortcuts(next);
-    saveShortcuts(next);
+    setShortcuts((prev) => {
+      const next = prev.map((s) => (s.id === updated.id ? updated : s));
+      saveShortcuts(next);
+      return next;
+    });
   };
 
   const handleDeleteShortcut = (id: string) => {
-    const next = shortcuts.filter((s) => s.id !== id);
-    setShortcuts(next);
-    saveShortcuts(next);
+    setShortcuts((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      saveShortcuts(next);
+      return next;
+    });
   };
+
   const handleReorderShortcuts = (reordered: SiteShortcut[]) => {
     setShortcuts(reordered);
     saveShortcuts(reordered);
   };
 
   const handleUpdateClockStyle = (newStyle: Partial<AppSettings['clockStyle']>) => {
-    if (!settings) return;
-    const updated: AppSettings = {
-      ...settings,
-      clockStyle: {
-        ...settings.clockStyle,
-        ...newStyle,
-      },
-    };
-    setSettings(updated);
-    saveSettings(updated);
+    setSettings((prev) => {
+      if (!prev) return prev;
+      const updated: AppSettings = {
+        ...prev,
+        clockStyle: {
+          ...prev.clockStyle,
+          ...newStyle,
+        },
+      };
+      saveSettings(updated);
+      return updated;
+    });
   };
 
   if (!initialized || !settings) return null;
@@ -458,6 +515,8 @@ export const App: React.FC = () => {
                 onReorderShortcuts={handleReorderShortcuts}
                 autoFill={settings.shortcutAutoFill === true}
                 onToggleAutoFill={(autoFill) => handleUpdateSettings({ shortcutAutoFill: autoFill })}
+                desktopPageCount={settings.desktopPageCount || 1}
+                onUpdatePageCount={(count) => handleUpdateSettings({ desktopPageCount: count })}
               />
             </div>
           )}
@@ -467,6 +526,8 @@ export const App: React.FC = () => {
           language={settings.language}
           theme={settings.theme}
           glassStyle={settings.glassStyle}
+          countdowns={countdowns}
+          onUpdateCountdowns={handleUpdateCountdowns}
         />
 
         {/* Ant Design Settings Modal */}

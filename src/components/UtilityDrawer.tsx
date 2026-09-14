@@ -5,10 +5,15 @@ import {
   theme as antdTheme,
   Select,
   DatePicker,
-  Input,
   Button,
   Progress,
   Tag,
+  Modal,
+  Input,
+  Form,
+  Switch,
+  Tooltip,
+  message,
 } from 'antd';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
@@ -27,24 +32,29 @@ import {
   Check,
   CheckCircle2,
   Circle,
-  X,
   ExternalLink,
   ArrowRightLeft,
   Calendar,
+  CalendarClock,
   Edit2,
   Plus,
+  Pin,
   Wifi,
   Download,
   Upload,
   Zap,
   Rocket,
-  Flame,
   AlertTriangle,
   RotateCcw,
   Gauge,
 } from 'lucide-react';
-import { Language, ThemeMode } from '../types';
+import { Language, ThemeMode, CountdownItem } from '../types';
 import { loadTodosFromStorage, saveTodosToStorage } from '../utils/storage';
+import { calculateCountdownStatus } from '../utils/countdown';
+import { CountdownIcon, COUNTDOWN_ICON_OPTIONS } from './CountdownIcon';
+import { i18n } from '../i18n';
+
+export type TabType = 'translate' | 'text' | 'network' | 'todo' | 'countdown';
 
 interface UtilityDrawerProps {
   language: Language;
@@ -53,9 +63,10 @@ interface UtilityDrawerProps {
     blur: number;
     opacity: number;
   };
+  countdowns?: CountdownItem[];
+  onUpdateCountdowns?: (countdowns: CountdownItem[]) => void;
+  openTabRequest?: { tab: TabType; timestamp: number } | null;
 }
-
-type TabType = 'translate' | 'text' | 'network' | 'todo';
 
 export interface TodoItem {
   id: string;
@@ -96,7 +107,14 @@ const SPEED_SAMPLE_WINDOW = 750; // 实时读数使用 750ms 滑动窗口，避�
 const SPEED_PHASE_GRACE_DURATION = 5000; // 为网络建连和慢速请求保留的最大宽限时间。
 const SPEED_DOWNLOAD_CHUNK_BYTES = 50_000_000; // Cloudflare 当前公开端点允许的单次下载上限约为 50 MB。
 const getTodayString = () => new Date().toISOString().slice(0, 10);
-export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({ language, theme, glassStyle }) => {
+export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
+  language,
+  theme,
+  glassStyle,
+  countdowns = [],
+  onUpdateCountdowns,
+  openTabRequest,
+}) => {
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<TabType>(() => {
     const saved = localStorage.getItem(STORAGE_TAB);
@@ -131,7 +149,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({ language, theme, g
   const [todoPage, setTodoPage] = useState<'list' | 'detail' | 'editor'>('list');
   const [activeTodoId, setActiveTodoId] = useState<string | null>(null);
   const [todoNavDirection, setTodoNavDirection] = useState<'forward' | 'backward'>('forward');
-  const [isFormExpanded, setIsFormExpanded] = useState(false);
+  const [, setIsFormExpanded] = useState(false);
   const [isCreatingTodo, setIsCreatingTodo] = useState(false);
 
   // 翻译功能状态
@@ -189,6 +207,123 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({ language, theme, g
     theme === 'dark' ||
     (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
   const zh = language === 'zh';
+  const t = i18n[language];
+
+  // 监听外部打开指定标签页的请求（如点击时钟伴随胶囊）
+  useEffect(() => {
+    if (openTabRequest && openTabRequest.timestamp > 0) {
+      setTab(openTabRequest.tab);
+      setOpen(true);
+    }
+  }, [openTabRequest]);
+
+  // 倒数日状态与操作
+  const [countdownFilter, setCountdownFilter] = useState<string>('all');
+  const [isCountdownModalOpen, setIsCountdownModalOpen] = useState(false);
+  const [editingCountdown, setEditingCountdown] = useState<CountdownItem | null>(null);
+  const [countdownForm] = Form.useForm();
+
+  const pinnedCountdowns = useMemo(() => {
+    return countdowns.filter((item) => item.isPinned);
+  }, [countdowns]);
+
+  const handleTogglePinCountdown = (item: CountdownItem) => {
+    const next = countdowns.map((c) =>
+      c.id === item.id ? { ...c, isPinned: !c.isPinned } : c
+    );
+    onUpdateCountdowns?.(next);
+  };
+
+  const handleOpenAddCountdown = () => {
+    setEditingCountdown(null);
+    countdownForm.resetFields();
+    countdownForm.setFieldsValue({
+      title: '',
+      targetDate: dayjs().add(7, 'day'),
+      repeat: 'none',
+      category: 'work',
+      isPinned: true,
+      icon: 'target',
+    });
+    setIsCountdownModalOpen(true);
+  };
+
+  const handleOpenEditCountdown = (item: CountdownItem) => {
+    setEditingCountdown(item);
+    countdownForm.resetFields();
+    countdownForm.setFieldsValue({
+      title: item.title,
+      targetDate: dayjs(item.targetDate),
+      repeat: item.repeat || 'none',
+      category: item.category || 'work',
+      isPinned: Boolean(item.isPinned),
+      icon: item.icon || 'target',
+    });
+    setIsCountdownModalOpen(true);
+  };
+
+  const handleSaveCountdownModal = async () => {
+    try {
+      const values = await countdownForm.validateFields();
+      const targetDateStr = values.targetDate.format('YYYY-MM-DD');
+
+      if (editingCountdown) {
+        const next = countdowns.map((c) =>
+          c.id === editingCountdown.id
+            ? {
+                ...c,
+                title: values.title.trim(),
+                targetDate: targetDateStr,
+                repeat: values.repeat,
+                category: values.category,
+                isPinned: Boolean(values.isPinned),
+                icon: values.icon,
+              }
+            : c
+        );
+        onUpdateCountdowns?.(next);
+      } else {
+        const newItem: CountdownItem = {
+          id: `cd-${Date.now()}`,
+          title: values.title.trim(),
+          targetDate: targetDateStr,
+          repeat: values.repeat,
+          category: values.category,
+          isPinned: Boolean(values.isPinned),
+          icon: values.icon,
+          createdAt: Date.now(),
+        };
+        onUpdateCountdowns?.([...countdowns, newItem]);
+      }
+      setIsCountdownModalOpen(false);
+    } catch {
+      // 表单校验拦截
+    }
+  };
+
+  const handleDeleteCountdown = (item: CountdownItem) => {
+    Modal.confirm({
+      title: zh ? `确认删除「${item.title}」？` : `Delete "${item.title}"?`,
+      content: zh ? '删除后该倒数日将不再显示。' : 'This countdown event will be removed.',
+      okText: zh ? '删除' : 'Delete',
+      cancelText: zh ? '取消' : 'Cancel',
+      okButtonProps: { danger: true },
+      centered: true,
+      onOk: () => {
+        const next = countdowns.filter((c) => c.id !== item.id);
+        onUpdateCountdowns?.(next);
+        message.success(zh ? '已删除' : 'Deleted');
+      },
+    });
+  };
+
+  const filteredCountdowns = useMemo(() => {
+    if (countdownFilter === 'all') return countdowns;
+    if (countdownFilter === 'anniversary') {
+      return countdowns.filter((c) => c.category === 'anniversary' || c.category === 'birthday');
+    }
+    return countdowns.filter((c) => c.category === countdownFilter);
+  }, [countdowns, countdownFilter]);
 
   const langOptions = useMemo(
     () => [
@@ -991,6 +1126,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({ language, theme, g
     { id: 'text', label: zh ? '文本处理' : 'Text', icon: <FileText size={15} /> },
     { id: 'network', label: zh ? '网络测速' : 'Speedtest', icon: <Gauge size={15} /> },
     { id: 'todo', label: zh ? '待办事项' : 'Tasks', icon: <CheckSquare size={15} /> },
+    { id: 'countdown', label: zh ? '倒数日' : 'Countdown', icon: <CalendarClock size={15} /> },
   ];
 
   return (
@@ -1054,6 +1190,59 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({ language, theme, g
               +{uncompletedTodos.length - 3}
             </button>
           )}
+        </div>
+      )}
+
+      {/* 底部右下角独立倒数日胶囊区（纵向靠右堆叠，统一定宽与两端对齐，保证边距与视觉间距完全均匀） */}
+      {!open && pinnedCountdowns.length > 0 && (
+        <div className="fixed right-6 bottom-4 z-40 flex flex-col items-end gap-2 max-h-[42vh] overflow-y-auto custom-scrollbar pointer-events-auto p-1 select-none">
+          {pinnedCountdowns.map((item) => {
+            const status = calculateCountdownStatus(item, language);
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => {
+                  setTab('countdown');
+                  setOpen(true);
+                }}
+                title={zh ? `${item.title}（点击管理倒数日）` : `${item.title} (Manage)`}
+                className={`w-[240px] flex items-center justify-between px-3.5 py-1.5 rounded-full text-xs font-medium shadow-md transition-colors border cursor-pointer select-none backdrop-blur-md shrink-0 ${
+                  isDark
+                    ? 'bg-[#181a20]/80 hover:bg-[#181a20]/95 text-white/90 border-white/10 hover:border-white/30'
+                    : 'bg-white/80 hover:bg-white/95 text-neutral-800 border-black/10 hover:border-black/20'
+                }`}
+                style={{
+                  backdropFilter: `blur(${glassStyle.blur}px)`,
+                  WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
+                }}
+              >
+                {/* 左侧：图标与标题 */}
+                <div className="flex items-center gap-2 min-w-0 pr-2">
+                  <div
+                    className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                    style={{
+                      backgroundColor: `${status.color}22`,
+                      color: status.color,
+                    }}
+                  >
+                    <CountdownIcon name={item.icon} size={12} />
+                  </div>
+                  <span className="truncate max-w-[110px] text-neutral-800 dark:text-neutral-100">
+                    {item.title}
+                  </span>
+                </div>
+
+                {/* 右侧：状态文案与天数 */}
+                <span
+                  className="text-[11px] font-semibold opacity-95 shrink-0 tabular-nums"
+                  style={{ color: status.color }}
+                >
+                  {status.displayText}
+                </span>
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -1839,8 +2028,277 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({ language, theme, g
                   </div>
                 </div>
               )}
+
+              {/* 倒数日 / 纪念日 */}
+              {tab === 'countdown' && (
+                <div className="h-full flex flex-col gap-3">
+                  {/* 顶部标题栏与新建按钮 */}
+                  <div className="flex items-center justify-between gap-3 pb-1 border-b border-black/5 dark:border-white/10 shrink-0">
+                    <div>
+                      <div className="text-sm font-semibold flex items-center gap-2">
+                        <span>{t.countdownTitle}</span>
+                        <span className="text-[11px] font-normal px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 dark:text-blue-400">
+                          {pinnedCountdowns.length} {zh ? '已置顶桌面' : 'pinned'}
+                        </span>
+                      </div>
+                      <div className="text-[11px] opacity-55 mt-0.5">
+                        {t.pinToClockDesc}
+                      </div>
+                    </div>
+                    <Button
+                      type="primary"
+                      size="small"
+                      icon={<Plus size={14} />}
+                      onClick={handleOpenAddCountdown}
+                      className="flex items-center gap-1.5 text-xs font-medium shadow-sm cursor-pointer"
+                    >
+                      {t.addCountdown}
+                    </Button>
+                  </div>
+
+                  {/* 分类过滤标签 */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar shrink-0 py-0.5">
+                    {[
+                      { key: 'all', label: zh ? '全部' : 'All' },
+                      { key: 'work', label: t.catWork },
+                      { key: 'life', label: t.catLife },
+                      { key: 'holiday', label: t.catHoliday },
+                      { key: 'anniversary', label: t.catAnniversary },
+                      { key: 'target', label: t.catTarget },
+                    ].map((cat) => (
+                      <button
+                        key={cat.key}
+                        type="button"
+                        onClick={() => setCountdownFilter(cat.key)}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium transition-colors cursor-pointer select-none shrink-0 ${
+                          countdownFilter === cat.key
+                            ? 'bg-blue-500 text-white shadow-xs'
+                            : 'bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-neutral-600 dark:text-neutral-300'
+                        }`}
+                      >
+                        {cat.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* 倒数日卡片列表 */}
+                  <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
+                    {filteredCountdowns.length === 0 ? (
+                      <div className="h-full min-h-[160px] flex flex-col items-center justify-center gap-2.5 text-xs opacity-45">
+                        <CalendarClock size={28} strokeWidth={1.5} />
+                        <span>{t.countdownEmpty}</span>
+                        <Button size="small" onClick={handleOpenAddCountdown}>
+                          {t.addCountdown}
+                        </Button>
+                      </div>
+                    ) : (
+                      filteredCountdowns.map((item) => {
+                        const status = calculateCountdownStatus(item, language);
+                        return (
+                          <div
+                            key={item.id}
+                            className="group flex items-center justify-between gap-3 p-3 rounded-2xl border border-black/5 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.03] hover:border-blue-400/40 hover:bg-blue-500/[0.04] transition-all"
+                          >
+                            {/* 左侧大数字与类型 */}
+                            <div
+                              className="w-20 sm:w-24 shrink-0 flex flex-col items-center justify-center p-2 rounded-xl text-center"
+                              style={{
+                                backgroundColor: `${status.color}15`,
+                              }}
+                            >
+                              <div
+                                className="text-xl sm:text-2xl font-black font-mono tracking-tight leading-none"
+                                style={{ color: status.color }}
+                              >
+                                {status.type === 'progress' ? `${status.percent}%` : status.days}
+                              </div>
+                              <div
+                                className="text-[10px] font-semibold mt-1 truncate max-w-full"
+                                style={{ color: status.color }}
+                              >
+                                {status.displayText}
+                              </div>
+                            </div>
+
+                            {/* 中间信息 */}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-lg bg-black/5 dark:bg-white/10 flex items-center justify-center shrink-0 text-neutral-700 dark:text-neutral-200">
+                                  <CountdownIcon name={item.icon} size={14} />
+                                </div>
+                                <span className="font-semibold text-sm truncate text-neutral-800 dark:text-neutral-100">
+                                  {item.title}
+                                </span>
+                                {item.isPreset && (
+                                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-purple-500/15 text-purple-600 dark:text-purple-400 shrink-0 font-medium">
+                                    {zh ? '动态预设' : 'Preset'}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs opacity-60">
+                                <span className="flex items-center gap-1 font-mono text-[11px]">
+                                  <Calendar size={11} />
+                                  {status.nextDateStr}
+                                </span>
+                                {item.repeat && item.repeat !== 'none' && (
+                                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-black/5 dark:bg-white/10 font-medium">
+                                    {item.repeat === 'yearly'
+                                      ? t.countdownRepeatYearly
+                                      : item.repeat === 'monthly'
+                                      ? t.countdownRepeatMonthly
+                                      : t.countdownRepeatWeekly}
+                                  </span>
+                                )}
+                                {status.type === 'milestone' && (
+                                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-pink-500/10 text-pink-500 font-medium">
+                                    {t.catAnniversary}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* 如果是进度条类展示 mini progress */}
+                              {status.type === 'progress' && status.percent !== undefined && (
+                                <div className="mt-2 w-full max-w-xs">
+                                  <Progress
+                                    percent={status.percent}
+                                    size="small"
+                                    showInfo={false}
+                                    strokeColor={status.color}
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* 右侧操作按钮 */}
+                            <div className="flex items-center gap-1 shrink-0">
+                              <Tooltip title={item.isPinned ? (zh ? '已置顶桌面胶囊' : 'Pinned') : t.pinToClock}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleTogglePinCountdown(item)}
+                                  className={`p-1.5 rounded-lg border transition-all cursor-pointer ${
+                                    item.isPinned
+                                      ? 'border-blue-400 bg-blue-500/15 text-blue-500 dark:text-blue-400 scale-105'
+                                      : 'border-transparent text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
+                                  }`}
+                                >
+                                  <Pin size={15} className={item.isPinned ? 'fill-current' : ''} />
+                                </button>
+                              </Tooltip>
+
+                              {!item.isPreset && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleOpenEditCountdown(item)}
+                                  className="p-1.5 rounded-lg text-neutral-400 hover:text-blue-500 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                                  title={zh ? '编辑' : 'Edit'}
+                                >
+                                  <Edit2 size={14} />
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteCountdown(item)}
+                                className="p-1.5 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
+                                title={zh ? '删除' : 'Delete'}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
+
+          {/* 倒数日新建/编辑弹窗 */}
+          <Modal
+            title={editingCountdown ? t.editCountdown : t.addCountdown}
+            open={isCountdownModalOpen}
+            onOk={handleSaveCountdownModal}
+            onCancel={() => setIsCountdownModalOpen(false)}
+            okText={zh ? '保存' : 'Save'}
+            cancelText={zh ? '取消' : 'Cancel'}
+            centered
+            width={440}
+            destroyOnClose
+          >
+            <Form form={countdownForm} layout="vertical" className="mt-3">
+              <Form.Item
+                label={t.countdownName}
+                name="title"
+                rules={[{ required: true, message: zh ? '请输入事项名称' : 'Please input title' }]}
+              >
+                <Input placeholder={zh ? '例如：产品发版、考研初试、生日' : 'e.g. Project Launch, Birthday'} maxLength={30} />
+              </Form.Item>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Form.Item
+                  label={t.countdownDate}
+                  name="targetDate"
+                  rules={[{ required: true, message: zh ? '请选择目标日期' : 'Please select date' }]}
+                >
+                  <DatePicker className="w-full" allowClear={false} />
+                </Form.Item>
+
+                <Form.Item label={t.countdownRepeat} name="repeat">
+                  <Select
+                    options={[
+                      { value: 'none', label: t.countdownRepeatNone },
+                      { value: 'yearly', label: t.countdownRepeatYearly },
+                      { value: 'monthly', label: t.countdownRepeatMonthly },
+                      { value: 'weekly', label: t.countdownRepeatWeekly },
+                    ]}
+                  />
+                </Form.Item>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <Form.Item label={t.countdownCategory} name="category">
+                  <Select
+                    options={[
+                      { value: 'work', label: t.catWork },
+                      { value: 'life', label: t.catLife },
+                      { value: 'holiday', label: t.catHoliday },
+                      { value: 'birthday', label: t.catBirthday },
+                      { value: 'anniversary', label: t.catAnniversary },
+                      { value: 'target', label: t.catTarget },
+                      { value: 'other', label: t.catOther },
+                    ]}
+                  />
+                </Form.Item>
+
+                <Form.Item label={zh ? '图标' : 'Icon'} name="icon">
+                  <Select
+                    options={COUNTDOWN_ICON_OPTIONS.map((opt) => ({
+                      value: opt.id,
+                      label: (
+                        <div className="flex items-center gap-2">
+                          <opt.Icon size={14} className="text-blue-500 shrink-0" />
+                          <span>{zh ? opt.labelZh : opt.labelEn}</span>
+                        </div>
+                      ),
+                    }))}
+                  />
+                </Form.Item>
+              </div>
+
+              <div className="flex items-center justify-between p-2.5 rounded-xl border border-black/5 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02]">
+                <div>
+                  <div className="text-xs font-semibold">{t.pinToClock}</div>
+                  <div className="text-[11px] opacity-60">{t.pinToClockDesc}</div>
+                </div>
+                <Form.Item name="isPinned" valuePropName="checked" className="mb-0">
+                  <Switch checkedChildren={zh ? '开' : 'On'} unCheckedChildren={zh ? '关' : 'Off'} />
+                </Form.Item>
+              </div>
+            </Form>
+          </Modal>
         </ConfigProvider>
         </div>
       </div>

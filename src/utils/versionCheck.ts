@@ -2,7 +2,7 @@
  * 版本检测工具：从项目静态元数据源读取线上版本
  */
 
-export const CURRENT_VERSION = '1.0.4';
+export const CURRENT_VERSION = '1.0.5';
 export const REPO_OWNER = 'yixing233';
 export const REPO_NAME = 'CrabTab';
 export const GITHUB_REPO_URL = `https://github.com/${REPO_OWNER}/${REPO_NAME}`;
@@ -141,7 +141,7 @@ export async function checkUpdateIfDue(force = false): Promise<ReleaseInfo | nul
       return null;
     }
 
-    const result = await checkForUpdates(force);
+    const result = await checkLatestVersion(force);
     localStorage.setItem(LAST_AUTO_CHECK_KEY, String(now));
     return result;
   } catch (err) {

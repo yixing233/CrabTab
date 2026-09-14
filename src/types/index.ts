@@ -82,7 +82,8 @@ export interface SiteShortcut {
   gridPosition?: {
     column: number;
     row: number;
-  };
+    page?: number; // 桌面分页（从 1 开始，默认 1）
+  } | null;
   children?: SiteShortcut[];
 }
 
@@ -147,6 +148,23 @@ export interface ClockStyleConfig {
   fontWeight: 'thin' | 'normal' | 'semibold' | 'bold'; // 字体粗细
 }
 
+export type CountdownRepeat = 'none' | 'weekly' | 'monthly' | 'yearly';
+export type CountdownCategory = 'work' | 'life' | 'holiday' | 'birthday' | 'anniversary' | 'target' | 'other';
+
+export interface CountdownItem {
+  id: string;
+  title: string;
+  targetDate: string; // 'YYYY-MM-DD'
+  repeat: CountdownRepeat;
+  category: CountdownCategory;
+  isPinned: boolean;
+  isPreset?: boolean;
+  presetType?: 'year_progress' | 'weekend_countdown' | 'month_progress';
+  color?: string;
+  icon?: string;
+  createdAt: number;
+}
+
 export type ShortcutDisplayMode = 'off' | 'compact' | 'desktop';
 
 export interface AppSettings {
@@ -157,6 +175,7 @@ export interface AppSettings {
   suggestionEngine?: SuggestionEngineId;
   showWeather: boolean;
   shortcutMode: ShortcutDisplayMode;
+  desktopPageCount?: number; // 桌面总分页数（默认 1，最多 9 页）
   /** @deprecated Kept for compatibility with settings saved by older versions. */
   showQuickLinks: boolean;
   shortcutAutoFill?: boolean; // 桌面快捷方式自动补位开关（默认 false，保持自由网格留白）

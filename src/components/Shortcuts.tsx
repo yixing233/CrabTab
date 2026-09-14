@@ -23,6 +23,8 @@ import {
   Link,
   ExternalLink,
   LayoutGrid,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 
 type ShortcutContextMenu = {
@@ -49,24 +51,23 @@ const ShortcutIconView: React.FC<{ url: string; icon?: string; title: string; si
   const candidates = React.useMemo(() => getFaviconCandidates(url, icon), [url, icon]);
   const [candidateIndex, setCandidateIndex] = useState<number>(0);
   const [hasError, setHasError] = useState<boolean>(false);
-  const [isLoaded, setIsLoaded] = useState<boolean>(false);
 
   // 当外部 url 或 icon 变更时重置探测状态
   React.useEffect(() => {
     setCandidateIndex(0);
     setHasError(false);
-    setIsLoaded(false);
   }, [url, icon]);
 
   const currentSrc = candidates[candidateIndex];
 
   const handleImageError = () => {
-    setIsLoaded(false);
-    if (candidateIndex + 1 < candidates.length) {
-      setCandidateIndex(candidateIndex + 1);
-    } else {
+    setCandidateIndex((prev) => {
+      if (prev + 1 < candidates.length) {
+        return prev + 1;
+      }
       setHasError(true);
-    }
+      return prev;
+    });
   };
 
   if (icon === 'avatar:letter' || !currentSrc || hasError) {
@@ -88,10 +89,8 @@ const ShortcutIconView: React.FC<{ url: string; icon?: string; title: string; si
       alt={title}
       loading="eager"
       decoding="async"
-      className={`${sizeClass} object-contain rounded-lg transition-opacity duration-200 ${
-        isLoaded ? 'opacity-100' : 'opacity-0'
-      }`}
-      onLoad={() => setIsLoaded(true)}
+      draggable={false}
+      className={`${sizeClass} object-contain rounded-lg select-none pointer-events-none`}
       onError={handleImageError}
     />
   );
@@ -383,6 +382,8 @@ interface ShortcutsProps {
   onReorderShortcuts?: (shortcuts: SiteShortcut[]) => void;
   autoFill?: boolean;
   onToggleAutoFill?: (autoFill: boolean) => void;
+  desktopPageCount?: number;
+  onUpdatePageCount?: (count: number) => void;
 }
 
 export const Shortcuts: React.FC<ShortcutsProps> = ({
@@ -398,6 +399,8 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
   onReorderShortcuts,
   autoFill = false,
   onToggleAutoFill,
+  desktopPageCount = 1,
+  onUpdatePageCount,
 }) => {
   const t = i18n[language];
   const isDark = theme === 'dark';
@@ -415,20 +418,186 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
   const [desktopColumns, setDesktopColumns] = useState(() => window.innerWidth >= 768 ? 7 : 4);
   const gridRef = React.useRef<HTMLDivElement | null>(null);
   const dragAnchorRef = React.useRef<{ xRatio: number; yRatio: number } | null>(null);
-  const gridPositions = React.useMemo(
-    () => resolveGridPositions(orderedShortcuts, desktopColumns, autoFill),
-    [orderedShortcuts, desktopColumns, autoFill]
-  );
+
+  // 桌面多分页状态管理 (最多支持 9 页)
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
+  const wheelCooldownRef = React.useRef<number>(0);
+  const pageHoverTimerRef = React.useRef<number | null>(null);
+  const hoveredDotPageRef = React.useRef<number | null>(null);
+  const [hoveredDotPage, setHoveredDotPage] = useState<number | null>(null);
+  const edgeFlipTimerRef = React.useRef<number | null>(null);
+  const edgeFlipDirectionRef = React.useRef<'left' | 'right' | null>(null);
+  const [edgeHoverActive, setEdgeHoverActive] = useState<'left' | 'right' | null>(null);
+  const lastEdgeFlipTimeRef = React.useRef<number>(0);
+  const [pageDotContextMenu, setPageDotContextMenu] = useState<{
+    page: number;
+    x: number;
+    y?: number;
+    bottom?: number;
+  } | null>(null);
+
+  const maxUsedPage = React.useMemo(() => {
+    return Math.max(
+      1,
+      orderedShortcuts.reduce((max, s) => Math.max(max, s.gridPosition?.page || 1), 1)
+    );
+  }, [orderedShortcuts]);
+
+  const totalPages = React.useMemo(() => {
+    if (!isDesktop) return 1;
+    const count = Math.max(1, desktopPageCount || 1, maxUsedPage);
+    return Math.min(9, count);
+  }, [isDesktop, desktopPageCount, maxUsedPage]);
+
+  const currentPageRef = React.useRef(currentPage);
+  currentPageRef.current = currentPage;
+  const totalPagesRef = React.useRef(totalPages);
+  totalPagesRef.current = totalPages;
+
+  React.useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  // 自动收敛此前因异常连环创建导致的大量多余空白页（超过最大使用页 + 1 以上的空白页自动清理）
+  React.useEffect(() => {
+    if (isDesktop && desktopPageCount && desktopPageCount > maxUsedPage + 1) {
+      const trimmed = Math.max(1, maxUsedPage);
+      onUpdatePageCount?.(trimmed);
+      if (currentPage > trimmed) {
+        setCurrentPage(trimmed);
+      }
+    }
+  }, [isDesktop, desktopPageCount, maxUsedPage]);
+
+  // 关键：拖拽期间，正在被拖拽的源节点必须保持在 DOM 树中，绝不能被 React 卸载！
+  // 否则 Chromium/WebKit 内核检测到拖拽源节点被从文档中移除会立即强行中断 HTML5 Drag 流程。
+  const currentPageShortcuts = React.useMemo(() => {
+    if (!isDesktop) return orderedShortcuts;
+    const pageItems = orderedShortcuts.filter((s) => (s.gridPosition?.page || 1) === currentPage);
+    const activeDragId = draggedId || draggedIdRef.current;
+    if (activeDragId && !pageItems.some((s) => s.id === activeDragId)) {
+      const draggedItem = orderedShortcuts.find((s) => s.id === activeDragId);
+      if (draggedItem) {
+        return [...pageItems, draggedItem];
+      }
+    }
+    return pageItems;
+  }, [isDesktop, orderedShortcuts, currentPage, draggedId]);
+
+  const gridPositions = React.useMemo(() => {
+    const pageItems = isDesktop
+      ? orderedShortcuts.filter((s) => (s.gridPosition?.page || 1) === currentPage)
+      : orderedShortcuts;
+    return resolveGridPositions(pageItems, desktopColumns, autoFill);
+  }, [isDesktop, orderedShortcuts, currentPage, desktopColumns, autoFill]);
+
   const [gridDropPreview, setGridDropPreview] = useState<{
     column: number;
     row: number;
     span: number;
     valid: boolean;
   } | null>(null);
-  const addButtonPosition = React.useMemo(
-    () => findFirstFreePositionForSpan(orderedShortcuts, gridPositions, desktopColumns, 1),
-    [orderedShortcuts, gridPositions, desktopColumns]
-  );
+
+  const addButtonPosition = React.useMemo(() => {
+    const pageItems = isDesktop
+      ? orderedShortcuts.filter((s) => (s.gridPosition?.page || 1) === currentPage)
+      : orderedShortcuts;
+    return findFirstFreePositionForSpan(pageItems, gridPositions, desktopColumns, 1);
+  }, [isDesktop, orderedShortcuts, currentPage, gridPositions, desktopColumns]);
+
+  const clearEdgeFlipTimer = () => {
+    if (edgeFlipTimerRef.current !== null) {
+      window.clearTimeout(edgeFlipTimerRef.current);
+      edgeFlipTimerRef.current = null;
+    }
+    edgeFlipDirectionRef.current = null;
+    setEdgeHoverActive(null);
+  };
+
+  const checkEdgeFlip = (clientX: number, clientY?: number) => {
+    if (!isDesktop || !isDraggingRef.current) return;
+    const grid = gridRef.current;
+    if (!grid) return;
+    const rect = grid.getBoundingClientRect();
+
+    if (clientY !== undefined) {
+      if (clientY < rect.top - 80 || clientY > rect.bottom + 80) {
+        clearEdgeFlipTimer();
+        return;
+      }
+    }
+
+    if (Date.now() - lastEdgeFlipTimeRef.current < 600) return;
+
+    const edgeThreshold = 56;
+    const isLeftZone = clientX <= rect.left + edgeThreshold;
+    const isRightZone = clientX >= rect.right - edgeThreshold;
+
+    const cur = currentPageRef.current;
+    const total = totalPagesRef.current;
+
+    if (isLeftZone) {
+      if (cur > 1) {
+        if (edgeFlipDirectionRef.current !== 'left') {
+          clearEdgeFlipTimer();
+          edgeFlipDirectionRef.current = 'left';
+          setEdgeHoverActive('left');
+          edgeFlipTimerRef.current = window.setTimeout(() => {
+            const nextCur = currentPageRef.current;
+            if (nextCur > 1) {
+              lastEdgeFlipTimeRef.current = Date.now();
+              handleSwitchPage(nextCur - 1);
+            }
+            clearEdgeFlipTimer();
+          }, 350);
+        }
+      } else {
+        clearEdgeFlipTimer();
+      }
+    } else if (isRightZone) {
+      if (cur < total) {
+        if (edgeFlipDirectionRef.current !== 'right') {
+          clearEdgeFlipTimer();
+          edgeFlipDirectionRef.current = 'right';
+          setEdgeHoverActive('right');
+          edgeFlipTimerRef.current = window.setTimeout(() => {
+            const nextCur = currentPageRef.current;
+            const nextTotal = totalPagesRef.current;
+            if (nextCur < nextTotal) {
+              lastEdgeFlipTimeRef.current = Date.now();
+              handleSwitchPage(nextCur + 1);
+            }
+            clearEdgeFlipTimer();
+          }, 350);
+        }
+      } else {
+        clearEdgeFlipTimer();
+      }
+    } else {
+      if (edgeFlipDirectionRef.current !== null) {
+        clearEdgeFlipTimer();
+      }
+    }
+  };
+
+  React.useEffect(() => {
+    if (!isDesktop || !draggedId) return;
+
+    const handleWindowDragOver = (e: DragEvent) => {
+      if (!isDraggingRef.current) return;
+      checkEdgeFlip(e.clientX, e.clientY);
+    };
+
+    window.addEventListener('dragover', handleWindowDragOver);
+    return () => {
+      window.removeEventListener('dragover', handleWindowDragOver);
+      clearEdgeFlipTimer();
+    };
+  }, [isDesktop, draggedId]);
+
   React.useEffect(() => {
     const handleResize = () => setDesktopColumns(window.innerWidth >= 768 ? 7 : 4);
     window.addEventListener('resize', handleResize);
@@ -463,16 +632,21 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
     if (mergeHoverTimerRef.current !== null) {
       window.clearTimeout(mergeHoverTimerRef.current);
     }
+    if (pageHoverTimerRef.current !== null) {
+      window.clearTimeout(pageHoverTimerRef.current);
+    }
+    clearEdgeFlipTimer();
     if (clickUnlockTimerRef.current !== null) {
       window.clearTimeout(clickUnlockTimerRef.current);
     }
   }, []);
 
   React.useEffect(() => {
-    if (!contextMenu && !gridContextMenu) return;
+    if (!contextMenu && !gridContextMenu && !pageDotContextMenu) return;
     const closeMenu = () => {
       setContextMenu(null);
       setGridContextMenu(null);
+      setPageDotContextMenu(null);
     };
     window.addEventListener('click', closeMenu);
     window.addEventListener('blur', closeMenu);
@@ -484,7 +658,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
       window.removeEventListener('resize', closeMenu);
       window.removeEventListener('scroll', closeMenu, true);
     };
-  }, [contextMenu, gridContextMenu]);
+  }, [contextMenu, gridContextMenu, pageDotContextMenu]);
 
   React.useEffect(() => {
     orderedShortcutsRef.current = orderedShortcuts;
@@ -496,6 +670,127 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
     orderedShortcutsRef.current = shortcuts;
     setOrderedShortcuts(shortcuts);
   }, [shortcuts]);
+
+  // 监听 autoFill 状态变化及自动补位开启时的坐标同步，防止关闭自动补位时坐标回退
+  const prevAutoFillRef = React.useRef(autoFill);
+  React.useEffect(() => {
+    if (!isDesktop) return;
+    const wasAutoFill = prevAutoFillRef.current;
+    prevAutoFillRef.current = autoFill;
+
+    // 1. 从关闭切换为开启（如在设置面板中开启）：仅对当前分页内的图标立即紧凑排列并固化保存坐标
+    if (!wasAutoFill && autoFill) {
+      const curPageItems = orderedShortcutsRef.current.filter(
+        (s) => (s.gridPosition?.page || 1) === currentPage
+      );
+      const otherPageItems = orderedShortcutsRef.current.filter(
+        (s) => (s.gridPosition?.page || 1) !== currentPage
+      );
+      const sorted = [...curPageItems].sort((a, b) => {
+        const posA = a.gridPosition || { column: 1, row: 1 };
+        const posB = b.gridPosition || { column: 1, row: 1 };
+        if (posA.row !== posB.row) return posA.row - posB.row;
+        return posA.column - posB.column;
+      });
+      const compactedPositions = resolveGridPositions(sorted, desktopColumns, true);
+      let changed = false;
+      const nextCurrent = sorted.map((item) => {
+        const targetPos = compactedPositions.get(item.id) || null;
+        if (
+          !item.gridPosition ||
+          !targetPos ||
+          item.gridPosition.column !== targetPos.column ||
+          item.gridPosition.row !== targetPos.row ||
+          item.gridPosition.page !== currentPage
+        ) {
+          changed = true;
+        }
+        return {
+          ...item,
+          gridPosition: targetPos ? { ...targetPos, page: currentPage } : null,
+        };
+      });
+      if (changed) {
+        const next = [...nextCurrent, ...otherPageItems];
+        orderedShortcutsRef.current = next;
+        setOrderedShortcuts(next);
+        onReorderShortcuts?.(next);
+      }
+      return;
+    }
+
+    // 2. 从开启切换为关闭（如在设置面板中关闭）：锁定当前分页已补位的绝对坐标，绝不恢复为开启前的空白散落状态
+    if (wasAutoFill && !autoFill) {
+      let changed = false;
+      const next = orderedShortcutsRef.current.map((item) => {
+        if ((item.gridPosition?.page || 1) !== currentPage) return item;
+        const pos = gridPositions.get(item.id);
+        if (
+          pos &&
+          (!item.gridPosition ||
+            item.gridPosition.column !== pos.column ||
+            item.gridPosition.row !== pos.row ||
+            item.gridPosition.page !== currentPage)
+        ) {
+          changed = true;
+          return { ...item, gridPosition: { ...pos, page: currentPage } };
+        }
+        return item;
+      });
+      if (changed) {
+        orderedShortcutsRef.current = next;
+        setOrderedShortcuts(next);
+        onReorderShortcuts?.(next);
+      }
+      return;
+    }
+
+    // 3. 开启自动补位期间（非拖拽中）：若当前分页有未对齐或缺失的坐标，自动保持紧凑网格同步
+    if (autoFill && !isDraggingRef.current) {
+      let changed = false;
+      const next = orderedShortcuts.map((item) => {
+        if ((item.gridPosition?.page || 1) !== currentPage) return item;
+        const pos = gridPositions.get(item.id);
+        if (
+          pos &&
+          (!item.gridPosition ||
+            item.gridPosition.column !== pos.column ||
+            item.gridPosition.row !== pos.row ||
+            item.gridPosition.page !== currentPage)
+        ) {
+          changed = true;
+          return { ...item, gridPosition: { ...pos, page: currentPage } };
+        }
+        return item;
+      });
+      if (changed) {
+        orderedShortcutsRef.current = next;
+        setOrderedShortcuts(next);
+        onReorderShortcuts?.(next);
+      }
+    }
+
+    // 4. 关闭自动补位状态下（非拖拽中）：为初始或缺少坐标的项（如新安装扩展后的默认快捷方式）固化当前分页的网格坐标
+    if (!autoFill && !isDraggingRef.current) {
+      let changed = false;
+      const next = orderedShortcuts.map((item) => {
+        if ((item.gridPosition?.page || 1) !== currentPage) return item;
+        if (!item.gridPosition || !item.gridPosition.page) {
+          const pos = gridPositions.get(item.id);
+          if (pos) {
+            changed = true;
+            return { ...item, gridPosition: { ...pos, page: currentPage } };
+          }
+        }
+        return item;
+      });
+      if (changed) {
+        orderedShortcutsRef.current = next;
+        setOrderedShortcuts(next);
+        onReorderShortcuts?.(next);
+      }
+    }
+  }, [autoFill, isDesktop, desktopColumns, gridPositions, orderedShortcuts, onReorderShortcuts, currentPage]);
 
   const [form] = Form.useForm();
   const formUrl = Form.useWatch('url', form);
@@ -642,7 +937,11 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
           title: values.title.trim(),
           url: formattedUrl,
           icon: favicon,
-          gridPosition: pendingAddPosition || undefined,
+          gridPosition: pendingAddPosition
+            ? { ...pendingAddPosition, page: currentPage }
+            : isDesktop && addButtonPosition
+              ? { ...addButtonPosition, page: currentPage }
+              : undefined,
         };
         onAddShortcut(newShortcut);
         message.success(language === 'zh' ? '添加快捷方式成功' : 'Shortcut added');
@@ -693,7 +992,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
     const columnPitch = columnWidth + columnGap;
     const rowPitch = rowHeight + rowGap;
     const maxColumn = Math.max(1, desktopColumns - span + 1);
-    const maxRow = Math.max(1, Math.ceil((grid.scrollHeight + rowGap) / rowPitch) - span + 1);
+    const maxRow = Math.max(1, 3 - span + 1); // 桌面模式单页固定最多 3 行
     const anchor = preserveDragAnchor ? dragAnchorRef.current : null;
     const footprintWidth = span * columnWidth + (span - 1) * columnGap;
     const footprintHeight = span * rowHeight + (span - 1) * rowGap;
@@ -721,9 +1020,10 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
     if (
       column < 1 || row < 1
       || column + sourceSpan - 1 > desktopColumns
+      || row + sourceSpan - 1 > 3
     ) return false;
 
-    return orderedShortcutsRef.current.every((shortcut) => {
+    return currentPageShortcuts.every((shortcut) => {
       if (shortcut.id === sourceId) return true;
       const position = gridPositions.get(shortcut.id);
       if (!position) return true;
@@ -741,8 +1041,8 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
   };
 
   const canPlaceNewShortcutAt = (column: number, row: number) => {
-    if (column < 1 || row < 1 || column > desktopColumns) return false;
-    return orderedShortcutsRef.current.every((shortcut) => {
+    if (column < 1 || row < 1 || column > desktopColumns || row > 3) return false;
+    return currentPageShortcuts.every((shortcut) => {
       const position = gridPositions.get(shortcut.id);
       if (!position) return true;
       const span = getShortcutSpan(shortcut);
@@ -769,26 +1069,95 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
     return canPlaceAt(sourceId, position.column, position.row) ? position : null;
   };
 
-  const commitGridPosition = (sourceId: string, position: { column: number; row: number }) => {
-    if (!canPlaceAt(sourceId, position.column, position.row)) return false;
-    const updated = orderedShortcutsRef.current.map((shortcut) =>
-      shortcut.id === sourceId ? { ...shortcut, gridPosition: position } : shortcut
+  const commitGridPosition = (
+    sourceId: string,
+    position: { column: number; row: number },
+    targetPageOverride?: number
+  ) => {
+    const targetPage = targetPageOverride ?? currentPageRef.current;
+    const current = orderedShortcutsRef.current;
+    const sourceItem = current.find((s) => s.id === sourceId);
+    if (!sourceItem) return false;
+
+    const sourceOldPage = sourceItem.gridPosition?.page || 1;
+    const sourceSpan = getShortcutSpan(sourceItem);
+
+    if (
+      position.column < 1 || position.row < 1
+      || position.column + sourceSpan - 1 > desktopColumns
+      || position.row + sourceSpan - 1 > 3
+    ) {
+      return false;
+    }
+
+    // 针对目标页面的所有快捷方式（排除当前移动的源项）做碰撞检测
+    const targetPageItems = current.filter(
+      (s) => s.id !== sourceId && (s.gridPosition?.page || 1) === targetPage
     );
-    const next = [...updated].sort((a, b) => {
-      const posA = a.gridPosition;
-      const posB = b.gridPosition;
-      if (posA && posB) {
-        if (posA.row !== posB.row) return posA.row - posB.row;
-        return posA.column - posB.column;
-      }
-      if (posA) return -1;
-      if (posB) return 1;
-      return 0;
+    const targetPositions = resolveGridPositions(targetPageItems, desktopColumns, autoFill);
+    const hasCollision = targetPageItems.some((item) => {
+      const pos = targetPositions.get(item.id);
+      if (!pos) return false;
+      const span = getShortcutSpan(item);
+      return (
+        position.column + sourceSpan > pos.column &&
+        pos.column + span > position.column &&
+        position.row + sourceSpan > pos.row &&
+        pos.row + span > position.row
+      );
     });
+
+    if (hasCollision) return false;
+
+    const posWithPage = { column: position.column, row: position.row, page: targetPage };
+    let updated = current.map((shortcut) => {
+      if (shortcut.id === sourceId) {
+        return { ...shortcut, gridPosition: posWithPage };
+      }
+      const itemPage = shortcut.gridPosition?.page || 1;
+      if (itemPage === currentPageRef.current) {
+        const existingPos = shortcut.gridPosition || gridPositions.get(shortcut.id);
+        return {
+          ...shortcut,
+          gridPosition: existingPos ? { ...existingPos, page: currentPageRef.current } : null,
+        };
+      }
+      return shortcut;
+    });
+
+    if (autoFill) {
+      const pagesToCompact = new Set([targetPage]);
+      if (sourceOldPage !== targetPage) pagesToCompact.add(sourceOldPage);
+
+      for (const p of pagesToCompact) {
+        const pageItems = updated.filter((s) => (s.gridPosition?.page || 1) === p);
+        const otherItems = updated.filter((s) => (s.gridPosition?.page || 1) !== p);
+        const sorted = [...pageItems].sort((a, b) => {
+          const posA = a.gridPosition;
+          const posB = b.gridPosition;
+          if (posA && posB) {
+            if (posA.row !== posB.row) return posA.row - posB.row;
+            return posA.column - posB.column;
+          }
+          if (posA) return -1;
+          if (posB) return 1;
+          return 0;
+        });
+        const compactedPositions = resolveGridPositions(sorted, desktopColumns, true);
+        const compactedItems = sorted.map((item) => ({
+          ...item,
+          gridPosition: compactedPositions.get(item.id)
+            ? { ...compactedPositions.get(item.id)!, page: p }
+            : item.gridPosition || null,
+        }));
+        updated = [...compactedItems, ...otherItems];
+      }
+    }
+
     dragCommitRef.current = 'reorder';
-    orderedShortcutsRef.current = next;
-    setOrderedShortcuts(next);
-    onReorderShortcuts?.(next);
+    orderedShortcutsRef.current = updated;
+    setOrderedShortcuts(updated);
+    onReorderShortcuts?.(updated);
     return true;
   };
 
@@ -877,15 +1246,24 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                 },
               ],
             }
-          : s);
+          : {
+              ...s,
+              gridPosition: s.gridPosition || gridPositions.get(s.id)
+                ? { ...(s.gridPosition || gridPositions.get(s.id)!), page: (s.gridPosition?.page || 1) }
+                : null,
+            });
     } else {
       const targetPosition = gridPositions.get(targetId) || targetItem.gridPosition;
+      const targetPage = targetItem.gridPosition?.page || currentPage;
+      const targetPosWithPage = targetPosition
+        ? { ...targetPosition, page: targetPage }
+        : { column: 1, row: 1, page: targetPage };
       const newFolder: SiteShortcut = {
         id: 'folder_' + Date.now(),
         title: language === 'zh' ? '新建文件夹' : 'New Folder',
         url: '',
         isFolder: true,
-        gridPosition: targetPosition,
+        gridPosition: targetPosWithPage,
         children: [
           { ...targetItem, isFolder: false, children: undefined, gridPosition: undefined },
           { ...sourceItem, isFolder: false, children: undefined, gridPosition: undefined },
@@ -893,7 +1271,31 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
       };
       nextShortcuts = current
         .filter((s) => s.id !== sourceId)
-        .map((s) => (s.id === targetId ? newFolder : s));
+        .map((s) => (s.id === targetId ? newFolder : {
+          ...s,
+          gridPosition: s.gridPosition || gridPositions.get(s.id)
+            ? { ...(s.gridPosition || gridPositions.get(s.id)!), page: (s.gridPosition?.page || 1) }
+            : null,
+        }));
+    }
+
+    if (autoFill) {
+      const curPageItems = nextShortcuts.filter((s) => (s.gridPosition?.page || 1) === currentPage);
+      const otherPageItems = nextShortcuts.filter((s) => (s.gridPosition?.page || 1) !== currentPage);
+      const sorted = [...curPageItems].sort((a, b) => {
+        const posA = a.gridPosition || { column: 1, row: 1 };
+        const posB = b.gridPosition || { column: 1, row: 1 };
+        if (posA.row !== posB.row) return posA.row - posB.row;
+        return posA.column - posB.column;
+      });
+      const compactedPositions = resolveGridPositions(sorted, desktopColumns, true);
+      const nextCurrent = sorted.map((s) => ({
+        ...s,
+        gridPosition: compactedPositions.get(s.id)
+          ? { ...compactedPositions.get(s.id)!, page: currentPage }
+          : null,
+      }));
+      nextShortcuts = [...nextCurrent, ...otherPageItems];
     }
 
     dragCommitRef.current = 'merge';
@@ -913,53 +1315,41 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
     e.preventDefault();
     e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
-    setGridDropPreview(null);
     const sourceId = draggedIdRef.current;
-    if (!sourceId || dragCommitRef.current === 'merge') return;
-    if (sourceId === targetId) {
-      clearMergeTimer();
-      setDragOverId(null);
-      setInsertSide(null);
-      return;
-    }
+    if (!sourceId || sourceId === targetId) return;
 
+    const draggedItem = orderedShortcutsRef.current.find((s) => s.id === sourceId);
     const rect = e.currentTarget.getBoundingClientRect();
     const ratioX = (e.clientX - rect.left) / rect.width;
-    const draggedItem = orderedShortcutsRef.current.find((s) => s.id === sourceId);
-    const canMerge = Boolean(draggedItem && !draggedItem.isFolder);
+    const isCenterZone = ratioX >= 0.30 && ratioX <= 0.70;
 
-    if (canMerge && ratioX >= 0.30 && ratioX <= 0.70) {
+    if (draggedItem && !draggedItem.isFolder && isCenterZone) {
       setDragOverId(null);
       setInsertSide(null);
       if (mergeHoverTargetRef.current !== targetId) {
         clearMergeTimer();
         mergeHoverTargetRef.current = targetId;
-        setMergeHoverTargetId(null);
+        setMergeHoverTargetId(targetId);
         mergeHoverTimerRef.current = window.setTimeout(() => {
-          mergeHoverTimerRef.current = null;
-          if (
-            mergeHoverTargetRef.current === targetId
-            && draggedIdRef.current === sourceId
-            && dragCommitRef.current === 'none'
-          ) setMergeHoverTargetId(targetId);
+          triggerMerge(sourceId, targetId);
         }, 500);
       }
-      return;
-    }
-
-    clearMergeTimer();
-    const side = ratioX < 0.5 ? 'left' : 'right';
-    if (getAdjacentDropPosition(sourceId, targetId, side)) {
-      setDragOverId(targetId);
-      setInsertSide(side);
     } else {
-      setDragOverId(null);
-      setInsertSide(null);
+      clearMergeTimer();
+      setDragOverId(targetId);
+      setInsertSide(ratioX < 0.5 ? 'left' : 'right');
     }
   };
 
   const finishDrag = () => {
     clearMergeTimer();
+    clearEdgeFlipTimer();
+    if (pageHoverTimerRef.current !== null) {
+      window.clearTimeout(pageHoverTimerRef.current);
+      pageHoverTimerRef.current = null;
+    }
+    hoveredDotPageRef.current = null;
+    setHoveredDotPage(null);
     setDraggedId(null);
     draggedIdRef.current = null;
     dragAnchorRef.current = null;
@@ -1239,17 +1629,22 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
   };
 
   const handleCompactGrid = () => {
-    const sorted = [...orderedShortcuts].sort((a, b) => {
+    const curPageItems = orderedShortcuts.filter((s) => (s.gridPosition?.page || 1) === currentPage);
+    const otherPageItems = orderedShortcuts.filter((s) => (s.gridPosition?.page || 1) !== currentPage);
+    const sorted = [...curPageItems].sort((a, b) => {
       const posA = gridPositions.get(a.id) || { column: 1, row: 1 };
       const posB = gridPositions.get(b.id) || { column: 1, row: 1 };
       if (posA.row !== posB.row) return posA.row - posB.row;
       return posA.column - posB.column;
     });
     const compactedPositions = resolveGridPositions(sorted, desktopColumns, true);
-    const next = sorted.map((item) => ({
+    const nextCurrent = sorted.map((item) => ({
       ...item,
-      gridPosition: compactedPositions.get(item.id) || null,
+      gridPosition: compactedPositions.get(item.id)
+        ? { ...compactedPositions.get(item.id)!, page: currentPage }
+        : null,
     }));
+    const next = [...nextCurrent, ...otherPageItems];
     setOrderedShortcuts(next);
     if (onReorderShortcuts) {
       onReorderShortcuts(next);
@@ -1271,21 +1666,197 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
       okButtonProps: { danger: true },
       centered: true,
       onOk: () => {
-        if (isDesktop && !autoFill) {
-          // 默认不自动补位：删除前锁死其余所有图标当前的绝对网格位置，保证删除项原地留白，绝不自动向前挤压补位
-          const next = orderedShortcuts
-            .filter((s) => s.id !== item.id)
-            .map((s) => ({
+        if (isDesktop) {
+          if (!autoFill) {
+            // 默认不自动补位：删除前锁死当前页其余所有图标当前的绝对网格位置，保证删除项原地留白
+            const next = orderedShortcuts
+              .filter((s) => s.id !== item.id)
+              .map((s) => ({
+                ...s,
+                gridPosition: (s.gridPosition?.page || 1) === currentPage
+                  ? (s.gridPosition || (gridPositions.get(s.id) ? { ...gridPositions.get(s.id)!, page: currentPage } : null))
+                  : s.gridPosition || null,
+              }));
+            orderedShortcutsRef.current = next;
+            setOrderedShortcuts(next);
+            if (onReorderShortcuts) {
+              onReorderShortcuts(next);
+            }
+          } else {
+            // 开启自动补位：删除项后，仅对当前页的图标紧凑补齐空缺
+            const remaining = orderedShortcuts.filter((s) => s.id !== item.id);
+            const curPageItems = remaining.filter((s) => (s.gridPosition?.page || 1) === currentPage);
+            const otherPageItems = remaining.filter((s) => (s.gridPosition?.page || 1) !== currentPage);
+            const sorted = [...curPageItems].sort((a, b) => {
+              const posA = gridPositions.get(a.id) || a.gridPosition || { column: 1, row: 1 };
+              const posB = gridPositions.get(b.id) || b.gridPosition || { column: 1, row: 1 };
+              if (posA.row !== posB.row) return posA.row - posB.row;
+              return posA.column - posB.column;
+            });
+            const compactedPositions = resolveGridPositions(sorted, desktopColumns, true);
+            const nextCurrent = sorted.map((s) => ({
               ...s,
-              gridPosition: s.gridPosition || gridPositions.get(s.id) || null,
+              gridPosition: compactedPositions.get(s.id)
+                ? { ...compactedPositions.get(s.id)!, page: currentPage }
+                : null,
             }));
-          if (onReorderShortcuts) {
-            onReorderShortcuts(next);
+            const next = [...nextCurrent, ...otherPageItems];
+            orderedShortcutsRef.current = next;
+            setOrderedShortcuts(next);
+            if (onReorderShortcuts) {
+              onReorderShortcuts(next);
+            }
           }
+        } else {
+          onDeleteShortcut(item.id);
         }
-        onDeleteShortcut(item.id);
       },
     });
+  };
+
+  const handleSwitchPage = (targetPage: number) => {
+    if (targetPage === currentPage || targetPage < 1 || targetPage > 9) return;
+    setSlideDirection(targetPage > currentPage ? 'left' : 'right');
+    setCurrentPage(targetPage);
+  };
+
+  const handleAddPage = () => {
+    if (totalPages >= 9) {
+      message.warning(t.maxPagesReached);
+      return;
+    }
+    const newCount = totalPages + 1;
+    onUpdatePageCount?.(newCount);
+    setSlideDirection('left');
+    setCurrentPage(newCount);
+  };
+
+  const handleDeletePage = (pageToDelete: number) => {
+    if (totalPages <= 1) return;
+    setPageDotContextMenu(null);
+
+    const shortcutsOnPage = orderedShortcuts.filter(
+      (s) => (s.gridPosition?.page || 1) === pageToDelete
+    );
+
+    const executeDelete = () => {
+      const targetFallbackPage = Math.max(1, pageToDelete - 1);
+      const updatedShortcuts = orderedShortcuts.map((s) => {
+        const page = s.gridPosition?.page || 1;
+        if (page === pageToDelete) {
+          return {
+            ...s,
+            gridPosition: s.gridPosition
+              ? { ...s.gridPosition, page: targetFallbackPage }
+              : { column: 1, row: 1, page: targetFallbackPage },
+          };
+        }
+        if (page > pageToDelete) {
+          return {
+            ...s,
+            gridPosition: s.gridPosition
+              ? { ...s.gridPosition, page: page - 1 }
+              : null,
+          };
+        }
+        return s;
+      });
+
+      const newPageCount = Math.max(1, totalPages - 1);
+      onUpdatePageCount?.(newPageCount);
+
+      if (currentPage >= pageToDelete) {
+        handleSwitchPage(Math.max(1, currentPage - 1));
+      }
+
+      setOrderedShortcuts(updatedShortcuts);
+      onReorderShortcuts?.(updatedShortcuts);
+      message.success(language === 'zh' ? `已删除第 ${pageToDelete} 页` : `Page ${pageToDelete} deleted`);
+    };
+
+    if (shortcutsOnPage.length > 0) {
+      Modal.confirm({
+        title: t.deleteDesktopPage,
+        content: t.deleteDesktopPageConfirm.replace('{page}', String(pageToDelete)),
+        okText: language === 'zh' ? '删除' : 'Delete',
+        cancelText: language === 'zh' ? '取消' : 'Cancel',
+        okButtonProps: { danger: true },
+        centered: true,
+        onOk: executeDelete,
+      });
+    } else {
+      executeDelete();
+    }
+  };
+
+  const handleCleanEmptyPages = () => {
+    setPageDotContextMenu(null);
+    if (totalPages <= maxUsedPage) {
+      message.info(language === 'zh' ? '暂无多余空白页' : 'No empty pages to clean up');
+      return;
+    }
+    onUpdatePageCount?.(maxUsedPage);
+    if (currentPage > maxUsedPage) {
+      handleSwitchPage(maxUsedPage);
+    }
+    message.success(t.cleanEmptyDesktopPagesSuccess);
+  };
+
+  const handlePageDotContextMenu = (e: React.MouseEvent, pageIndex: number) => {
+    if (totalPages <= 1) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setContextMenu(null);
+    setGridContextMenu(null);
+
+    const target = e.currentTarget as HTMLElement;
+    const rect = target.getBoundingClientRect();
+    const menuWidth = 176;
+    const menuHeight = totalPages > maxUsedPage ? 116 : 76;
+
+    // 水平方向：以点击的指示器为中心居中展示，并保留左右安全视口边距
+    const targetCenterX = rect.left + rect.width / 2;
+    const clampedX = Math.max(12, Math.min(targetCenterX - menuWidth / 2, window.innerWidth - menuWidth - 12));
+
+    // 垂直方向：分页栏处于桌面下方（紧邻底部工具抽屉），优先向上弹出（以 bottom 锚定上方 8px），彻底避免遮挡抽屉与屏幕溢出
+    const spaceAbove = rect.top;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const shouldShowAbove = spaceAbove >= menuHeight + 16 || spaceAbove >= spaceBelow;
+
+    if (shouldShowAbove) {
+      setPageDotContextMenu({
+        page: pageIndex,
+        x: clampedX,
+        bottom: Math.max(12, window.innerHeight - rect.top + 8),
+      });
+    } else {
+      setPageDotContextMenu({
+        page: pageIndex,
+        x: clampedX,
+        y: Math.min(rect.bottom + 8, window.innerHeight - menuHeight - 12),
+      });
+    }
+  };
+
+  const handleWheel = (e: React.WheelEvent) => {
+    if (!isDesktop || totalPages <= 1 || activeFolderId) return;
+    const now = Date.now();
+    if (now - wheelCooldownRef.current < 350) return;
+
+    const delta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+    if (Math.abs(delta) < 25) return;
+
+    if (delta > 0) {
+      if (currentPage < totalPages) {
+        wheelCooldownRef.current = now;
+        handleSwitchPage(currentPage + 1);
+      }
+    } else {
+      if (currentPage > 1) {
+        wheelCooldownRef.current = now;
+        handleSwitchPage(currentPage - 1);
+      }
+    }
   };
 
   const contextMenuItem = contextMenu
@@ -1295,9 +1866,144 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
   const previewSource = orderedShortcuts.find((item) => item.id === draggedId);
 
   return (
-    <div className={`group/shortcut-area relative w-full max-w-[680px] mx-auto ${
-      isDesktop ? 'min-h-[276px] sm:min-h-[316px]' : 'shortcut-area-compact'
-    }`}>
+    <div
+      className={`group/shortcut-area relative w-full max-w-[680px] mx-auto ${
+        isDesktop ? 'min-h-[276px] sm:min-h-[316px]' : 'shortcut-area-compact'
+      }`}
+      onWheel={isDesktop ? handleWheel : undefined}
+      onDragOver={isDesktop && draggedId ? (e) => { e.preventDefault(); checkEdgeFlip(e.clientX, e.clientY); } : undefined}
+    >
+      {/* 桌面模式左右翻页浮动按钮 */}
+      {isDesktop && (totalPages > 1 || (draggedId && totalPages < 9)) && (
+        <>
+          {currentPage > 1 && (
+            <button
+              type="button"
+              aria-label={t.prevPage}
+              title={t.prevPage}
+              onClick={() => handleSwitchPage(currentPage - 1)}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = 'move';
+                if (edgeFlipDirectionRef.current !== 'left') {
+                  clearEdgeFlipTimer();
+                  edgeFlipDirectionRef.current = 'left';
+                  setEdgeHoverActive('left');
+                  edgeFlipTimerRef.current = window.setTimeout(() => {
+                    const nextCur = currentPageRef.current;
+                    if (nextCur > 1) {
+                      lastEdgeFlipTimeRef.current = Date.now();
+                      handleSwitchPage(nextCur - 1);
+                    }
+                    clearEdgeFlipTimer();
+                  }, 300);
+                }
+              }}
+              onDragLeave={(e) => {
+                if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+                clearEdgeFlipTimer();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                clearEdgeFlipTimer();
+                const sourceId = draggedIdRef.current;
+                const targetPage = currentPageRef.current - 1;
+                handleSwitchPage(targetPage);
+                if (sourceId) {
+                  const targetPageItems = orderedShortcutsRef.current.filter((s) => s.id !== sourceId && (s.gridPosition?.page || 1) === targetPage);
+                  const targetPagePositions = resolveGridPositions(targetPageItems, desktopColumns, autoFill);
+                  const source = orderedShortcutsRef.current.find((s) => s.id === sourceId);
+                  const span = source ? getShortcutSpan(source) : 1;
+                  const freePos = findFirstFreePositionForSpan(targetPageItems, targetPagePositions, desktopColumns, span);
+                  if (freePos && freePos.row <= 3) {
+                    commitGridPosition(sourceId, freePos, targetPage);
+                  }
+                }
+                finishDrag();
+              }}
+              className={`absolute -left-10 sm:-left-12 top-1/2 -translate-y-1/2 z-20 flex h-9 w-9 items-center justify-center rounded-full border shadow-md backdrop-blur-xl transition-all cursor-pointer ${
+                edgeHoverActive === 'left'
+                  ? 'scale-125 !opacity-100 ring-4 ring-blue-400/50 bg-blue-500 text-white border-blue-400'
+                  : draggedId
+                  ? 'opacity-80 scale-105 hover:!opacity-100'
+                  : 'opacity-0 group-hover/shortcut-area:opacity-60 hover:!opacity-100 active:scale-90'
+              } ${
+                isDark
+                  ? 'border-white/15 bg-[#16181f]/80 text-white hover:bg-[#20242d]'
+                  : 'border-black/10 bg-white/80 text-neutral-700 hover:bg-white'
+              }`}
+            >
+              <ChevronLeft size={20} strokeWidth={2.5} />
+            </button>
+          )}
+          {currentPage < totalPages && (
+            <button
+              type="button"
+              aria-label={t.nextPage}
+              title={t.nextPage}
+              onClick={() => handleSwitchPage(currentPage + 1)}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                e.dataTransfer.dropEffect = 'move';
+                if (edgeFlipDirectionRef.current !== 'right') {
+                  clearEdgeFlipTimer();
+                  edgeFlipDirectionRef.current = 'right';
+                  setEdgeHoverActive('right');
+                  edgeFlipTimerRef.current = window.setTimeout(() => {
+                    const nextCur = currentPageRef.current;
+                    const nextTotal = totalPagesRef.current;
+                    if (nextCur < nextTotal) {
+                      lastEdgeFlipTimeRef.current = Date.now();
+                      handleSwitchPage(nextCur + 1);
+                    }
+                    clearEdgeFlipTimer();
+                  }, 300);
+                }
+              }}
+              onDragLeave={(e) => {
+                if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+                clearEdgeFlipTimer();
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                clearEdgeFlipTimer();
+                const sourceId = draggedIdRef.current;
+                const targetPage = currentPageRef.current + 1;
+                handleSwitchPage(targetPage);
+                if (sourceId) {
+                  const targetPageItems = orderedShortcutsRef.current.filter((s) => s.id !== sourceId && (s.gridPosition?.page || 1) === targetPage);
+                  const targetPagePositions = resolveGridPositions(targetPageItems, desktopColumns, autoFill);
+                  const source = orderedShortcutsRef.current.find((s) => s.id === sourceId);
+                  const span = source ? getShortcutSpan(source) : 1;
+                  const freePos = findFirstFreePositionForSpan(targetPageItems, targetPagePositions, desktopColumns, span);
+                  if (freePos && freePos.row <= 3) {
+                    commitGridPosition(sourceId, freePos, targetPage);
+                  }
+                }
+                finishDrag();
+              }}
+              className={`absolute -right-10 sm:-right-12 top-1/2 -translate-y-1/2 z-20 flex h-9 w-9 items-center justify-center rounded-full border shadow-md backdrop-blur-xl transition-all cursor-pointer ${
+                edgeHoverActive === 'right'
+                  ? 'scale-125 !opacity-100 ring-4 ring-blue-400/50 bg-blue-500 text-white border-blue-400'
+                  : draggedId
+                  ? 'opacity-80 scale-105 hover:!opacity-100'
+                  : 'opacity-0 group-hover/shortcut-area:opacity-60 hover:!opacity-100 active:scale-90'
+              } ${
+                isDark
+                  ? 'border-white/15 bg-[#16181f]/80 text-white hover:bg-[#20242d]'
+                  : 'border-black/10 bg-white/80 text-neutral-700 hover:bg-white'
+              }`}
+            >
+              <ChevronRight size={20} strokeWidth={2.5} />
+            </button>
+          )}
+        </>
+      )}
+
       {/* 桌面模式下悬浮添加按钮：仅在桌面自由网格模式下且鼠标悬浮在区域时显现，避免与简洁模式及搜索栏冲突 */}
       {isDesktop && (
         <button
@@ -1305,7 +2011,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
           onClick={() => handleOpenAdd()}
           aria-label={t.addShortcut}
           title={t.addShortcut}
-          className={`absolute -right-3 -top-7 z-30 flex h-7 w-7 items-center justify-center rounded-full border shadow-md backdrop-blur-xl transition-all active:scale-90 opacity-0 group-hover/shortcut-area:opacity-70 hover:!opacity-100 ${
+          className={`absolute -right-3 -top-7 z-30 flex h-7 w-7 items-center justify-center rounded-full border shadow-md backdrop-blur-xl transition-all active:scale-90 opacity-0 group-hover/shortcut-area:opacity-70 hover:!opacity-100 cursor-pointer ${
             isDark
               ? 'border-white/15 bg-[#16181f]/80 text-white hover:bg-[#20242d]'
               : 'border-black/10 bg-white/80 text-neutral-700 hover:bg-white'
@@ -1316,13 +2022,19 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
       )}
       <div
         ref={gridRef}
-        className={isDesktop ? 'shortcut-grid' : 'shortcut-grid-compact'}
+        className={`${isDesktop ? 'shortcut-grid' : 'shortcut-grid-compact'} ${
+          isDesktop && !draggedId && slideDirection === 'left' ? 'desktop-page-slide-left' : ''
+        } ${
+          isDesktop && !draggedId && slideDirection === 'right' ? 'desktop-page-slide-right' : ''
+        }`}
+        onAnimationEnd={() => setSlideDirection(null)}
         onDragOver={(e) => {
           if (!isDesktop) return;
           const sourceId = draggedIdRef.current;
           if (!sourceId) return;
           e.preventDefault();
           e.dataTransfer.dropEffect = 'move';
+          checkEdgeFlip(e.clientX, e.clientY);
           clearMergeTimer();
           setDragOverId(null);
           setInsertSide(null);
@@ -1347,7 +2059,9 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
             && current.valid === preview.valid ? current : preview);
         }}
         onDragLeave={(e) => {
-          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setGridDropPreview(null);
+          if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+            setGridDropPreview(null);
+          }
         }}
         onDrop={isDesktop ? handleGridDrop : undefined}
         onContextMenu={(event) => {
@@ -1378,7 +2092,8 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
             }}
           />
         )}
-        {orderedShortcuts.map((item) => {
+        {currentPageShortcuts.map((item) => {
+          const isFromDifferentPage = isDesktop && (item.gridPosition?.page || 1) !== currentPage;
           const isDragging = draggedId === item.id;
           const isDragTarget = dragOverId === item.id && !isDragging;
           const draggedItem = orderedShortcuts.find((s) => s.id === draggedId);
@@ -1405,7 +2120,9 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
               className={`group relative flex flex-col items-center cursor-default select-none transition-all duration-200 ${
                 isLargeFolder ? 'shortcut-grid-item-large' : 'shortcut-grid-item'
               } ${insertionClass} ${
-                (activeFolderId === item.id || (isClosingFolder && cachedFolder?.id === item.id))
+                isFromDifferentPage
+                  ? 'opacity-0 pointer-events-none'
+                  : (activeFolderId === item.id || (isClosingFolder && cachedFolder?.id === item.id))
                   ? 'opacity-0 pointer-events-none scale-90'
                   : isDragging
                   ? 'opacity-25 scale-95'
@@ -1415,10 +2132,22 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                   ? 'scale-105'
                   : 'opacity-100 active:scale-95'
               }`}
-              style={{
-                gridColumnStart: gridPosition?.column,
-                gridRowStart: gridPosition?.row,
-              }}
+              style={
+                isFromDifferentPage
+                  ? {
+                      position: 'fixed',
+                      left: -9999,
+                      top: -9999,
+                      width: 1,
+                      height: 1,
+                      opacity: 0,
+                      pointerEvents: 'none',
+                    }
+                  : {
+                      gridColumnStart: gridPosition?.column,
+                      gridRowStart: gridPosition?.row,
+                    }
+              }
               onContextMenu={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
@@ -1511,6 +2240,217 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
 
       </div>
 
+      {/* 桌面模式底部毛玻璃分页指示器 */}
+      {isDesktop && (
+        <div className="flex items-center justify-center mt-3 select-none">
+          <div
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full border shadow-sm backdrop-blur-xl transition-all ${
+              isDark
+                ? 'bg-black/30 border-white/10 text-white'
+                : 'bg-white/45 border-black/10 text-neutral-800'
+            }`}
+            onContextMenu={(e) => {
+              if (e.target === e.currentTarget && totalPages > 1) {
+                handlePageDotContextMenu(e, currentPage);
+              }
+            }}
+          >
+            {Array.from({ length: totalPages }, (_, idx) => idx + 1).map((pageIndex) => {
+              const isActive = pageIndex === currentPage;
+              const isHoveredByDrag = hoveredDotPage === pageIndex;
+              return (
+                <div
+                  key={pageIndex}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={t.desktopPageIndex.replace('{page}', String(pageIndex))}
+                  title={t.desktopPageIndex.replace('{page}', String(pageIndex))}
+                  onClick={() => handleSwitchPage(pageIndex)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      handleSwitchPage(pageIndex);
+                    }
+                  }}
+                  onContextMenu={(e) => handlePageDotContextMenu(e, pageIndex)}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    e.dataTransfer.dropEffect = 'move';
+                    if (hoveredDotPageRef.current !== pageIndex) {
+                      if (pageHoverTimerRef.current !== null) {
+                        window.clearTimeout(pageHoverTimerRef.current);
+                        pageHoverTimerRef.current = null;
+                      }
+                      hoveredDotPageRef.current = pageIndex;
+                      setHoveredDotPage(pageIndex);
+                      if (pageIndex !== currentPageRef.current) {
+                        pageHoverTimerRef.current = window.setTimeout(() => {
+                          handleSwitchPage(pageIndex);
+                          pageHoverTimerRef.current = null;
+                        }, 350);
+                      }
+                    }
+                  }}
+                  onDragLeave={(e) => {
+                    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+                    if (hoveredDotPageRef.current === pageIndex) {
+                      if (pageHoverTimerRef.current !== null) {
+                        window.clearTimeout(pageHoverTimerRef.current);
+                        pageHoverTimerRef.current = null;
+                      }
+                      hoveredDotPageRef.current = null;
+                      setHoveredDotPage(null);
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (pageHoverTimerRef.current !== null) {
+                      window.clearTimeout(pageHoverTimerRef.current);
+                      pageHoverTimerRef.current = null;
+                    }
+                    hoveredDotPageRef.current = null;
+                    setHoveredDotPage(null);
+                    clearEdgeFlipTimer();
+
+                    const sourceId = draggedIdRef.current;
+                    if (!sourceId) {
+                      finishDrag();
+                      return;
+                    }
+                    handleSwitchPage(pageIndex);
+                    const targetPageItems = orderedShortcutsRef.current.filter(
+                      (s) => s.id !== sourceId && (s.gridPosition?.page || 1) === pageIndex
+                    );
+                    const targetPagePositions = resolveGridPositions(targetPageItems, desktopColumns, autoFill);
+                    const source = orderedShortcutsRef.current.find((s) => s.id === sourceId);
+                    const span = source ? getShortcutSpan(source) : 1;
+                    const freePos = findFirstFreePositionForSpan(targetPageItems, targetPagePositions, desktopColumns, span);
+                    if (freePos && freePos.row <= 3) {
+                      commitGridPosition(sourceId, freePos, pageIndex);
+                    }
+                    finishDrag();
+                  }}
+                  className="flex items-center justify-center p-1.5 cursor-pointer"
+                >
+                  <span
+                    className={`block transition-all duration-300 rounded-full ${
+                      isActive
+                        ? 'w-5 h-2 bg-blue-500 dark:bg-blue-400 shadow-sm'
+                        : isHoveredByDrag
+                        ? 'w-4 h-2.5 bg-blue-400 ring-2 ring-blue-400/60 shadow-md scale-125'
+                        : 'w-2 h-2 bg-neutral-400/50 hover:bg-neutral-500/80 dark:bg-white/30 dark:hover:bg-white/60'
+                    }`}
+                  />
+                </div>
+              );
+            })}
+
+            {/* 新建分页按钮 */}
+            {totalPages < 9 && (
+              <button
+                type="button"
+                aria-label={t.addDesktopPage}
+                title={t.addDesktopPage}
+                onClick={handleAddPage}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  e.dataTransfer.dropEffect = 'copy';
+                  if (hoveredDotPageRef.current !== -1) {
+                    hoveredDotPageRef.current = -1;
+                    setHoveredDotPage(-1);
+                  }
+                }}
+                onDragLeave={(e) => {
+                  if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+                  if (hoveredDotPageRef.current === -1) {
+                    hoveredDotPageRef.current = null;
+                    setHoveredDotPage(null);
+                  }
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  hoveredDotPageRef.current = null;
+                  setHoveredDotPage(null);
+                  clearEdgeFlipTimer();
+
+                  const sourceId = draggedIdRef.current;
+                  if (!sourceId) {
+                    finishDrag();
+                    return;
+                  }
+                  const newPage = totalPages + 1;
+                  onUpdatePageCount?.(newPage);
+                  handleSwitchPage(newPage);
+                  commitGridPosition(sourceId, { column: 1, row: 1 }, newPage);
+                  finishDrag();
+                }}
+                className={`flex items-center justify-center rounded-full transition-all cursor-pointer ${
+                  hoveredDotPage === -1
+                    ? 'h-5 w-5 bg-blue-500 text-white scale-125 shadow-md ring-2 ring-blue-400/50'
+                    : 'h-4 w-4 text-neutral-400 hover:text-blue-500 dark:text-neutral-400 dark:hover:text-blue-400 hover:bg-black/5 dark:hover:bg-white/10'
+                }`}
+              >
+                <Plus size={13} strokeWidth={2.6} />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 分页圆点右键快捷菜单 */}
+      {pageDotContextMenu && (
+        <div
+          role="menu"
+          aria-label={t.deleteDesktopPage}
+          className={`fixed z-[90] w-[176px] overflow-hidden rounded-2xl border p-1.5 shadow-2xl backdrop-blur-2xl transition-opacity duration-150 ${
+            isDark
+              ? 'border-white/15 bg-[#16181f]/95 text-white shadow-black/60'
+              : 'border-black/10 bg-white/95 text-neutral-800 shadow-neutral-900/15'
+          }`}
+          style={{
+            left: pageDotContextMenu.x,
+            ...(pageDotContextMenu.bottom !== undefined
+              ? { bottom: pageDotContextMenu.bottom }
+              : { top: pageDotContextMenu.y }),
+          }}
+          onClick={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          <div className="flex items-center justify-between px-2.5 py-1.5 text-xs font-semibold opacity-65 border-b border-black/5 dark:border-white/10 mb-1">
+            <span>{t.desktopPageIndex.replace('{page}', String(pageDotContextMenu.page))}</span>
+            {currentPage === pageDotContextMenu.page && (
+              <span className="text-[10px] font-normal px-1.5 py-0.5 rounded-full bg-blue-500/15 text-blue-500 dark:text-blue-400">
+                {language === 'zh' ? '当前页' : 'Current'}
+              </span>
+            )}
+          </div>
+          <button
+            type="button"
+            role="menuitem"
+            className="w-full flex items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-left text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer active:scale-[0.98]"
+            onClick={() => handleDeletePage(pageDotContextMenu.page)}
+          >
+            <Trash2 size={14} className="shrink-0" />
+            <span className="truncate">{t.deleteDesktopPage}</span>
+          </button>
+          {totalPages > maxUsedPage && (
+            <button
+              type="button"
+              role="menuitem"
+              className="w-full flex items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-left text-amber-500 hover:bg-amber-500/10 transition-colors cursor-pointer border-t border-black/5 dark:border-white/10 mt-1 pt-1.5 active:scale-[0.98]"
+              onClick={handleCleanEmptyPages}
+            >
+              <Trash2 size={14} className="shrink-0" />
+              <span className="truncate">{t.cleanEmptyDesktopPages}</span>
+            </button>
+          )}
+        </div>
+      )}
+
       {gridContextMenu && (
         <div
           role="menu"
@@ -1542,6 +2482,41 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
               role="menuitem"
               className="flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/10 select-none"
               onClick={() => {
+                if (autoFill) {
+                  // 关闭自动补位前，确保当前页所有图标的补位坐标固化锁定
+                  const locked = orderedShortcuts.map((item) => {
+                    if ((item.gridPosition?.page || 1) !== currentPage) return item;
+                    const pos = gridPositions.get(item.id);
+                    return {
+                      ...item,
+                      gridPosition: pos ? { ...pos, page: currentPage } : item.gridPosition || null,
+                    };
+                  });
+                  orderedShortcutsRef.current = locked;
+                  setOrderedShortcuts(locked);
+                  onReorderShortcuts?.(locked);
+                } else {
+                  // 开启自动补位时，仅对当前页执行紧凑重排并固化保存
+                  const currentItems = orderedShortcuts.filter((s) => (s.gridPosition?.page || 1) === currentPage);
+                  const otherItems = orderedShortcuts.filter((s) => (s.gridPosition?.page || 1) !== currentPage);
+                  const sorted = [...currentItems].sort((a, b) => {
+                    const posA = a.gridPosition || { column: 1, row: 1 };
+                    const posB = b.gridPosition || { column: 1, row: 1 };
+                    if (posA.row !== posB.row) return posA.row - posB.row;
+                    return posA.column - posB.column;
+                  });
+                  const compactedPositions = resolveGridPositions(sorted, desktopColumns, true);
+                  const nextCurrent = sorted.map((item) => ({
+                    ...item,
+                    gridPosition: compactedPositions.get(item.id)
+                      ? { ...compactedPositions.get(item.id)!, page: currentPage }
+                      : null,
+                  }));
+                  const next = [...nextCurrent, ...otherItems];
+                  orderedShortcutsRef.current = next;
+                  setOrderedShortcuts(next);
+                  onReorderShortcuts?.(next);
+                }
                 onToggleAutoFill(!autoFill);
                 setGridContextMenu(null);
               }}

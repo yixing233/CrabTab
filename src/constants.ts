@@ -64,6 +64,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   suggestionEngine: 'auto',
   showWeather: true,
   shortcutMode: 'desktop',
+  desktopPageCount: 1, // 桌面默认总分页数
   shortcutAutoFill: false, // 默认不自动补位
   showQuickLinks: true,
   showSeconds: false,
