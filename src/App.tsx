@@ -80,16 +80,33 @@ export const App: React.FC = () => {
       if (areaName !== 'local') return;
 
       if (changes[SETTINGS_KEY]?.newValue) {
-        setSettings(changes[SETTINGS_KEY].newValue as AppSettings);
+        const nextVal = changes[SETTINGS_KEY].newValue as AppSettings;
+        setSettings((prev) => {
+          if (!prev) return nextVal;
+          if (JSON.stringify(prev) === JSON.stringify(nextVal)) return prev;
+          return nextVal;
+        });
       }
       if (changes[SHORTCUTS_KEY]?.newValue) {
-        setShortcuts(changes[SHORTCUTS_KEY].newValue as SiteShortcut[]);
+        const nextShortcuts = changes[SHORTCUTS_KEY].newValue as SiteShortcut[];
+        setShortcuts((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(nextShortcuts)) return prev;
+          return nextShortcuts;
+        });
       }
       if (changes[SEARCH_HISTORY_KEY]?.newValue) {
-        setSearchHistory(changes[SEARCH_HISTORY_KEY].newValue as string[]);
+        const nextHistory = changes[SEARCH_HISTORY_KEY].newValue as string[];
+        setSearchHistory((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(nextHistory)) return prev;
+          return nextHistory;
+        });
       }
       if (changes['crab_utility_countdowns_v1']?.newValue) {
-        setCountdowns(changes['crab_utility_countdowns_v1'].newValue as CountdownItem[]);
+        const nextCds = changes['crab_utility_countdowns_v1'].newValue as CountdownItem[];
+        setCountdowns((prev) => {
+          if (JSON.stringify(prev) === JSON.stringify(nextCds)) return prev;
+          return nextCds;
+        });
       }
     };
 
@@ -193,12 +210,21 @@ export const App: React.FC = () => {
     }
   }, [settings?.theme]);
 
+// 防抖设置持久化：避免滑块滑动高频触发 chrome.storage 写入与跨标签页广播风暴
+let saveSettingsTimer: ReturnType<typeof setTimeout> | null = null;
+const debouncedSaveSettings = (s: AppSettings) => {
+  if (saveSettingsTimer) clearTimeout(saveSettingsTimer);
+  saveSettingsTimer = setTimeout(() => {
+    saveSettings(s);
+  }, 150);
+};
+
   // Update Settings
   const handleUpdateSettings = (newPartial: Partial<AppSettings>) => {
     setSettings((prev) => {
       if (!prev) return prev;
       const updated = { ...prev, ...newPartial };
-      saveSettings(updated);
+      debouncedSaveSettings(updated);
       return updated;
     });
   };
@@ -351,7 +377,7 @@ export const App: React.FC = () => {
           ...newStyle,
         },
       };
-      saveSettings(updated);
+      debouncedSaveSettings(updated);
       return updated;
     });
   };

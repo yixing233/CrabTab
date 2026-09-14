@@ -101,7 +101,7 @@ export const Clock: React.FC<ClockProps> = ({
     : clockStyle.size === 'small' ? 48 : clockStyle.size === 'medium' ? 64 : clockStyle.size === 'huge' ? 104 : 80;
 
   // 解析垂直位置偏移为精确数值 (像素 px, 负数偏上, 正数偏下)
-  const currentOffsetPx = typeof clockStyle.verticalOffset === 'number'
+  const currentOffsetPx = typeof clockStyle.verticalOffset === 'number' && !Number.isNaN(clockStyle.verticalOffset)
     ? clockStyle.verticalOffset
     : clockStyle.verticalOffset === 'top' ? -36 : clockStyle.verticalOffset === 'bottom' ? 24 : 0;
 
@@ -206,7 +206,11 @@ export const Clock: React.FC<ClockProps> = ({
             max={140}
             step={2}
             value={currentSizePx}
-            onChange={(val) => onUpdateClockStyle?.({ size: val })}
+            onChange={(val) => {
+              if (typeof val === 'number' && !Number.isNaN(val)) {
+                onUpdateClockStyle?.({ size: val });
+              }
+            }}
             className="flex-1 m-0"
           />
           <InputNumber
@@ -214,7 +218,11 @@ export const Clock: React.FC<ClockProps> = ({
             min={36}
             max={160}
             value={currentSizePx}
-            onChange={(val) => val && onUpdateClockStyle?.({ size: val })}
+            onChange={(val) => {
+              if (typeof val === 'number' && !Number.isNaN(val)) {
+                onUpdateClockStyle?.({ size: val });
+              }
+            }}
             className="w-16 text-xs"
           />
         </div>
@@ -243,7 +251,11 @@ export const Clock: React.FC<ClockProps> = ({
             max={60}
             step={2}
             value={currentOffsetPx}
-            onChange={(val) => onUpdateClockStyle?.({ verticalOffset: val })}
+            onChange={(val) => {
+              if (typeof val === 'number' && !Number.isNaN(val)) {
+                onUpdateClockStyle?.({ verticalOffset: val });
+              }
+            }}
             className="flex-1 m-0"
           />
           <InputNumber
@@ -251,7 +263,11 @@ export const Clock: React.FC<ClockProps> = ({
             min={-100}
             max={100}
             value={currentOffsetPx}
-            onChange={(val) => val !== null && onUpdateClockStyle?.({ verticalOffset: val })}
+            onChange={(val) => {
+              if (typeof val === 'number' && !Number.isNaN(val)) {
+                onUpdateClockStyle?.({ verticalOffset: val });
+              }
+            }}
             className="w-16 text-xs"
           />
         </div>
@@ -312,6 +328,7 @@ export const Clock: React.FC<ClockProps> = ({
         open={popoverOpen}
         onOpenChange={setPopoverOpen}
         placement="bottom"
+        autoAdjustOverflow={false}
         arrow={{ pointAtCenter: true }}
       >
         <div
