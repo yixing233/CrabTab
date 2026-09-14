@@ -111,6 +111,13 @@ export const Clock: React.FC<ClockProps> = ({
     return { top: `${currentOffsetPx}px` };
   };
 
+  // 当垂直位移或尺寸变动时，通知挂载在 body 上的浮层更新对齐位置，避免浮层与时钟错位
+  useEffect(() => {
+    if (popoverOpen) {
+      window.dispatchEvent(new Event('resize'));
+    }
+  }, [currentOffsetPx, currentSizePx, popoverOpen]);
+
   // Font Family inline styling
   const getFontFamilyStyle = (): React.CSSProperties => {
     switch (clockStyle.fontFamily) {
@@ -330,7 +337,6 @@ export const Clock: React.FC<ClockProps> = ({
         placement="bottom"
         autoAdjustOverflow={false}
         arrow={{ pointAtCenter: true }}
-        getPopupContainer={(trigger) => trigger.parentElement || document.body}
       >
         <div
           role="button"

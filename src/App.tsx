@@ -36,6 +36,15 @@ import { SettingsModal } from './components/SettingsModal';
 import { BrowserHistoryDrawer } from './components/BrowserHistoryDrawer';
 import { UtilityDrawer } from './components/UtilityDrawer';
 
+// 防抖设置持久化：避免滑块滑动高频触发 chrome.storage 写入与跨标签页广播风暴
+let saveSettingsTimer: ReturnType<typeof setTimeout> | null = null;
+const debouncedSaveSettings = (s: AppSettings) => {
+  if (saveSettingsTimer) clearTimeout(saveSettingsTimer);
+  saveSettingsTimer = setTimeout(() => {
+    saveSettings(s);
+  }, 150);
+};
+
 export const App: React.FC = () => {
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [shortcuts, setShortcuts] = useState<SiteShortcut[]>([]);
@@ -210,14 +219,6 @@ export const App: React.FC = () => {
     }
   }, [settings?.theme]);
 
-// 防抖设置持久化：避免滑块滑动高频触发 chrome.storage 写入与跨标签页广播风暴
-let saveSettingsTimer: ReturnType<typeof setTimeout> | null = null;
-const debouncedSaveSettings = (s: AppSettings) => {
-  if (saveSettingsTimer) clearTimeout(saveSettingsTimer);
-  saveSettingsTimer = setTimeout(() => {
-    saveSettings(s);
-  }, 150);
-};
 
   // Update Settings
   const handleUpdateSettings = (newPartial: Partial<AppSettings>) => {
