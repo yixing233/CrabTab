@@ -2,7 +2,7 @@
  * 版本检测工具：从项目静态元数据源读取线上版本
  */
 
-export const CURRENT_VERSION = '1.0.2';
+export const CURRENT_VERSION = '1.0.4';
 export const REPO_OWNER = 'yixing233';
 export const REPO_NAME = 'CrabTab';
 export const GITHUB_REPO_URL = `https://github.com/${REPO_OWNER}/${REPO_NAME}`;
@@ -16,7 +16,9 @@ export interface ReleaseInfo {
   notes?: string;
 }
 
-const VERSION_CACHE_KEY = 'crab_home_version_check_cache';
+export const VERSION_CACHE_KEY = 'crab_home_version_check_cache';
+export const AUTO_CHECK_UPDATE_INTERVAL = 6 * 60 * 60 * 1000; // 6 小时自动检查间隔
+export const LAST_AUTO_CHECK_KEY = 'crab_home_last_auto_check_update_time';
 const VERSION_CACHE_TTL = 60 * 60 * 1000; // 缓存 1 小时，防止频繁触发 GitHub Rate Limit
 const VERSION_SOURCES = [
   `https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/main/package.json`,
@@ -122,5 +124,28 @@ function cacheReleaseInfo(result: ReleaseInfo): void {
     );
   } catch {
     // 忽略本地存储写入失败
+  }
+}
+
+/**
+ * 尝试执行自动后台更新检测
+ * 仅当距上次检查超过 6 小时时才会真正发起网络请求
+ */
+export async function checkUpdateIfDue(force = false): Promise<ReleaseInfo | null> {
+  try {
+    const now = Date.now();
+    const lastCheckStr = localStorage.getItem(LAST_AUTO_CHECK_KEY);
+    const lastCheck = lastCheckStr ? parseInt(lastCheckStr, 10) : 0;
+
+    if (!force && lastCheck && now - lastCheck < AUTO_CHECK_UPDATE_INTERVAL) {
+      return null;
+    }
+
+    const result = await checkForUpdates(force);
+    localStorage.setItem(LAST_AUTO_CHECK_KEY, String(now));
+    return result;
+  } catch (err) {
+    console.warn('[VersionCheck] Background auto check failed:', err);
+    return null;
   }
 }

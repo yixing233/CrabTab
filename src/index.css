@@ -113,40 +113,77 @@ html, body, #root {
   transition: color 0.2s ease;
 }
 
-/* 深色模式下强化 Segmented 选中滑块与文字的高对比度 */
-.dark .ant-segmented {
-  background-color: rgba(255, 255, 255, 0.07) !important;
+/* 深色模式下强化 Segmented：分层清晰、对比鲜明，全面消除切换变白问题 */
+.dark .ant-segmented,
+:root[class~="dark"] .ant-segmented,
+[data-theme="dark"] .ant-segmented {
+  background-color: rgba(0, 0, 0, 0.36) !important;
   border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 2px !important;
 }
 
-.dark .ant-segmented .ant-segmented-item {
-  color: rgba(255, 255, 255, 0.65) !important;
+.dark .ant-segmented .ant-segmented-item,
+:root[class~="dark"] .ant-segmented .ant-segmented-item,
+[data-theme="dark"] .ant-segmented .ant-segmented-item {
+  color: rgba(255, 255, 255, 0.52) !important;
+  transition: color 0.18s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-.dark .ant-segmented .ant-segmented-item:hover {
-  color: rgba(255, 255, 255, 0.95) !important;
+.dark .ant-segmented .ant-segmented-item:hover,
+:root[class~="dark"] .ant-segmented .ant-segmented-item:hover,
+[data-theme="dark"] .ant-segmented .ant-segmented-item:hover {
+  color: rgba(255, 255, 255, 0.9) !important;
 }
 
-.dark .ant-segmented .ant-segmented-thumb {
-  background-color: #2a313d !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(255, 255, 255, 0.15) !important;
-  border-radius: 8px !important;
+/* 点击或激活状态底色，防止点按瞬间暴露出高亮浅白色 */
+.dark .ant-segmented .ant-segmented-item:active,
+.dark .ant-segmented .ant-segmented-item-active,
+:root[class~="dark"] .ant-segmented .ant-segmented-item:active,
+:root[class~="dark"] .ant-segmented .ant-segmented-item-active,
+[data-theme="dark"] .ant-segmented .ant-segmented-item:active,
+[data-theme="dark"] .ant-segmented .ant-segmented-item-active {
+  background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
-.dark .ant-segmented .ant-segmented-item-selected {
+/* 滑块背景：纯色饱满悬浮胶囊，无任何边框或微发光描边线 */
+.dark .ant-segmented .ant-segmented-thumb,
+.dark .ant-segmented .ant-segmented-thumb-motion,
+.dark .ant-segmented-thumb,
+.dark .ant-segmented-thumb-motion,
+:root[class~="dark"] .ant-segmented-thumb,
+:root[class~="dark"] .ant-segmented-thumb-motion,
+[data-theme="dark"] .ant-segmented-thumb,
+[data-theme="dark"] .ant-segmented-thumb-motion {
+  background-color: #3b4555 !important;
+  background: #3b4555 !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+  border-radius: 7px !important;
+}
+
+/* 选中项文字与无动效时的选中状态 */
+.dark .ant-segmented .ant-segmented-item-selected,
+:root[class~="dark"] .ant-segmented .ant-segmented-item-selected,
+[data-theme="dark"] .ant-segmented .ant-segmented-item-selected {
   color: #ffffff !important;
   font-weight: 600 !important;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
-
-/* 浅色模式下同样保持饱满清爽的高清选中状态 */
-:not(.dark) .ant-segmented .ant-segmented-thumb {
+/* 只有在纯浅色模式（html 不带 dark 类）下才允许白色 thumb */
+html:not(.dark) .ant-segmented .ant-segmented-thumb,
+html:not(.dark) .ant-segmented .ant-segmented-thumb-motion,
+html:not(.dark) .ant-segmented-thumb,
+html:not(.dark) .ant-segmented-thumb-motion {
   background-color: #ffffff !important;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1), 0 0 0 1px rgba(0, 0, 0, 0.05) !important;
+  background: #ffffff !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
   border-radius: 8px !important;
 }
 
-:not(.dark) .ant-segmented .ant-segmented-item-selected {
+html:not(.dark) .ant-segmented .ant-segmented-item-selected {
   color: #1677ff !important;
   font-weight: 600 !important;
 }
@@ -194,25 +231,39 @@ html, body, #root {
   scrollbar-width: thin !important;
   scrollbar-color: rgba(255, 255, 255, 0.2) transparent !important;
 }
-
-.ant-modal-body::-webkit-scrollbar,
-.ant-modal-content::-webkit-scrollbar,
-.custom-settings-modal .ant-modal-body::-webkit-scrollbar {
-  width: 5px !important;
-  height: 5px !important;
+.custom-settings-modal .ant-modal-body::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
 
-.ant-modal-body::-webkit-scrollbar-track,
-.ant-modal-content::-webkit-scrollbar-track,
-.custom-settings-modal .ant-modal-body::-webkit-scrollbar-track {
-  background: transparent !important;
+/* 深色模式下的设置弹窗内的 Segmented 专用规则，保证最高优先级与完美清晰度 */
+.dark .custom-settings-modal .ant-segmented,
+.dark .custom-settings-wrap .ant-segmented {
+  background-color: rgba(0, 0, 0, 0.36) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 2px !important;
 }
 
-.ant-modal-body::-webkit-scrollbar-thumb,
-.ant-modal-content::-webkit-scrollbar-thumb,
-.custom-settings-modal .ant-modal-body::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.18) !important;
-  border-radius: 9999px !important;
+.dark .custom-settings-modal .ant-segmented .ant-segmented-thumb,
+.dark .custom-settings-modal .ant-segmented .ant-segmented-thumb-motion,
+.dark .custom-settings-modal .ant-segmented-thumb,
+.dark .custom-settings-modal .ant-segmented-thumb-motion,
+.dark .custom-settings-wrap .ant-segmented .ant-segmented-thumb,
+.dark .custom-settings-wrap .ant-segmented .ant-segmented-thumb-motion,
+.dark .custom-settings-wrap .ant-segmented-thumb,
+.dark .custom-settings-wrap .ant-segmented-thumb-motion {
+  background-color: #3b4555 !important;
+  background: #3b4555 !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
+  border-radius: 7px !important;
+}
+
+.dark .custom-settings-modal .ant-segmented .ant-segmented-item:active,
+.dark .custom-settings-modal .ant-segmented .ant-segmented-item-active,
+.dark .custom-settings-wrap .ant-segmented .ant-segmented-item:active,
+.dark .custom-settings-wrap .ant-segmented .ant-segmented-item-active {
+  background-color: rgba(255, 255, 255, 0.1) !important;
 }
 
 .ant-modal-body::-webkit-scrollbar-thumb:hover,
@@ -363,9 +414,17 @@ html, body, #root {
   color: #ffffff !important;
 }
 
-.dark .custom-utility-segmented .ant-segmented-thumb {
+.dark .custom-utility-segmented .ant-segmented-item:active,
+.dark .custom-utility-segmented .ant-segmented-item-active {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+.dark .custom-utility-segmented .ant-segmented-thumb,
+.dark .custom-utility-segmented .ant-segmented-thumb-motion {
   background-color: rgba(255, 255, 255, 0.16) !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.12) !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3) !important;
   border-radius: 7px !important;
 }
 /* Ant Design 下拉组件与日期选择器浮层 */
@@ -651,4 +710,52 @@ html, body, #root {
 
 @media (prefers-reduced-motion: reduce) {
   .shortcut-merge-target { animation: none; }
+}
+
+/* Compact shortcuts use document order and natural wrapping without desktop grid semantics. */
+.shortcut-area-compact {
+  min-height: 0;
+}
+
+.shortcut-grid-compact {
+  width: 100%;
+  max-width: 680px;
+  height: auto;
+  max-height: min(32vh, 276px);
+  margin-inline: auto;
+  padding: 0 2px 4px;
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-content: flex-start;
+  gap: 8px clamp(4px, 2vw, 20px);
+  overflow-x: hidden;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+
+.shortcut-grid-compact::-webkit-scrollbar {
+  display: none;
+}
+
+.shortcut-grid-compact .shortcut-grid-item,
+.shortcut-grid-compact .shortcut-grid-item-large {
+  width: clamp(52px, calc((100vw - 68px) / 4), 80px);
+  height: 92px;
+  flex: 0 0 clamp(52px, calc((100vw - 68px) / 4), 80px);
+  grid-column: auto;
+  grid-row: auto;
+  transform: none;
+}
+
+.shortcut-grid-compact .shortcut-grid-item:hover,
+.shortcut-grid-compact .shortcut-grid-item-large:hover {
+  transform: none;
+}
+
+@media (min-width: 768px) {
+  .shortcut-grid-compact {
+    gap: 12px 20px;
+  }
 }

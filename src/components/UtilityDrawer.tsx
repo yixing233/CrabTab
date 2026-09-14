@@ -168,7 +168,6 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({ language, theme, g
   });
   const abortControllerRef = useRef<AbortController | null>(null);
   const isSpeedTestRunningRef = useRef(false);
-  const hasAutoTestedRef = useRef(false);
   useEffect(() => () => {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
@@ -234,13 +233,13 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({ language, theme, g
       },
       components: {
         Segmented: {
-          trackBg: isDark ? 'rgba(0, 0, 0, 0.35)' : 'rgba(0, 0, 0, 0.06)',
-          itemSelectedBg: isDark ? 'rgba(255, 255, 255, 0.14)' : '#ffffff',
+          trackBg: isDark ? 'rgba(0, 0, 0, 0.36)' : 'rgba(0, 0, 0, 0.06)',
+          itemSelectedBg: isDark ? '#3b4555' : '#ffffff',
           itemSelectedColor: isDark ? '#ffffff' : '#18181b',
-          itemColor: isDark ? 'rgba(255, 255, 255, 0.65)' : 'rgba(0, 0, 0, 0.65)',
+          itemColor: isDark ? 'rgba(255, 255, 255, 0.52)' : 'rgba(0, 0, 0, 0.65)',
           itemHoverBg: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
-          itemHoverColor: isDark ? '#ffffff' : '#18181b',
-          itemActiveBg: isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.08)',
+          itemHoverColor: isDark ? 'rgba(255, 255, 255, 0.9)' : '#18181b',
+          itemActiveBg: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
         },
         Select: {
           colorBgContainer: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)',
@@ -860,13 +859,6 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({ language, theme, g
       isSpeedTestRunningRef.current = false;
     }
   };
-  // 用户打开测速面板且从未测过时，自动开始一轮完整测速
-  useEffect(() => {
-    if (open && tab === 'network' && speedResult.download === null && testPhase === 'idle' && !hasAutoTestedRef.current) {
-      hasAutoTestedRef.current = true;
-      runFullSpeedTest();
-    }
-  }, [open, tab, speedResult.download, testPhase]);
   // 翻译处理：服务商由用户明确选择，失败时不会静默切换到其他服务。
   const handleTranslate = async () => {
     if (!sourceText.trim()) return;

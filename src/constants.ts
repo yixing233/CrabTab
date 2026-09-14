@@ -45,6 +45,8 @@ export const RANDOM_WALLPAPER_POOL = [
   'https://p17.qhimg.com/bdr/__100/t01a4879c330b8b3ffb.jpg',
 ];
 
+/** 内置默认本地壁纸（避免本地壁纸为空或初次切换时出错黑屏） */
+export const DEFAULT_LOCAL_WALLPAPER = '/default-local-wallpaper.jpg';
 export const DEFAULT_SETTINGS: AppSettings = {
   language: 'zh',
   theme: 'dark',
@@ -61,12 +63,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
   searchEngine: 'google',
   suggestionEngine: 'auto',
   showWeather: true,
+  shortcutMode: 'desktop',
+  shortcutAutoFill: false, // 默认不自动补位
   showQuickLinks: true,
   showSeconds: false,
   timeFormat24: true,
   showGreeting: true,
   hitokotoTypes: ['d', 'i', 'k', 'h'],
   openInNewTab: true,
+  autoCheckUpdate: true,
   clockStyle: {
     size: 'large',
     verticalOffset: 'center',

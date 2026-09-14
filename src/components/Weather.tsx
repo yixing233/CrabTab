@@ -188,28 +188,28 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
   const renderWeatherIcon = (weatherText: string, code?: number, className = 'w-5 h-5') => {
     const text = weatherText || '';
     if (text.includes('雷') || (code !== undefined && code >= 95)) {
-      return <CloudLightning className={`${className} text-amber-300`} />;
+      return <CloudLightning className={`${className} ${isDark ? 'text-amber-300' : 'text-amber-500'}`} />;
     }
     if (text.includes('雪') || (code !== undefined && code >= 71 && code <= 77)) {
-      return <CloudSnow className={`${className} text-sky-200`} />;
+      return <CloudSnow className={`${className} ${isDark ? 'text-sky-200' : 'text-sky-500'}`} />;
     }
     if (text.includes('暴雨') || text.includes('大雨') || (code !== undefined && code === 82)) {
-      return <CloudRain className={`${className} text-blue-400`} />;
+      return <CloudRain className={`${className} ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />;
     }
     if (text.includes('雨') || (code !== undefined && code >= 51 && code <= 81)) {
-      return <CloudRain className={`${className} text-sky-400`} />;
+      return <CloudRain className={`${className} ${isDark ? 'text-sky-400' : 'text-sky-500'}`} />;
     }
     if (text.includes('雾') || (code !== undefined && code >= 45 && code <= 48)) {
-      return <CloudFog className={`${className} text-neutral-300`} />;
+      return <CloudFog className={`${className} ${isDark ? 'text-neutral-300' : 'text-neutral-500'}`} />;
     }
     if (text.includes('多云') || text.includes('阴') || (code !== undefined && (code === 2 || code === 3))) {
-      return <Cloud className={`${className} text-neutral-200`} />;
+      return <Cloud className={`${className} ${isDark ? 'text-neutral-200' : 'text-neutral-600'}`} />;
     }
     if (text.includes('晴间多云') || (code !== undefined && code === 1)) {
-      return <CloudSun className={`${className} text-amber-200`} />;
+      return <CloudSun className={`${className} ${isDark ? 'text-amber-200' : 'text-amber-500'}`} />;
     }
     // 默认或晴天
-    return <Sun className={`${className} text-amber-300`} />;
+    return <Sun className={`${className} ${isDark ? 'text-amber-300' : 'text-amber-500'}`} />;
   };
 
   // 渲染今日主天气大图标
@@ -217,22 +217,22 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
     const code = data?.conditionCode ?? 0;
     const text = data?.conditionText || '';
     if (text.includes('雷') || code >= 95) {
-      return <CloudLightning className="w-9 h-9 text-amber-300 stroke-[1.8]" />;
+      return <CloudLightning className={`w-9 h-9 stroke-[1.8] ${isDark ? 'text-amber-300' : 'text-amber-500'}`} />;
     }
     if (text.includes('雪') || (code >= 71 && code <= 77)) {
-      return <CloudSnow className="w-9 h-9 text-sky-200 stroke-[1.8]" />;
+      return <CloudSnow className={`w-9 h-9 stroke-[1.8] ${isDark ? 'text-sky-200' : 'text-sky-500'}`} />;
     }
     if (text.includes('雨') || (code >= 51 && code <= 82)) {
-      return <CloudRain className="w-9 h-9 text-sky-300 stroke-[1.8]" />;
+      return <CloudRain className={`w-9 h-9 stroke-[1.8] ${isDark ? 'text-sky-300' : 'text-sky-500'}`} />;
     }
     if (text.includes('雾') || (code >= 45 && code <= 48)) {
-      return <CloudFog className="w-9 h-9 text-neutral-200 stroke-[1.8]" />;
+      return <CloudFog className={`w-9 h-9 stroke-[1.8] ${isDark ? 'text-neutral-200' : 'text-neutral-500'}`} />;
     }
     if (text.includes('多云') || text.includes('阴') || code === 2 || code === 3) {
-      return <Cloud className="w-9 h-9 text-neutral-100 stroke-[1.8]" />;
+      return <Cloud className={`w-9 h-9 stroke-[1.8] ${isDark ? 'text-neutral-100' : 'text-neutral-600'}`} />;
     }
     // 晴天显示带放射线的纯净太阳
-    return <Sun className="w-9 h-9 text-white stroke-[1.8]" />;
+    return <Sun className={`w-9 h-9 stroke-[1.8] ${isDark ? 'text-white' : 'text-amber-500'}`} />;
   };
 
   // 主天气卡片详细内容 (对应截屏)
@@ -264,7 +264,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
             className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
               isDark
                 ? 'bg-white/10 text-white/80 border border-white/15'
-                : 'bg-black/5 text-neutral-600 border border-black/10'
+                : 'bg-black/5 text-neutral-700 border border-black/10'
             }`}
           >
             {data?.source === 'xiaomi'
@@ -277,7 +277,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
           {data?.updateTime && (
             <span
               className={`text-[11px] tabular-nums tracking-tight select-none ${
-                isDark ? 'text-neutral-400' : 'text-neutral-500'
+                isDark ? 'text-neutral-400' : 'text-neutral-600 font-medium'
               }`}
               title={language === 'zh' ? `最近更新时间: ${data.updateTime}` : `Last updated: ${data.updateTime}`}
             >
@@ -292,7 +292,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
               disabled={loading || isRefreshing}
               aria-label="Refresh weather"
               className={`p-1.5 rounded-full cursor-pointer transition-colors duration-200 ${
-                isDark ? 'hover:bg-white/10 text-neutral-400 hover:text-white' : 'hover:bg-black/5 text-neutral-500 hover:text-black'
+                isDark ? 'hover:bg-white/10 text-neutral-400 hover:text-white' : 'hover:bg-black/5 text-neutral-600 hover:text-black'
               }`}
             >
               <RotateCw
@@ -432,7 +432,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
             <span className={`text-[46px] font-light leading-none tracking-tighter tabular-nums ${isDark ? 'text-white' : 'text-neutral-900'}`}>
               {data?.temp !== undefined ? `${data.temp}°` : '34°'}
             </span>
-            <span className={`text-sm font-normal tabular-nums ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            <span className={`text-sm font-medium tabular-nums ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
               {language === 'zh' ? '今日: ' : 'Today: '}{data?.todayRange || '22℃~15℃'}
             </span>
           </div>
@@ -441,17 +441,23 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
             <span className={`text-base font-semibold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
               {data?.conditionText || (language === 'zh' ? '晴' : 'Clear')}
             </span>
-            <span className={`text-xs ml-1 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            <span className={`text-xs ml-1 font-medium ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
               {data?.windDirection || (language === 'zh' ? '东北风' : 'NE')} {data?.windPower || (language === 'zh' ? '2级' : '2')}
             </span>
             {data?.aqi !== undefined && (
               <span
-                className={`text-[11px] font-medium px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                className={`text-[11px] font-semibold px-2 py-0.5 rounded-full flex items-center gap-1 ${
                   data.aqi.num <= 50
-                    ? 'bg-emerald-500/15 text-emerald-500 border border-emerald-500/25'
+                    ? isDark
+                      ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25'
+                      : 'bg-emerald-50 text-emerald-700 border border-emerald-300'
                     : data.aqi.num <= 100
-                    ? 'bg-amber-500/15 text-amber-500 border border-amber-500/25'
-                    : 'bg-rose-500/15 text-rose-500 border border-rose-500/25'
+                    ? isDark
+                      ? 'bg-amber-500/15 text-amber-400 border border-amber-500/25'
+                      : 'bg-amber-50 text-amber-800 border border-amber-300'
+                    : isDark
+                      ? 'bg-rose-500/15 text-rose-400 border border-rose-500/25'
+                      : 'bg-rose-50 text-rose-700 border border-rose-300'
                 }`}
                 title={data.aqi.suggest}
               >
@@ -484,7 +490,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
       >
         {/* 体感温度 */}
         <div className="flex flex-col items-center justify-center p-1.5 rounded-xl">
-          <div className="flex items-center gap-1 text-[11px] text-neutral-400 mb-0.5">
+          <div className={`flex items-center gap-1 text-[11px] font-medium mb-0.5 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
             <Gauge className="w-3.5 h-3.5 text-[#2f7cf6]" />
             <span>{t.feelsLike}</span>
           </div>
@@ -495,7 +501,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
 
         {/* 风速 */}
         <div className="flex flex-col items-center justify-center p-1.5 rounded-xl">
-          <div className="flex items-center gap-1 text-[11px] text-neutral-400 mb-0.5">
+          <div className={`flex items-center gap-1 text-[11px] font-medium mb-0.5 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
             <Compass className="w-3.5 h-3.5 text-[#2f7cf6]" />
             <span>{t.wind}</span>
           </div>
@@ -506,7 +512,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
 
         {/* 湿度 */}
         <div className="flex flex-col items-center justify-center p-1.5 rounded-xl">
-          <div className="flex items-center gap-1 text-[11px] text-neutral-400 mb-0.5">
+          <div className={`flex items-center gap-1 text-[11px] font-medium mb-0.5 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
             <Droplets className="w-3.5 h-3.5 text-[#2f7cf6]" />
             <span>{t.humidity}</span>
           </div>
@@ -517,7 +523,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
 
         {/* 气压 */}
         <div className="flex flex-col items-center justify-center p-1.5 rounded-xl">
-          <div className="flex items-center gap-1 text-[11px] text-neutral-400 mb-0.5">
+          <div className={`flex items-center gap-1 text-[11px] font-medium mb-0.5 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
             <Gauge className="w-3.5 h-3.5 text-[#8b5cf6]" />
             <span>{language === 'zh' ? '气压' : 'Pressure'}</span>
           </div>
@@ -528,7 +534,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
 
         {/* 紫外线 */}
         <div className="flex flex-col items-center justify-center p-1.5 rounded-xl">
-          <div className="flex items-center gap-1 text-[11px] text-neutral-400 mb-0.5">
+          <div className={`flex items-center gap-1 text-[11px] font-medium mb-0.5 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
             <Sun className="w-3.5 h-3.5 text-[#ec4899]" />
             <span>{language === 'zh' ? '紫外线' : 'UV'}</span>
           </div>
@@ -539,7 +545,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
 
         {/* 日出日落 */}
         <div className="flex flex-col items-center justify-center p-1.5 rounded-xl">
-          <div className="flex items-center gap-1 text-[11px] text-neutral-400 mb-0.5">
+          <div className={`flex items-center gap-1 text-[11px] font-medium mb-0.5 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
             <Sun className="w-3.5 h-3.5 text-[#f59e0b]" />
             <span>{t.sunRiseSet}</span>
           </div>
@@ -553,16 +559,16 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
       {data?.hourlyForecast && data.hourlyForecast.length > 0 && (
         <div className="mt-3.5">
           <div className="flex items-center justify-between mb-1.5">
-            <span className={`text-xs font-medium ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+            <span className={`text-xs font-semibold ${isDark ? 'text-neutral-300' : 'text-neutral-800'}`}>
               {language === 'zh' ? '24小时预报' : 'Hourly Forecast'}
             </span>
             <div className="flex items-center gap-2.5 text-[10px]">
-              <span className="inline-flex items-center gap-1 font-medium text-amber-500">
-                <span className="w-2 h-0.5 rounded-full bg-amber-500 inline-block" />
+              <span className="inline-flex items-center gap-1 font-medium text-amber-600 dark:text-amber-400">
+                <span className="w-2 h-0.5 rounded-full bg-amber-500 dark:bg-amber-400 inline-block" />
                 {language === 'zh' ? '气温' : 'Temp'}
               </span>
-              <span className="inline-flex items-center gap-1 font-medium text-emerald-500">
-                <span className="w-2 h-0.5 rounded-full bg-emerald-500 inline-block border-b border-dashed" />
+              <span className="inline-flex items-center gap-1 font-medium text-emerald-600 dark:text-emerald-400">
+                <span className="w-2 h-0.5 rounded-full bg-emerald-500 dark:bg-emerald-400 inline-block border-b border-dashed" />
                 {language === 'zh' ? '空气' : 'AQI'}
               </span>
             </div>
@@ -580,15 +586,15 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
       {/* 5. 多日天气趋势 (气温双曲线图表) */}
       <div className="mt-3.5">
         <div className="flex items-center justify-between mb-2">
-          <span className={`text-xs font-medium ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+          <span className={`text-xs font-semibold ${isDark ? 'text-neutral-300' : 'text-neutral-800'}`}>
             {language === 'zh' ? '多日天气趋势' : 'Daily Forecast'}
           </span>
-          <div className="flex items-center gap-2.5 text-[11px] select-none font-normal">
-            <span className="flex items-center gap-1 text-amber-500 dark:text-amber-400">
+          <div className="flex items-center gap-2.5 text-[11px] select-none font-medium">
+            <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
               <span className="w-2 h-0.5 rounded-full bg-amber-500 dark:bg-amber-400" />
               {language === 'zh' ? '最高温' : 'High'}
             </span>
-            <span className="flex items-center gap-1 text-sky-500 dark:text-sky-400">
+            <span className="flex items-center gap-1 text-sky-600 dark:text-sky-400">
               <span className="w-2 h-0.5 rounded-full bg-sky-500 dark:bg-sky-400" />
               {language === 'zh' ? '最低温' : 'Low'}
             </span>
@@ -610,7 +616,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
 
       {/* 5. 生活指数建议 (3列网格 + 换行卡片) */}
       <div className="mt-4">
-        <div className={`text-xs font-medium mb-2 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+        <div className={`text-xs font-semibold mb-2 ${isDark ? 'text-neutral-300' : 'text-neutral-800'}`}>
           {language === 'zh' ? '生活指数建议' : 'Life Quality Indexes'}
         </div>
         <div className="grid grid-cols-3 gap-2">
@@ -627,14 +633,14 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
                   : 'bg-black/[0.03] border border-black/[0.06]'
               }`}
             >
-              <div className={`text-[11px] font-normal ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
+              <div className={`text-[11px] font-medium ${isDark ? 'text-neutral-400' : 'text-neutral-700'}`}>
                 {idx.name}
               </div>
               <div className={`text-xs font-bold mt-1.5 truncate text-[#2f7cf6] dark:text-[#38bdf8]`} title={idx.details}>
                 {idx.index}
               </div>
               {idx.details && (
-                <div className={`text-[10px] truncate mt-1 ${isDark ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                <div className={`text-[10px] truncate mt-1 ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`}>
                   {idx.details}
                 </div>
               )}

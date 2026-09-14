@@ -1,6 +1,6 @@
 import { get, set, del } from 'idb-keyval';
 import { AppSettings, SiteShortcut } from '../types';
-import { DEFAULT_SETTINGS, DEFAULT_SHORTCUTS } from '../constants';
+import { DEFAULT_SETTINGS, DEFAULT_SHORTCUTS, DEFAULT_LOCAL_WALLPAPER } from '../constants';
 import { ONLINE_WALLPAPER_SOURCES } from './wallpaperSources';
 
 export const SETTINGS_KEY = 'crab_home_settings_v1';
@@ -85,9 +85,19 @@ function sanitizeWallpaperConfig(raw: Partial<AppSettings['wallpaper']> | undefi
   if (merged.type === 'online') {
     if (!merged.source || !validSourceIds.has(merged.source)) {
       merged.source = DEFAULT_SETTINGS.wallpaper.source;
-      if (!merged.customUrl) {
-        merged.customUrl = DEFAULT_SETTINGS.wallpaper.customUrl;
-      }
+    }
+    // 清洗无效或污染的 customUrl（如 idb_local_wallpaper、本地 blob 等），防止切回时白屏/404
+    if (
+      !merged.customUrl ||
+      merged.customUrl === 'idb_local_wallpaper' ||
+      merged.customUrl.startsWith('blob:')
+    ) {
+      merged.customUrl = DEFAULT_SETTINGS.wallpaper.customUrl;
+    }
+  } else if (merged.type === 'local') {
+    // 本地壁纸无需占位符，若残留为 idb_local_wallpaper 或 blob，重置为默认在线 URL 备用
+    if (merged.customUrl === 'idb_local_wallpaper' || merged.customUrl?.startsWith('blob:')) {
+      merged.customUrl = DEFAULT_SETTINGS.wallpaper.customUrl;
     }
   }
   return merged;
@@ -95,9 +105,16 @@ function sanitizeWallpaperConfig(raw: Partial<AppSettings['wallpaper']> | undefi
 
 function normalizeSettings(raw: unknown): AppSettings {
   const loaded = (raw && typeof raw === 'object' ? raw : {}) as Partial<AppSettings>;
+  const shortcutMode = loaded.shortcutMode === 'off'
+    || loaded.shortcutMode === 'compact'
+    || loaded.shortcutMode === 'desktop'
+    ? loaded.shortcutMode
+    : loaded.showQuickLinks === false ? 'off' : 'desktop';
   return {
     ...DEFAULT_SETTINGS,
     ...loaded,
+    shortcutMode,
+    showQuickLinks: shortcutMode !== 'off',
     wallpaper: sanitizeWallpaperConfig(loaded.wallpaper),
     clockStyle: { ...DEFAULT_SETTINGS.clockStyle, ...(loaded.clockStyle || {}) },
     glassStyle: { ...DEFAULT_SETTINGS.glassStyle, ...(loaded.glassStyle || {}) },
@@ -164,9 +181,10 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
       await writeChromeStorage(SETTINGS_BACKUP_KEY, existing);
     }
 
-    // 双写保护：同时写入 chrome.storage.local 与 localStorage
-    await writeChromeStorage(SETTINGS_KEY, settings);
-    writeLocalStorage(SETTINGS_KEY, settings);
+    // 导入与常规更新统一归一化，确保新旧兼容字段始终同步。
+    const normalized = normalizeSettings(settings);
+    await writeChromeStorage(SETTINGS_KEY, normalized);
+    writeLocalStorage(SETTINGS_KEY, normalized);
   } catch (err) {
     console.warn('[Storage] Failed to save settings:', err);
   }
@@ -333,7 +351,14 @@ export async function saveLocalMedia(file: File): Promise<{ type: 'local', isVid
   return { type: 'local', isVideo, mimeType: file.type };
 }
 
-export async function getLocalMediaInfo(): Promise<{ url: string; isVideo: boolean; name?: string } | null> {
+export interface LocalMediaInfo {
+  url: string;
+  isVideo: boolean;
+  name?: string;
+  isCustom: boolean; // 是否是用户自己上传的文件，false 表示内置默认壁纸
+}
+
+export async function getLocalMediaInfo(): Promise<LocalMediaInfo> {
   try {
     const record = await get<{ blob: Blob; type?: string; mimeType?: string; name?: string }>(LOCAL_MEDIA_KEY);
     if (record && record.blob) {
@@ -342,12 +367,19 @@ export async function getLocalMediaInfo(): Promise<{ url: string; isVideo: boole
         url: URL.createObjectURL(record.blob),
         isVideo,
         name: record.name,
+        isCustom: true,
       };
     }
   } catch (e) {
     console.error('[Storage] Error fetching local media from IndexedDB:', e);
   }
-  return null;
+  // 当本地尚未上传壁纸时，优雅降级为内置的默认壁纸，彻底消除空壁纸导致的黑屏或报错
+  return {
+    url: DEFAULT_LOCAL_WALLPAPER,
+    isVideo: false,
+    name: '默认内置壁纸',
+    isCustom: false,
+  };
 }
 
 export async function getLocalMediaUrl(): Promise<string | null> {
@@ -418,7 +450,7 @@ export async function restoreFromLocalBackups(): Promise<BackupRestoreResult> {
       readLocalStorage<Partial<AppSettings>>('crab_home_settings');
 
     if (candidateSettings && Object.keys(candidateSettings).length > 0) {
-      const merged = { ...DEFAULT_SETTINGS, ...candidateSettings };
+      const merged = normalizeSettings(candidateSettings);
       await writeChromeStorage(SETTINGS_KEY, merged);
       writeLocalStorage(SETTINGS_KEY, merged);
       result.settingsRestored = true;

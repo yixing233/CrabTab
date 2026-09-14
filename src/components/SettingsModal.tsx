@@ -40,8 +40,8 @@ import {
   Sparkles,
   FolderOpen,
 } from 'lucide-react';
-import { AppSettings, Language, WallpaperProviderId, HitokotoType } from '../types';
-import { SEARCH_ENGINES } from '../constants';
+import { AppSettings, Language, WallpaperProviderId, HitokotoType, ShortcutDisplayMode } from '../types';
+import { SEARCH_ENGINES, DEFAULT_LOCAL_WALLPAPER, DEFAULT_SETTINGS } from '../constants';
 import { ALL_HITOKOTO_TYPES, HitokotoTypeOption } from '../utils/hitokoto';
 import { 
   WALLPAPER_PROVIDERS, 
@@ -101,12 +101,23 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     (settings.theme === 'auto' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
   // 加载收藏与检测当前壁纸状态
+  const isLocalWallpaper =
+    settings.wallpaper.type === 'local' ||
+    settings.wallpaper.type === 'local_image' ||
+    settings.wallpaper.type === 'local_video';
+
   const currentWallpaperUrl = settings.wallpaper.customUrl || '';
+  const previewUrl = isLocalWallpaper
+    ? (localMedia?.url || DEFAULT_LOCAL_WALLPAPER)
+    : (currentWallpaperUrl && currentWallpaperUrl !== 'idb_local_wallpaper' && !currentWallpaperUrl.startsWith('blob:'))
+      ? currentWallpaperUrl
+      : (DEFAULT_SETTINGS.wallpaper.customUrl || 'https://cn.bing.com/th?id=OHR.BeechEngland_ZH-CN1807343872_1920x1080.jpg');
+
   useEffect(() => {
     if (open) {
       loadFavoriteWallpapers().then((favs) => {
         setFavorites(favs);
-        if (currentWallpaperUrl && currentWallpaperUrl !== 'idb_local_wallpaper') {
+        if (!isLocalWallpaper && currentWallpaperUrl && currentWallpaperUrl !== 'idb_local_wallpaper' && !currentWallpaperUrl.startsWith('blob:')) {
           setIsFavorited(isWallpaperFavorited(currentWallpaperUrl));
         } else {
           setIsFavorited(false);
@@ -116,7 +127,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         setLocalMedia(info);
       });
     }
-  }, [open, currentWallpaperUrl]);
+  }, [open, isLocalWallpaper, currentWallpaperUrl]);
 
   // 打开设置时静默检查一次；壁纸切换不应触发版本网络请求
   useEffect(() => {
@@ -165,7 +176,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         wallpaper: {
           ...settings.wallpaper,
           type: localMedia?.isVideo ? 'local_video' : 'local_image',
-          customUrl: 'idb_local_wallpaper',
         },
       });
     } else if (tabKey === 'favorites') {
@@ -187,18 +197,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       });
     } else {
       // online
-      onUpdateSettings({
-        wallpaper: {
-          ...settings.wallpaper,
-          type: 'online',
-        },
-      });
+      const currentUrl = settings.wallpaper.customUrl;
+      const isValidOnlineUrl =
+        currentUrl &&
+        currentUrl !== 'idb_local_wallpaper' &&
+        !currentUrl.startsWith('blob:') &&
+        (currentUrl.startsWith('http://') || currentUrl.startsWith('https://') || currentUrl.startsWith('/'));
+
+      if (isValidOnlineUrl) {
+        onUpdateSettings({
+          wallpaper: {
+            ...settings.wallpaper,
+            type: 'online',
+          },
+        });
+      } else {
+        // 若没有有效在线壁纸 URL，自动从当前在线源拉取一张
+        const activeSource = settings.wallpaper.source || 'bing';
+        handleSelectLiveSource(activeSource);
+      }
     }
   };
 
   // 收藏 / 取消收藏当前壁纸
   const handleToggleFavorite = async () => {
-    if (!currentWallpaperUrl || currentWallpaperUrl === 'idb_local_wallpaper') {
+    if (isLocalWallpaper || !currentWallpaperUrl || currentWallpaperUrl === 'idb_local_wallpaper' || currentWallpaperUrl.startsWith('blob:')) {
       message.warning(settings.language === 'zh' ? '当前本地媒体保存在本地数据库中，无需网络收藏' : 'Local media is saved in IndexedDB');
       return;
     }
@@ -223,7 +246,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   // 屏蔽当前壁纸
   const handleBlockCurrent = async () => {
-    if (!currentWallpaperUrl || currentWallpaperUrl === 'idb_local_wallpaper') {
+    if (isLocalWallpaper || !currentWallpaperUrl || currentWallpaperUrl === 'idb_local_wallpaper' || currentWallpaperUrl.startsWith('blob:')) {
       message.warning(settings.language === 'zh' ? '本地壁纸不支持加入屏蔽列表' : 'Local media cannot be blocked');
       return;
     }
@@ -240,7 +263,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   // 复制原图链接
   const handleCopyUrl = async () => {
-    if (!currentWallpaperUrl || currentWallpaperUrl === 'idb_local_wallpaper') {
+    if (isLocalWallpaper || !currentWallpaperUrl || currentWallpaperUrl === 'idb_local_wallpaper' || currentWallpaperUrl.startsWith('blob:')) {
       message.info(settings.language === 'zh' ? '本地壁纸为私有二进制文件' : 'Local media is private file');
       return;
     }
@@ -298,7 +321,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           wallpaper: {
             ...settings.wallpaper,
             type: result.type,
-            customUrl: 'idb_local_wallpaper',
           },
         });
         message.success(t.uploadSuccess);
@@ -314,15 +336,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleClearLocal = async () => {
     await clearLocalMedia();
-    setLocalMedia(null);
+    setLocalMedia({
+      url: DEFAULT_LOCAL_WALLPAPER,
+      isVideo: false,
+      name: settings.language === 'zh' ? '默认内置本地壁纸' : 'Default Local Wallpaper',
+      isCustom: false,
+    });
     onUpdateSettings({
       wallpaper: {
         ...settings.wallpaper,
-        type: 'online',
-        customUrl: undefined,
+        type: 'local_image',
       },
     });
-    message.success(t.clearSuccess);
+    message.success(settings.language === 'zh' ? '已恢复内置默认本地壁纸' : 'Reset to default local wallpaper');
   };
 
   // 选择具体的壁纸类型（动漫、自然风景、游戏等）
@@ -441,7 +467,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
 
         {/* 预览画面本体 */}
         <div className="relative w-full h-36 sm:h-40 rounded-xl overflow-hidden shadow-inner border border-black/10 bg-black/40 flex items-center justify-center group">
-          {localMedia?.isVideo && (settings.wallpaper.type === 'local' || settings.wallpaper.type === 'local_video') ? (
+          {isLocalWallpaper && localMedia?.isVideo ? (
             <video
               src={localMedia.url}
               autoPlay
@@ -452,9 +478,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             />
           ) : (
             <img
-              src={currentWallpaperUrl || localMedia?.url || 'https://cn.bing.com/th?id=OHR.BeechEngland_ZH-CN1807343872_1920x1080.jpg'}
+              src={previewUrl}
               alt="Current Wallpaper"
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src =
+                  DEFAULT_SETTINGS.wallpaper.customUrl ||
+                  'https://cn.bing.com/th?id=OHR.BeechEngland_ZH-CN1807343872_1920x1080.jpg';
+              }}
             />
           )}
 
@@ -471,8 +502,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </span>
           </div>
 
-          {/* 快捷跳转 / 复制浮层 */}
-          {currentWallpaperUrl && currentWallpaperUrl !== 'idb_local_wallpaper' && (
+          {/* 快捷跳转 / 复制浮层 (仅在线壁纸显示) */}
+          {!isLocalWallpaper && currentWallpaperUrl && currentWallpaperUrl !== 'idb_local_wallpaper' && !currentWallpaperUrl.startsWith('blob:') && (
             <div className="absolute bottom-2.5 right-2.5 flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
               <Tooltip title={t.copyUrl}>
                 <button
@@ -681,20 +712,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 ) : (
                   <ImageIcon size={16} className="text-blue-400" />
                 )}
-                <span className="text-xs font-medium">
+                <span className="text-xs font-medium truncate max-w-[200px] sm:max-w-[280px]">
                   {localMedia.name || (localMedia.isVideo ? '自定义本地视频' : '自定义本地图片')}
                 </span>
+                {!localMedia.isCustom && (
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-blue-500/15 text-blue-400 font-medium">
+                    {settings.language === 'zh' ? '内置' : 'Built-in'}
+                  </span>
+                )}
               </div>
-              <Button
-                danger
-                size="small"
-                type="text"
-                icon={<TrashIcon size={14} />}
-                onClick={handleClearLocal}
-                className="flex items-center !text-xs text-red-500 hover:text-red-600"
-              >
-                {settings.language === 'zh' ? '删除本地壁纸' : 'Delete'}
-              </Button>
+              {localMedia.isCustom && (
+                <Button
+                  danger
+                  size="small"
+                  type="text"
+                  icon={<TrashIcon size={14} />}
+                  onClick={handleClearLocal}
+                  className="flex items-center !text-xs text-red-500 hover:text-red-600"
+                >
+                  {settings.language === 'zh' ? '恢复默认壁纸' : 'Reset to Default'}
+                </Button>
+              )}
             </div>
           )}
         </div>
@@ -977,7 +1015,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         />
       </div>
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="font-medium">
             <Text strong>{t.quickLinks}</Text>
@@ -986,11 +1024,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <Text type="secondary">{t.showQuickLinks}</Text>
           </div>
         </div>
-        <Switch
-          checked={settings.showQuickLinks}
-          onChange={(checked) => onUpdateSettings({ showQuickLinks: checked })}
+        <Segmented<ShortcutDisplayMode>
+          value={settings.shortcutMode}
+          onChange={(shortcutMode) => onUpdateSettings({
+            shortcutMode,
+            showQuickLinks: shortcutMode !== 'off',
+          })}
+          options={[
+            { value: 'off', label: t.shortcutModeOff },
+            { value: 'compact', label: t.shortcutModeCompact },
+            { value: 'desktop', label: t.shortcutModeDesktop },
+          ]}
         />
       </div>
+
+      {/* 桌面模式下自动补位开关 */}
+      {settings.shortcutMode === 'desktop' && (
+        <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 -mt-2 mb-2 transition-colors ${
+          isDark ? 'bg-white/[0.03] border-white/10' : 'bg-gray-50 border-gray-100'
+        }`}>
+          <div>
+            <div className="text-xs font-semibold">{t.shortcutAutoFill}</div>
+            <div className="text-[11px] opacity-60 mt-0.5">{t.shortcutAutoFillDesc}</div>
+          </div>
+          <Switch
+            checked={settings.shortcutAutoFill === true}
+            onChange={(checked) => onUpdateSettings({ shortcutAutoFill: checked })}
+          />
+        </div>
+      )}
 
       {/* 24 小时制时间 */}
       <div className="flex items-center justify-between">
@@ -1215,6 +1277,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <p className="max-w-md mx-auto leading-relaxed text-xs opacity-75">
           {t.aboutDesc}
         </p>
+      </div>
+
+      {/* Auto Check Update Toggle */}
+      <div className={`p-3.5 rounded-xl border flex items-center justify-between gap-3 ${
+        isDark ? 'bg-white/[0.03] border-white/10' : 'bg-gray-50 border-gray-100'
+      }`}>
+        <div>
+          <div className="text-xs font-semibold">{t.autoCheckUpdate}</div>
+          <div className="text-[11px] opacity-60 mt-0.5">{t.autoCheckUpdateDesc}</div>
+        </div>
+        <Switch
+          checked={settings.autoCheckUpdate !== false}
+          onChange={(checked) => onUpdateSettings({ autoCheckUpdate: checked })}
+        />
       </div>
 
       {/* New Version Alert Banner */}
@@ -1469,8 +1545,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       width={640}
       style={{ top: 50 }}
       destroyOnClose={true}
-      className="custom-settings-modal"
-      wrapClassName="custom-settings-wrap"
+      className={`custom-settings-modal ${isDark ? 'dark' : ''}`}
+      wrapClassName={`custom-settings-wrap ${isDark ? 'dark' : ''}`}
       styles={{
         mask: {
           backdropFilter: 'blur(1px)',

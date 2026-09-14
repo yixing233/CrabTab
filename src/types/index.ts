@@ -147,6 +147,8 @@ export interface ClockStyleConfig {
   fontWeight: 'thin' | 'normal' | 'semibold' | 'bold'; // 字体粗细
 }
 
+export type ShortcutDisplayMode = 'off' | 'compact' | 'desktop';
+
 export interface AppSettings {
   language: Language;
   theme: ThemeMode;
@@ -154,12 +156,16 @@ export interface AppSettings {
   searchEngine: SearchEngineId;
   suggestionEngine?: SuggestionEngineId;
   showWeather: boolean;
+  shortcutMode: ShortcutDisplayMode;
+  /** @deprecated Kept for compatibility with settings saved by older versions. */
   showQuickLinks: boolean;
+  shortcutAutoFill?: boolean; // 桌面快捷方式自动补位开关（默认 false，保持自由网格留白）
   showSeconds: boolean;
   timeFormat24: boolean;
   showGreeting: boolean;
   hitokotoTypes?: HitokotoType[]; // 一言自定义类型列表
   openInNewTab: boolean;
+  autoCheckUpdate?: boolean; // 自动检查更新开关（默认开启，间隔 6 小时）
   clockStyle: ClockStyleConfig;
   glassStyle: {
     blur: number; // backdrop-blur px

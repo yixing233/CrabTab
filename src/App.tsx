@@ -20,6 +20,7 @@ import {
 import { getAntdTheme } from './theme';
 import { SEARCH_ENGINES, RANDOM_WALLPAPER_POOL } from './constants';
 import { fetchFromOnlineSource, ONLINE_WALLPAPER_SOURCES } from './utils/wallpaperSources';
+import { checkLatestVersion, AUTO_CHECK_UPDATE_INTERVAL, LAST_AUTO_CHECK_KEY } from './utils/versionCheck';
 import { Wallpaper } from './components/Wallpaper';
 import { Clock } from './components/Clock';
 import { SearchBox } from './components/SearchBox';
@@ -96,6 +97,42 @@ export const App: React.FC = () => {
     const intervalTimer = setInterval(checkAndTrigger, 60 * 1000);
     return () => clearInterval(intervalTimer);
   }, [initialized, settings?.wallpaper.type, settings?.wallpaper.autoRefresh]);
+
+  // 用户进入页面后的自动检测更新（默认开启，距上次检测至少间隔 6 小时）
+  useEffect(() => {
+    if (!initialized || !settings || settings.autoCheckUpdate === false) return;
+
+    const checkOnEnter = async () => {
+      try {
+        const lastCheckStr = localStorage.getItem(LAST_AUTO_CHECK_KEY);
+        const lastCheckTime = lastCheckStr ? parseInt(lastCheckStr, 10) : 0;
+        const now = Date.now();
+
+        // 距上次检测至少间隔 6 小时才发起网络请求
+        if (now - lastCheckTime >= AUTO_CHECK_UPDATE_INTERVAL) {
+          localStorage.setItem(LAST_AUTO_CHECK_KEY, now.toString());
+          const info = await checkLatestVersion(true);
+          if (info.hasUpdate) {
+            // 当检测到新版本时，轻量提示用户有新版本可用
+            message.info({
+              content: `CrabTab 发现新版本 v${info.version} 可用，请前往“设置 -> 关于”查看`,
+              duration: 5,
+              key: 'crab_new_version_tip',
+            });
+          }
+        }
+      } catch {
+        // 静默捕获，不阻塞用户
+      }
+    };
+
+    // 页面渲染就绪 3 秒后执行检测，避免干扰首屏关键加载
+    const enterTimer = setTimeout(checkOnEnter, 3000);
+
+    return () => {
+      clearTimeout(enterTimer);
+    };
+  }, [initialized, settings?.autoCheckUpdate]);
 
   // Sync dark class to html document root for all Portals (Modal, Drawer, Popover)
   useEffect(() => {
@@ -404,10 +441,13 @@ export const App: React.FC = () => {
           </div>
 
           {/* Quick Shortcuts */}
-          {settings.showQuickLinks && (
-            <div className="w-full flex justify-center min-h-[96px] flex-shrink-0">
+          {settings.shortcutMode !== 'off' && (
+            <div className={`w-full flex justify-center flex-shrink-0 ${
+              settings.shortcutMode === 'desktop' ? 'min-h-[96px]' : 'min-h-0'
+            }`}>
               <Shortcuts
                 shortcuts={shortcuts}
+                displayMode={settings.shortcutMode}
                 language={settings.language}
                 openInNewTab={settings.openInNewTab}
                 theme={settings.theme}
@@ -416,6 +456,8 @@ export const App: React.FC = () => {
                 onEditShortcut={handleEditShortcut}
                 onDeleteShortcut={handleDeleteShortcut}
                 onReorderShortcuts={handleReorderShortcuts}
+                autoFill={settings.shortcutAutoFill === true}
+                onToggleAutoFill={(autoFill) => handleUpdateSettings({ shortcutAutoFill: autoFill })}
               />
             </div>
           )}

@@ -36,9 +36,13 @@ export function getAntdTheme(mode: 'dark' | 'light' | 'auto'): ThemeConfig {
         colorBgContainer: isDark ? '#1a1d24' : '#ffffff',
       },
       Segmented: {
-        colorBgLayout: isDark ? 'rgba(255, 255, 255, 0.06)' : '#f0f2f5',
-        colorBgElevated: isDark ? '#303846' : '#ffffff',
-        colorText: isDark ? 'rgba(255, 255, 255, 0.65)' : 'rgba(0, 0, 0, 0.65)',
+        colorBgLayout: isDark ? 'rgba(0, 0, 0, 0.28)' : '#f0f2f5',
+        colorBgElevated: isDark ? '#3b4454' : '#ffffff',
+        itemSelectedBg: isDark ? '#3b4454' : '#ffffff',
+        itemActiveBg: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)',
+        itemHoverColor: isDark ? 'rgba(255, 255, 255, 0.85)' : 'rgba(0, 0, 0, 0.88)',
+        colorText: isDark ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.65)',
+        itemSelectedColor: isDark ? '#ffffff' : '#1677ff',
       },
       Drawer: {
         colorBgElevated: isDark ? '#1a1d24' : '#ffffff',

@@ -8,37 +8,37 @@ interface WeatherHourlyChartProps {
   language: Language;
 }
 
-// 辅助函数：根据 AQI 返回颜色
-function getAqiColor(aqi: number): { text: string; bg: string; border: string; stroke: string } {
+// 辅助函数：根据 AQI 返回颜色（支持浅色/深色主题高对比度适配）
+function getAqiColor(aqi: number, isDark: boolean): { text: string; bg: string; border: string; stroke: string } {
   if (aqi <= 50) {
     return {
-      text: '#10b981', // 优 绿
-      bg: 'rgba(16, 185, 129, 0.12)',
-      border: 'rgba(16, 185, 129, 0.25)',
-      stroke: '#10b981',
+      text: isDark ? '#10b981' : '#047857', // 优 绿 (浅色下使用更深的高对比度翠绿)
+      bg: isDark ? 'rgba(16, 185, 129, 0.12)' : 'rgba(16, 185, 129, 0.14)',
+      border: isDark ? 'rgba(16, 185, 129, 0.25)' : 'rgba(5, 150, 105, 0.35)',
+      stroke: isDark ? '#10b981' : '#059669',
     };
   }
   if (aqi <= 100) {
     return {
-      text: '#f59e0b', // 良 黄
-      bg: 'rgba(245, 158, 11, 0.12)',
-      border: 'rgba(245, 158, 11, 0.25)',
-      stroke: '#f59e0b',
+      text: isDark ? '#f59e0b' : '#b45309', // 良 黄 (浅色下使用高对比琥珀黄)
+      bg: isDark ? 'rgba(245, 158, 11, 0.12)' : 'rgba(245, 158, 11, 0.14)',
+      border: isDark ? 'rgba(245, 158, 11, 0.25)' : 'rgba(217, 119, 6, 0.35)',
+      stroke: isDark ? '#f59e0b' : '#d97706',
     };
   }
   if (aqi <= 150) {
     return {
-      text: '#f97316', // 轻度 橙
-      bg: 'rgba(249, 115, 22, 0.12)',
-      border: 'rgba(249, 115, 22, 0.25)',
-      stroke: '#f97316',
+      text: isDark ? '#f97316' : '#c2410c', // 轻度 橙
+      bg: isDark ? 'rgba(249, 115, 22, 0.12)' : 'rgba(249, 115, 22, 0.14)',
+      border: isDark ? 'rgba(249, 115, 22, 0.25)' : 'rgba(234, 88, 12, 0.35)',
+      stroke: isDark ? '#f97316' : '#ea580c',
     };
   }
   return {
-    text: '#ef4444', // 中度/重度 红
-    bg: 'rgba(239, 68, 68, 0.12)',
-    border: 'rgba(239, 68, 68, 0.25)',
-    stroke: '#ef4444',
+    text: isDark ? '#ef4444' : '#b91c1c', // 中度/重度 红
+    bg: isDark ? 'rgba(239, 68, 68, 0.12)' : 'rgba(239, 68, 68, 0.14)',
+    border: isDark ? 'rgba(239, 68, 68, 0.25)' : 'rgba(220, 38, 38, 0.35)',
+    stroke: isDark ? '#ef4444' : '#dc2626',
   };
 }
 
@@ -228,7 +228,7 @@ export const WeatherHourlyChart: React.FC<WeatherHourlyChartProps> = ({
             {/* 点位与数字标注 */}
             {points.map((p) => {
               const isHovered = hoveredIdx === p.idx;
-              const aqiStyle = p.item.aqi !== undefined ? getAqiColor(p.item.aqi) : null;
+              const aqiStyle = p.item.aqi !== undefined ? getAqiColor(p.item.aqi, isDark) : null;
 
               return (
                 <g key={p.idx}>
@@ -251,7 +251,7 @@ export const WeatherHourlyChart: React.FC<WeatherHourlyChartProps> = ({
                     textAnchor="middle"
                     fontSize="11"
                     fontWeight="600"
-                    fill={isDark ? '#ffffff' : '#1f2937'}
+                    fill={isDark ? '#ffffff' : '#0f172a'}
                   >
                     {p.item.temp}°
                   </text>
@@ -326,10 +326,10 @@ export const WeatherHourlyChart: React.FC<WeatherHourlyChartProps> = ({
                 {/* 底部横轴时间 */}
                 <div className="pb-0.5 text-center">
                   <span
-                    className={`text-[10px] font-medium transition-colors ${
+                    className={`text-[10px] transition-colors ${
                       hoveredIdx === p.idx
-                        ? isDark ? 'text-white font-semibold' : 'text-neutral-900 font-semibold'
-                        : isDark ? 'text-neutral-400' : 'text-neutral-500'
+                        ? isDark ? 'text-white font-bold' : 'text-neutral-900 font-bold'
+                        : isDark ? 'text-neutral-400 font-medium' : 'text-neutral-600 font-medium'
                     }`}
                   >
                     {p.item.time}

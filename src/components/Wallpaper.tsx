@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { WallpaperConfig } from '../types';
 import { getLocalMediaInfo } from '../utils/storage';
+import { DEFAULT_LOCAL_WALLPAPER, DEFAULT_SETTINGS } from '../constants';
 
 interface WallpaperProps {
   config: WallpaperConfig;
@@ -12,10 +13,10 @@ export const Wallpaper: React.FC<WallpaperProps> = ({ config }) => {
 
   // 双缓冲壁纸状态：保证切换时旧图不闪烁，新图即刻加载并平滑交叉淡入
   const [currentOnlineUrl, setCurrentOnlineUrl] = useState<string>('');
+  const currentOnlineUrlRef = useRef<string>('');
   const [nextOnlineUrl, setNextOnlineUrl] = useState<string | null>(null);
   const [nextReady, setNextReady] = useState<boolean>(false);
   const loadingTimerRef = useRef<any>(null);
-
   // 本地图片/视频统一合并为本地壁纸
   useEffect(() => {
     let active = true;
@@ -39,22 +40,34 @@ export const Wallpaper: React.FC<WallpaperProps> = ({ config }) => {
     if (config.type === 'local' || config.type === 'local_image' || config.type === 'local_video') {
       return '';
     }
-    if (config.customUrl) return config.customUrl;
-    return 'https://cn.bing.com/th?id=OHR.BeechEngland_ZH-CN1807343872_1920x1080.jpg';
+    const raw = config.customUrl;
+    if (
+      raw &&
+      raw !== 'idb_local_wallpaper' &&
+      !raw.startsWith('blob:') &&
+      (raw.startsWith('http://') || raw.startsWith('https://') || raw.startsWith('/'))
+    ) {
+      return raw;
+    }
+    return DEFAULT_SETTINGS.wallpaper.customUrl || 'https://cn.bing.com/th?id=OHR.BeechEngland_ZH-CN1807343872_1920x1080.jpg';
   }, [config.type, config.customUrl]);
 
   // 当目标 URL 变动时，实时预加载并交叉淡入，无需刷新页面
   useEffect(() => {
     if (!targetOnlineUrl) return;
-
-    // 首次载入
-    if (!currentOnlineUrl) {
+    const prev = currentOnlineUrlRef.current;
+    if (!prev) {
+      currentOnlineUrlRef.current = targetOnlineUrl;
       setCurrentOnlineUrl(targetOnlineUrl);
       return;
     }
 
-    if (targetOnlineUrl === currentOnlineUrl) return;
-
+    if (targetOnlineUrl === prev) {
+      if (currentOnlineUrl !== targetOnlineUrl) {
+        setCurrentOnlineUrl(targetOnlineUrl);
+      }
+      return;
+    }
     // 准备切换新图
     setNextOnlineUrl(targetOnlineUrl);
     setNextReady(false);
@@ -63,6 +76,10 @@ export const Wallpaper: React.FC<WallpaperProps> = ({ config }) => {
     const img = new Image();
     img.referrerPolicy = 'no-referrer';
 
+    const defaultFallback =
+      DEFAULT_SETTINGS.wallpaper.customUrl ||
+      'https://cn.bing.com/th?id=OHR.BeechEngland_ZH-CN1807343872_1920x1080.jpg';
+
     const onImageLoaded = () => {
       if (isCancelled) return;
       setNextReady(true);
@@ -70,6 +87,7 @@ export const Wallpaper: React.FC<WallpaperProps> = ({ config }) => {
       // 500ms 后旧图退场，新图成为当前主图
       loadingTimerRef.current = setTimeout(() => {
         if (!isCancelled) {
+          currentOnlineUrlRef.current = targetOnlineUrl;
           setCurrentOnlineUrl(targetOnlineUrl);
           setNextOnlineUrl(null);
           setNextReady(false);
@@ -79,8 +97,16 @@ export const Wallpaper: React.FC<WallpaperProps> = ({ config }) => {
 
     img.onload = onImageLoaded;
     img.onerror = () => {
-      // 若单图加载异常，依然优雅切换避免挂死
-      onImageLoaded();
+      if (isCancelled) return;
+      if (targetOnlineUrl !== defaultFallback) {
+        console.warn('Failed to load wallpaper image, fallback to default:', targetOnlineUrl);
+        currentOnlineUrlRef.current = defaultFallback;
+        setCurrentOnlineUrl(defaultFallback);
+        setNextOnlineUrl(null);
+        setNextReady(false);
+      } else {
+        onImageLoaded();
+      }
     };
     img.src = targetOnlineUrl;
 
@@ -96,13 +122,15 @@ export const Wallpaper: React.FC<WallpaperProps> = ({ config }) => {
 
   // 背景渲染内容
   let backgroundContent: React.ReactNode = null;
-
-  if (localMedia && localMedia.url) {
-    if (localMedia.isVideo) {
+  const isLocal = config.type === 'local' || config.type === 'local_image' || config.type === 'local_video';
+  if (isLocal) {
+    const activeLocalUrl = localMedia?.url || DEFAULT_LOCAL_WALLPAPER;
+    const isVideo = localMedia?.isVideo ?? false;
+    if (isVideo) {
       backgroundContent = (
         <video
-          key={localMedia.url}
-          src={localMedia.url}
+          key={activeLocalUrl}
+          src={activeLocalUrl}
           autoPlay
           loop
           muted
@@ -113,8 +141,8 @@ export const Wallpaper: React.FC<WallpaperProps> = ({ config }) => {
     } else {
       backgroundContent = (
         <img
-          key={localMedia.url}
-          src={localMedia.url}
+          key={activeLocalUrl}
+          src={activeLocalUrl}
           alt="Wallpaper"
           className="w-full h-full object-cover select-none pointer-events-none transition-opacity duration-700"
         />
@@ -122,7 +150,11 @@ export const Wallpaper: React.FC<WallpaperProps> = ({ config }) => {
     }
   } else {
     // 双缓冲在线壁纸图层
-    const currentUrl = currentOnlineUrl || targetOnlineUrl;
+    const currentUrl =
+      currentOnlineUrl ||
+      targetOnlineUrl ||
+      DEFAULT_SETTINGS.wallpaper.customUrl ||
+      'https://cn.bing.com/th?id=OHR.BeechEngland_ZH-CN1807343872_1920x1080.jpg';
     backgroundContent = (
       <div className="relative w-full h-full overflow-hidden">
         {/* 当前图层 */}

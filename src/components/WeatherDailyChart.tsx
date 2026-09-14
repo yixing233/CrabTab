@@ -18,31 +18,31 @@ interface WeatherDailyChartProps {
 }
 
 // 对应 weather condition 的图标获取
-function getConditionIcon(weatherDesc: string = '', conditionCode?: number, className = 'w-4 h-4') {
+function getConditionIcon(weatherDesc: string = '', conditionCode?: number, className = 'w-4 h-4', isDark = true) {
   const desc = weatherDesc.toLowerCase();
   // 优先依据描述判断，避免不同数据源对 1/2 编码的含义不一致。
-  if (desc.includes('雷') || desc.includes('thunder')) return <CloudLightning className={`${className} text-amber-500`} />;
-  if (desc.includes('雪') || desc.includes('snow')) return <CloudSnow className={`${className} text-indigo-300`} />;
-  if (desc.includes('雨') || desc.includes('rain') || desc.includes('shower')) return <CloudRain className={`${className} text-sky-400`} />;
-  if (desc.includes('雾') || desc.includes('霾') || desc.includes('fog')) return <CloudFog className={`${className} text-neutral-400`} />;
+  if (desc.includes('雷') || desc.includes('thunder')) return <CloudLightning className={`${className} ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />;
+  if (desc.includes('雪') || desc.includes('snow')) return <CloudSnow className={`${className} ${isDark ? 'text-indigo-300' : 'text-indigo-500'}`} />;
+  if (desc.includes('雨') || desc.includes('rain') || desc.includes('shower')) return <CloudRain className={`${className} ${isDark ? 'text-sky-400' : 'text-sky-500'}`} />;
+  if (desc.includes('雾') || desc.includes('霾') || desc.includes('fog')) return <CloudFog className={`${className} ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />;
   if (desc.includes('晴间多云') || desc.includes('多云') || desc.includes('partly cloud') || desc.includes('mainly clear')) {
-    return <CloudSun className={`${className} text-amber-300`} />;
+    return <CloudSun className={`${className} ${isDark ? 'text-amber-300' : 'text-amber-500'}`} />;
   }
   if (desc.includes('阴') || desc.includes('overcast') || desc.includes('cloudy')) {
-    return <Cloud className={`${className} text-neutral-400`} />;
+    return <Cloud className={`${className} ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />;
   }
   if (conditionCode !== undefined) {
-    if (conditionCode === 0) return <Sun className={`${className} text-amber-400`} />;
-    if (conditionCode === 1 || conditionCode === 2) return <CloudSun className={`${className} text-amber-300`} />;
-    if (conditionCode === 3) return <Cloud className={`${className} text-neutral-400`} />;
-    if (conditionCode >= 45 && conditionCode <= 48) return <CloudFog className={`${className} text-neutral-400`} />;
-    if (conditionCode >= 51 && conditionCode <= 67) return <CloudRain className={`${className} text-sky-400`} />;
-    if (conditionCode >= 71 && conditionCode <= 77) return <CloudSnow className={`${className} text-indigo-300`} />;
-    if (conditionCode >= 80 && conditionCode <= 82) return <CloudRain className={`${className} text-blue-400`} />;
-    if (conditionCode >= 85 && conditionCode <= 86) return <CloudSnow className={`${className} text-indigo-300`} />;
-    if (conditionCode >= 95) return <CloudLightning className={`${className} text-amber-500`} />;
+    if (conditionCode === 0) return <Sun className={`${className} ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />;
+    if (conditionCode === 1 || conditionCode === 2) return <CloudSun className={`${className} ${isDark ? 'text-amber-300' : 'text-amber-500'}`} />;
+    if (conditionCode === 3) return <Cloud className={`${className} ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />;
+    if (conditionCode >= 45 && conditionCode <= 48) return <CloudFog className={`${className} ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />;
+    if (conditionCode >= 51 && conditionCode <= 67) return <CloudRain className={`${className} ${isDark ? 'text-sky-400' : 'text-sky-500'}`} />;
+    if (conditionCode >= 71 && conditionCode <= 77) return <CloudSnow className={`${className} ${isDark ? 'text-indigo-300' : 'text-indigo-500'}`} />;
+    if (conditionCode >= 80 && conditionCode <= 82) return <CloudRain className={`${className} ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />;
+    if (conditionCode >= 85 && conditionCode <= 86) return <CloudSnow className={`${className} ${isDark ? 'text-indigo-300' : 'text-indigo-500'}`} />;
+    if (conditionCode >= 95) return <CloudLightning className={`${className} ${isDark ? 'text-amber-500' : 'text-amber-600'}`} />;
   }
-  return <Sun className={`${className} text-amber-400`} />;
+  return <Sun className={`${className} ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />;
 }
 
 // 从 tempRange 解析出高低温度数字（例如 "25℃~15℃" 或 "25°/15°"）
@@ -213,18 +213,21 @@ export const WeatherDailyChart: React.FC<WeatherDailyChartProps> = ({
                       : 'hover:bg-black/[0.03] dark:hover:bg-white/[0.04]'
                   }`}
                 >
-                  <span className={`text-[12px] font-semibold ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
+                  <span className={`text-[12px] font-semibold ${isDark ? 'text-neutral-200' : 'text-neutral-800'}`}>
                     {item.dayText}
                   </span>
                   {item.dateText && (
-                    <span className="text-[10px] text-neutral-400 mt-0.5">
+                    <span className={`text-[10px] mt-0.5 ${isDark ? 'text-neutral-400' : 'text-neutral-500 font-medium'}`}>
                       {item.dateText}
                     </span>
                   )}
                   <div className="my-1.5 flex items-center justify-center">
-                    {getConditionIcon(item.weather, item.conditionCode, 'w-5 h-5')}
+                    {getConditionIcon(item.weather, item.conditionCode, 'w-5 h-5', isDark)}
                   </div>
-                  <span className="text-[10.5px] text-neutral-400 text-center truncate max-w-[56px]" title={item.weather}>
+                  <span
+                    className={`text-[10.5px] text-center truncate max-w-[56px] ${isDark ? 'text-neutral-400' : 'text-neutral-600 font-medium'}`}
+                    title={item.weather}
+                  >
                     {item.weather}
                   </span>
                 </div>
@@ -345,8 +348,8 @@ export const WeatherDailyChart: React.FC<WeatherDailyChartProps> = ({
                       y={pt.y + 16}
                       textAnchor="middle"
                       fontSize="11"
-                      fontWeight="500"
-                      fill={isDark ? '#94a3b8' : '#64748b'}
+                      fontWeight="600"
+                      fill={isDark ? '#94a3b8' : '#334155'}
                     >
                       {pt.val}°
                     </text>

@@ -22,6 +22,7 @@ import {
   Globe2,
   Link,
   ExternalLink,
+  LayoutGrid,
 } from 'lucide-react';
 
 type ShortcutContextMenu = {
@@ -100,11 +101,12 @@ const ShortcutIconView: React.FC<{ url: string; icon?: string; title: string; si
  */
 const FolderThumbnailView: React.FC<{
   folder: SiteShortcut;
+  compact?: boolean;
   onChildClick?: (event: React.MouseEvent, child: SiteShortcut) => void;
-}> = ({ folder, onChildClick }) => {
+}> = ({ folder, compact = false, onChildClick }) => {
   const children = (folder.children || []).slice(0, 9);
   const count = children.length;
-  const isLarge = folder.folderSize === '2x2';
+  const isLarge = !compact && folder.folderSize === '2x2';
   const isNineGrid = isLarge || count > 4;
 
   return (
@@ -144,7 +146,11 @@ const FolderThumbnailView: React.FC<{
 const getShortcutSpan = (shortcut: SiteShortcut) =>
   shortcut.isFolder && shortcut.folderSize === '2x2' ? 2 : 1;
 
-const resolveGridPositions = (shortcuts: SiteShortcut[], columns: number) => {
+const resolveGridPositions = (
+  shortcuts: SiteShortcut[],
+  columns: number,
+  autoFill = false
+) => {
   const positions = new Map<string, { column: number; row: number }>();
   const occupied = new Set<string>();
   const canPlace = (column: number, row: number, span: number) => {
@@ -163,25 +169,56 @@ const resolveGridPositions = (shortcuts: SiteShortcut[], columns: number) => {
     }
   };
 
-  shortcuts.forEach((shortcut) => {
-    const span = getShortcutSpan(shortcut);
-    const position = shortcut.gridPosition;
-    if (position && canPlace(position.column, position.row, span)) {
-      occupy(shortcut.id, position.column, position.row, span);
-    }
-  });
-  shortcuts.forEach((shortcut) => {
-    if (positions.has(shortcut.id)) return;
-    const span = getShortcutSpan(shortcut);
-    for (let row = 1; ; row += 1) {
-      for (let column = 1; column <= columns - span + 1; column += 1) {
-        if (canPlace(column, row, span)) {
-          occupy(shortcut.id, column, row, span);
-          return;
+  // 1. 默认不自动补位：严格尊重并锁定每个图标已有的自定义网格坐标
+  if (!autoFill) {
+    shortcuts.forEach((shortcut) => {
+      const span = getShortcutSpan(shortcut);
+      const position = shortcut.gridPosition;
+      if (position && canPlace(position.column, position.row, span)) {
+        occupy(shortcut.id, position.column, position.row, span);
+      }
+    });
+
+    // 对于未指定坐标的项，按顺序寻找空闲网格填充
+    shortcuts.forEach((shortcut) => {
+      if (positions.has(shortcut.id)) return;
+      const span = getShortcutSpan(shortcut);
+      for (let row = 1; ; row += 1) {
+        for (let column = 1; column <= columns - span + 1; column += 1) {
+          if (canPlace(column, row, span)) {
+            occupy(shortcut.id, column, row, span);
+            return;
+          }
         }
       }
-    }
-  });
+    });
+  } else {
+    // 2. 开启自动补位：必须按照图标已有的实际空间位置排序（行优先，从上到下、从左到右），严禁使用底层数组索引导致视觉顺序错乱！
+    const sorted = [...shortcuts].sort((a, b) => {
+      const posA = a.gridPosition;
+      const posB = b.gridPosition;
+      if (posA && posB) {
+        if (posA.row !== posB.row) return posA.row - posB.row;
+        return posA.column - posB.column;
+      }
+      if (posA) return -1;
+      if (posB) return 1;
+      return 0;
+    });
+
+    // 按照正确的空间几何顺序，依次紧密填补空白网格槽位
+    sorted.forEach((shortcut) => {
+      const span = getShortcutSpan(shortcut);
+      for (let row = 1; ; row += 1) {
+        for (let column = 1; column <= columns - span + 1; column += 1) {
+          if (canPlace(column, row, span)) {
+            occupy(shortcut.id, column, row, span);
+            return;
+          }
+        }
+      }
+    });
+  }
   return positions;
 };
 
@@ -331,6 +368,7 @@ const IconCandidatePicker: React.FC<{
 
 interface ShortcutsProps {
   shortcuts: SiteShortcut[];
+  displayMode: 'compact' | 'desktop';
   language: Language;
   openInNewTab: boolean;
   theme: 'dark' | 'light' | 'auto';
@@ -343,10 +381,13 @@ interface ShortcutsProps {
   onEditShortcut: (shortcut: SiteShortcut) => void;
   onDeleteShortcut: (id: string) => void;
   onReorderShortcuts?: (shortcuts: SiteShortcut[]) => void;
+  autoFill?: boolean;
+  onToggleAutoFill?: (autoFill: boolean) => void;
 }
 
 export const Shortcuts: React.FC<ShortcutsProps> = ({
   shortcuts,
+  displayMode,
   language,
   openInNewTab,
   theme,
@@ -355,7 +396,12 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
   onEditShortcut,
   onDeleteShortcut,
   onReorderShortcuts,
+  autoFill = false,
+  onToggleAutoFill,
 }) => {
+  const t = i18n[language];
+  const isDark = theme === 'dark';
+  const isDesktop = displayMode === 'desktop';
   const [modalOpen, setModalOpen] = useState(false);
   const [editingShortcut, setEditingShortcut] = useState<SiteShortcut | null>(null);
   const [orderedShortcuts, setOrderedShortcuts] = useState<SiteShortcut[]>(shortcuts);
@@ -370,8 +416,8 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
   const gridRef = React.useRef<HTMLDivElement | null>(null);
   const dragAnchorRef = React.useRef<{ xRatio: number; yRatio: number } | null>(null);
   const gridPositions = React.useMemo(
-    () => resolveGridPositions(orderedShortcuts, desktopColumns),
-    [orderedShortcuts, desktopColumns]
+    () => resolveGridPositions(orderedShortcuts, desktopColumns, autoFill),
+    [orderedShortcuts, desktopColumns, autoFill]
   );
   const [gridDropPreview, setGridDropPreview] = useState<{
     column: number;
@@ -450,9 +496,8 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
     orderedShortcutsRef.current = shortcuts;
     setOrderedShortcuts(shortcuts);
   }, [shortcuts]);
+
   const [form] = Form.useForm();
-  const t = i18n[language];
-  const isDark = theme === 'dark';
   const formUrl = Form.useWatch('url', form);
   const formTitle = Form.useWatch('title', form);
   const formIcon = Form.useWatch('icon', form);
@@ -522,7 +567,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
   const handleOpenAdd = (position?: { column: number; row: number }) => {
     setEditingShortcut(null);
     setTargetFolderForAdd(null);
-    setPendingAddPosition(position ?? addButtonPosition);
+    setPendingAddPosition(position ?? (isDesktop ? addButtonPosition : null));
     setContextMenu(null);
     setGridContextMenu(null);
     form.resetFields();
@@ -726,9 +771,20 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
 
   const commitGridPosition = (sourceId: string, position: { column: number; row: number }) => {
     if (!canPlaceAt(sourceId, position.column, position.row)) return false;
-    const next = orderedShortcutsRef.current.map((shortcut) =>
+    const updated = orderedShortcutsRef.current.map((shortcut) =>
       shortcut.id === sourceId ? { ...shortcut, gridPosition: position } : shortcut
     );
+    const next = [...updated].sort((a, b) => {
+      const posA = a.gridPosition;
+      const posB = b.gridPosition;
+      if (posA && posB) {
+        if (posA.row !== posB.row) return posA.row - posB.row;
+        return posA.column - posB.column;
+      }
+      if (posA) return -1;
+      if (posB) return 1;
+      return 0;
+    });
     dragCommitRef.current = 'reorder';
     orderedShortcutsRef.current = next;
     setOrderedShortcuts(next);
@@ -1182,6 +1238,26 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
     setActiveFolderId(item.id);
   };
 
+  const handleCompactGrid = () => {
+    const sorted = [...orderedShortcuts].sort((a, b) => {
+      const posA = gridPositions.get(a.id) || { column: 1, row: 1 };
+      const posB = gridPositions.get(b.id) || { column: 1, row: 1 };
+      if (posA.row !== posB.row) return posA.row - posB.row;
+      return posA.column - posB.column;
+    });
+    const compactedPositions = resolveGridPositions(sorted, desktopColumns, true);
+    const next = sorted.map((item) => ({
+      ...item,
+      gridPosition: compactedPositions.get(item.id) || null,
+    }));
+    setOrderedShortcuts(next);
+    if (onReorderShortcuts) {
+      onReorderShortcuts(next);
+    }
+    setGridContextMenu(null);
+    message.success(t.gridCompacted);
+  };
+
   const confirmDeleteShortcut = (item: SiteShortcut) => {
     Modal.confirm({
       title: item.isFolder
@@ -1194,7 +1270,21 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
       cancelText: language === 'zh' ? '取消' : 'Cancel',
       okButtonProps: { danger: true },
       centered: true,
-      onOk: () => onDeleteShortcut(item.id),
+      onOk: () => {
+        if (isDesktop && !autoFill) {
+          // 默认不自动补位：删除前锁死其余所有图标当前的绝对网格位置，保证删除项原地留白，绝不自动向前挤压补位
+          const next = orderedShortcuts
+            .filter((s) => s.id !== item.id)
+            .map((s) => ({
+              ...s,
+              gridPosition: s.gridPosition || gridPositions.get(s.id) || null,
+            }));
+          if (onReorderShortcuts) {
+            onReorderShortcuts(next);
+          }
+        }
+        onDeleteShortcut(item.id);
+      },
     });
   };
 
@@ -1205,24 +1295,30 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
   const previewSource = orderedShortcuts.find((item) => item.id === draggedId);
 
   return (
-    <div className="group/shortcut-area relative w-full max-w-[680px] mx-auto min-h-[276px] sm:min-h-[316px]">
-      <button
-        type="button"
-        onClick={() => handleOpenAdd()}
-        aria-label={t.addShortcut}
-        title={t.addShortcut}
-        className={`absolute right-1 -top-9 z-30 flex h-8 w-8 items-center justify-center rounded-full border shadow-lg backdrop-blur-xl transition-all active:scale-90 sm:opacity-45 sm:hover:opacity-100 sm:group-hover/shortcut-area:opacity-100 ${
-          isDark
-            ? 'border-white/15 bg-[#16181f]/75 text-white hover:bg-[#20242d]/90'
-            : 'border-black/10 bg-white/75 text-neutral-700 hover:bg-white/95'
-        }`}
-      >
-        <Plus size={17} strokeWidth={2.4} />
-      </button>
+    <div className={`group/shortcut-area relative w-full max-w-[680px] mx-auto ${
+      isDesktop ? 'min-h-[276px] sm:min-h-[316px]' : 'shortcut-area-compact'
+    }`}>
+      {/* 桌面模式下悬浮添加按钮：仅在桌面自由网格模式下且鼠标悬浮在区域时显现，避免与简洁模式及搜索栏冲突 */}
+      {isDesktop && (
+        <button
+          type="button"
+          onClick={() => handleOpenAdd()}
+          aria-label={t.addShortcut}
+          title={t.addShortcut}
+          className={`absolute -right-3 -top-7 z-30 flex h-7 w-7 items-center justify-center rounded-full border shadow-md backdrop-blur-xl transition-all active:scale-90 opacity-0 group-hover/shortcut-area:opacity-70 hover:!opacity-100 ${
+            isDark
+              ? 'border-white/15 bg-[#16181f]/80 text-white hover:bg-[#20242d]'
+              : 'border-black/10 bg-white/80 text-neutral-700 hover:bg-white'
+          }`}
+        >
+          <Plus size={15} strokeWidth={2.4} />
+        </button>
+      )}
       <div
         ref={gridRef}
-        className="shortcut-grid"
+        className={isDesktop ? 'shortcut-grid' : 'shortcut-grid-compact'}
         onDragOver={(e) => {
+          if (!isDesktop) return;
           const sourceId = draggedIdRef.current;
           if (!sourceId) return;
           e.preventDefault();
@@ -1253,8 +1349,9 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
         onDragLeave={(e) => {
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setGridDropPreview(null);
         }}
-        onDrop={handleGridDrop}
+        onDrop={isDesktop ? handleGridDrop : undefined}
         onContextMenu={(event) => {
+          if (!isDesktop) return;
           if ((event.target as HTMLElement).closest('[data-shortcut-id]')) return;
           event.preventDefault();
           const pointedCell = getGridCellFromPointer(event.clientX, event.clientY);
@@ -1270,7 +1367,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
           });
         }}
       >
-        {gridDropPreview && previewSource && (
+        {isDesktop && gridDropPreview && previewSource && (
           <div
             aria-hidden="true"
             className={`shortcut-drop-preview ${gridDropPreview.valid ? 'is-valid' : 'is-invalid'}`}
@@ -1287,8 +1384,8 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
           const draggedItem = orderedShortcuts.find((s) => s.id === draggedId);
           const canMerge = draggedItem && !draggedItem.isFolder;
           const isMergeTarget = canMerge && mergeHoverTargetId === item.id && !isDragging;
-          const isLargeFolder = item.isFolder && item.folderSize === '2x2';
-          const gridPosition = gridPositions.get(item.id);
+          const isLargeFolder = isDesktop && item.isFolder && item.folderSize === '2x2';
+          const gridPosition = isDesktop ? gridPositions.get(item.id) : undefined;
           const insertionClass = isDragTarget && insertSide
             ? insertSide === 'left'
               ? 'shortcut-insert-before'
@@ -1299,12 +1396,12 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
             <div
               key={item.id}
               data-shortcut-id={item.id}
-              draggable={true}
-              onDragStart={(e) => handleDragStart(e, item.id)}
-              onDragOver={(e) => handleDragOver(e, item.id)}
-              onDragLeave={handleDragLeave}
-              onDragEnd={handleDragEnd}
-              onDrop={(e) => handleDropOnItem(e, item.id)}
+              draggable={isDesktop}
+              onDragStart={isDesktop ? (e) => handleDragStart(e, item.id) : undefined}
+              onDragOver={isDesktop ? (e) => handleDragOver(e, item.id) : undefined}
+              onDragLeave={isDesktop ? handleDragLeave : undefined}
+              onDragEnd={isDesktop ? handleDragEnd : undefined}
+              onDrop={isDesktop ? (e) => handleDropOnItem(e, item.id) : undefined}
               className={`group relative flex flex-col items-center cursor-default select-none transition-all duration-200 ${
                 isLargeFolder ? 'shortcut-grid-item-large' : 'shortcut-grid-item'
               } ${insertionClass} ${
@@ -1355,7 +1452,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                 }}
               >
                 {item.isFolder ? (
-                  <FolderThumbnailView folder={item} onChildClick={handleFolderChildClick} />
+                  <FolderThumbnailView folder={item} compact={!isDesktop} onChildClick={handleFolderChildClick} />
                 ) : (
                   <ShortcutIconView
                     url={item.url}
@@ -1373,6 +1470,44 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
             </div>
           );
         })}
+
+        {/* 简洁模式：将添加按钮作为最后一个快捷方式项自然融入列表末尾 */}
+        {!isDesktop && (
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => handleOpenAdd()}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleOpenAdd();
+              }
+            }}
+            aria-label={t.addShortcut}
+            className="group relative flex flex-col items-center cursor-pointer select-none transition-all duration-200 shortcut-grid-item active:scale-95"
+          >
+            <div
+              className={`flex items-center justify-center shadow-lg transition-all duration-200 overflow-hidden border w-13 h-13 sm:w-14 sm:h-14 rounded-2xl ${
+                isDark
+                  ? 'border-white/15 border-dashed group-hover:border-white/50 group-hover:bg-white/10 group-active:bg-white/15 text-white/70 group-hover:text-white'
+                  : 'border-white/80 border-dashed group-hover:border-white group-hover:bg-white/80 group-active:bg-white/90 text-neutral-600 group-hover:text-neutral-900'
+              }`}
+              style={{
+                backdropFilter: `blur(${Math.max(glassStyle.blur, 16)}px) saturate(180%)`,
+                WebkitBackdropFilter: `blur(${Math.max(glassStyle.blur, 16)}px) saturate(180%)`,
+                backgroundColor: isDark ? 'rgba(18, 22, 30, 0.45)' : 'rgba(255, 255, 255, 0.45)',
+                boxShadow: isDark
+                  ? '0 10px 25px -5px rgba(0, 0, 0, 0.3), inset 0 1px 1px 0 rgba(255, 255, 255, 0.08)'
+                  : '0 10px 25px -5px rgba(0, 0, 0, 0.06), inset 0 1px 1px 0 rgba(255, 255, 255, 0.6)',
+              }}
+            >
+              <Plus size={22} strokeWidth={2.2} className="transition-transform duration-200 group-hover:scale-110" />
+            </div>
+            <span className="mt-2 text-xs text-white/80 font-medium truncate max-w-full text-center drop-shadow-sm group-hover:text-white transition-colors">
+              {t.addShortcut}
+            </span>
+          </div>
+        )}
 
       </div>
 
@@ -1397,6 +1532,42 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
           >
             <Plus size={15} />
             <span>{t.addShortcut}</span>
+          </button>
+
+          <div className="my-1 h-px bg-black/5 dark:bg-white/10" />
+
+          {onToggleAutoFill && (
+            <button
+              type="button"
+              role="menuitem"
+              className="flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/10 select-none"
+              onClick={() => {
+                onToggleAutoFill(!autoFill);
+                setGridContextMenu(null);
+              }}
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <LayoutGrid size={15} className="shrink-0 text-neutral-500 dark:text-neutral-400" />
+                <span className="truncate font-medium">{t.shortcutAutoFillMenu || '自动补位'}</span>
+              </div>
+              {autoFill ? (
+                <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] bg-blue-500 text-white shadow-xs">
+                  <Check size={12} strokeWidth={3} />
+                </div>
+              ) : (
+                <div className="h-4 w-4 shrink-0 rounded-[5px] border border-neutral-400/60 dark:border-neutral-500/60 bg-transparent" />
+              )}
+            </button>
+          )}
+
+          <button
+            type="button"
+            role="menuitem"
+            className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+            onClick={handleCompactGrid}
+          >
+            <Maximize2 size={15} />
+            <span>{t.compactGridNow}</span>
           </button>
         </div>
       )}
@@ -1432,18 +1603,20 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
           </button>
           {contextMenuItem.isFolder ? (
             <>
-              <button
-                type="button"
-                role="menuitem"
-                className="w-full flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
-                onClick={() => {
-                  setContextMenu(null);
-                  handleToggleFolderSize(contextMenuItem.id);
-                }}
-              >
-                {contextMenuItem.folderSize === '2x2' ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
-                <span>{contextMenuItem.folderSize === '2x2' ? (language === 'zh' ? '缩小为 1×1' : 'Shrink to 1×1') : (language === 'zh' ? '放大为 2×2' : 'Enlarge to 2×2')}</span>
-              </button>
+              {isDesktop && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  className="w-full flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-sm text-left hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                  onClick={() => {
+                    setContextMenu(null);
+                    handleToggleFolderSize(contextMenuItem.id);
+                  }}
+                >
+                  {contextMenuItem.folderSize === '2x2' ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+                  <span>{contextMenuItem.folderSize === '2x2' ? (language === 'zh' ? '缩小为 1×1' : 'Shrink to 1×1') : (language === 'zh' ? '放大为 2×2' : 'Enlarge to 2×2')}</span>
+                </button>
+              )}
               <button
                 type="button"
                 role="menuitem"
