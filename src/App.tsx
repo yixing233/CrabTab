@@ -6,7 +6,8 @@ import {
   TranslationOutlined, 
   SettingOutlined, 
   HistoryOutlined, 
-  ReloadOutlined
+  ReloadOutlined,
+  BookOutlined
 } from '@ant-design/icons';
 import { AppSettings, SiteShortcut, SearchEngineId, CountdownItem } from './types';
 import { 
@@ -496,6 +497,33 @@ export const App: React.FC = () => {
                   }`}
                 >
                   <TranslationOutlined className="text-xs" />
+                </button>
+              </Tooltip>
+
+              {/* Browser Bookmarks Bar Toggle Button */}
+              <Tooltip
+                title={
+                  (settings.showBookmarkBar ?? true)
+                    ? (settings.language === 'zh' ? '隐藏浏览器书签栏' : 'Hide Bookmarks Bar')
+                    : (settings.language === 'zh' ? '显示浏览器书签栏' : 'Show Bookmarks Bar')
+                }
+                placement="bottom"
+              >
+                <button
+                  type="button"
+                  onClick={() => handleUpdateSettings({ showBookmarkBar: !(settings.showBookmarkBar ?? true) })}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                    (settings.showBookmarkBar ?? true)
+                      ? isDark
+                        ? 'bg-white/15 text-emerald-400 font-semibold shadow-inner'
+                        : 'bg-black/10 text-emerald-600 font-semibold shadow-inner'
+                      : isDark
+                        ? 'hover:bg-white/15 text-white/85 hover:text-white active:bg-white/20 opacity-50 hover:opacity-100'
+                        : 'hover:bg-black/8 text-gray-700 hover:text-gray-950 active:bg-black/12 opacity-50 hover:opacity-100'
+                  }`}
+                  aria-label="切换浏览器书签栏"
+                >
+                  <BookOutlined className="text-xs" />
                 </button>
               </Tooltip>
 
