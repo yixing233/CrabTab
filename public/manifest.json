@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CrabTab - 现代毛玻璃极简起始页",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "极简精致、现代毛玻璃美学的智能新标签页与主页扩展",
   "chrome_url_overrides": {
     "newtab": "index.html"
