@@ -10,6 +10,7 @@ import {
   ArrowUpRight,
   Bookmark,
   Clock,
+  Check,
 } from 'lucide-react';
 import { SearchEngineId, SuggestionEngineId, Language, BrowserHistoryItem } from '../types';
 import { SEARCH_ENGINES } from '../constants';
@@ -498,8 +499,9 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
             </button>
           )}
 
-          {/* Quick Toggles: 书签与历史记录快捷开关 */}
-          <div className="flex items-center gap-1 ml-1 mr-1.5 pl-2 border-l border-black/8 dark:border-white/10 shrink-0 select-none">
+          {/* Quick Toggles: 书签与历史记录快捷开关（图标 + 右上角圆形复选框） */}
+          <div className="flex items-center gap-2 ml-1 mr-1.5 pl-2 border-l border-black/8 dark:border-white/10 shrink-0 select-none">
+            {/* 书签快速开关 */}
             <Tooltip
               title={
                 enableBookmarksSearch
@@ -515,28 +517,35 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                   onToggleSearchBookmarks?.(!enableBookmarksSearch);
                   inputRef.current?.focus();
                 }}
-                className={`h-6 px-1.5 sm:px-2 rounded-lg flex items-center gap-1 text-[11px] font-medium transition-all cursor-pointer border ${
+                className={`relative w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer border ${
                   enableBookmarksSearch
-                    ? 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20'
-                    : 'bg-black/[0.03] dark:bg-white/[0.04] text-neutral-400 dark:text-neutral-500 border-transparent hover:text-neutral-600 dark:hover:text-neutral-300 opacity-60 hover:opacity-90'
-                }`}
+                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25 shadow-xs'
+                    : 'bg-black/[0.03] dark:bg-white/[0.04] text-neutral-400 dark:text-neutral-500 border-black/[0.06] dark:border-white/[0.08] hover:text-neutral-600 dark:hover:text-neutral-300 opacity-60 hover:opacity-100'
+                } active:scale-95`}
                 aria-label="切换书签搜索"
               >
                 <Bookmark
-                  className={`w-3 h-3 shrink-0 ${
-                    enableBookmarksSearch ? 'fill-emerald-500/20 text-emerald-500' : 'opacity-50'
+                  className={`w-3.5 h-3.5 transition-colors ${
+                    enableBookmarksSearch ? 'fill-emerald-500/25 text-emerald-600 dark:text-emerald-400' : 'opacity-60'
                   }`}
                 />
+
+                {/* 右上角圆形复选框 */}
                 <span
-                  className={`hidden sm:inline ${
-                    !enableBookmarksSearch ? 'line-through decoration-neutral-400/60' : ''
+                  className={`absolute -top-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center transition-all ring-1.5 ring-white dark:ring-[#141820] pointer-events-none ${
+                    enableBookmarksSearch
+                      ? 'bg-emerald-500 text-white shadow-xs'
+                      : 'border border-neutral-400/80 dark:border-neutral-500/80 bg-white/95 dark:bg-neutral-800/95'
                   }`}
                 >
-                  {t.searchResultBookmarks}
+                  {enableBookmarksSearch && (
+                    <Check className="w-2 h-2 stroke-[3]" />
+                  )}
                 </span>
               </button>
             </Tooltip>
 
+            {/* 历史记录快速开关 */}
             <Tooltip
               title={
                 searchHistoryEnabled
@@ -552,24 +561,30 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                   onToggleSearchHistory?.(!searchHistoryEnabled);
                   inputRef.current?.focus();
                 }}
-                className={`h-6 px-1.5 sm:px-2 rounded-lg flex items-center gap-1 text-[11px] font-medium transition-all cursor-pointer border ${
+                className={`relative w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer border ${
                   searchHistoryEnabled
-                    ? 'bg-purple-500/12 text-purple-600 dark:text-purple-400 border-purple-500/25 hover:bg-purple-500/20'
-                    : 'bg-black/[0.03] dark:bg-white/[0.04] text-neutral-400 dark:text-neutral-500 border-transparent hover:text-neutral-600 dark:hover:text-neutral-300 opacity-60 hover:opacity-90'
-                }`}
+                    ? 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30 hover:bg-purple-500/25 shadow-xs'
+                    : 'bg-black/[0.03] dark:bg-white/[0.04] text-neutral-400 dark:text-neutral-500 border-black/[0.06] dark:border-white/[0.08] hover:text-neutral-600 dark:hover:text-neutral-300 opacity-60 hover:opacity-100'
+                } active:scale-95`}
                 aria-label="切换历史记录搜索"
               >
                 <Clock
-                  className={`w-3 h-3 shrink-0 ${
-                    searchHistoryEnabled ? 'text-purple-500' : 'opacity-50'
+                  className={`w-3.5 h-3.5 transition-colors ${
+                    searchHistoryEnabled ? 'text-purple-600 dark:text-purple-400' : 'opacity-60'
                   }`}
                 />
+
+                {/* 右上角圆形复选框 */}
                 <span
-                  className={`hidden sm:inline ${
-                    !searchHistoryEnabled ? 'line-through decoration-neutral-400/60' : ''
+                  className={`absolute -top-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center transition-all ring-1.5 ring-white dark:ring-[#141820] pointer-events-none ${
+                    searchHistoryEnabled
+                      ? 'bg-purple-500 text-white shadow-xs'
+                      : 'border border-neutral-400/80 dark:border-neutral-500/80 bg-white/95 dark:bg-neutral-800/95'
                   }`}
                 >
-                  {t.searchResultHistory}
+                  {searchHistoryEnabled && (
+                    <Check className="w-2 h-2 stroke-[3]" />
+                  )}
                 </span>
               </button>
             </Tooltip>
