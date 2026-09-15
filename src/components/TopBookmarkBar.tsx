@@ -196,23 +196,205 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
     return () => window.removeEventListener('resize', checkScroll);
   }, [checkScroll, barItems]);
 
+  // 滚轮平滑插值与动量控制器
+  const wheelTargetRef = useRef<number | null>(null);
+  const wheelRafRef = useRef<number | null>(null);
+
+  // 鼠标拖拽滑动状态管理
+  const dragRef = useRef({
+    pointerId: -1,
+    startX: 0,
+    startScrollLeft: 0,
+    lastX: 0,
+    lastTime: 0,
+    velocity: 0,
+  });
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const hasDraggedRef = useRef<boolean>(false);
+  const momentumAnimRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (momentumAnimRef.current) cancelAnimationFrame(momentumAnimRef.current);
+      if (wheelRafRef.current) cancelAnimationFrame(wheelRafRef.current);
+    };
+  }, []);
+
+  // 滚轮横向极速丝滑滚动（高响应步进与触控板平滑自适应）
   useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
 
     const onWheel = (e: WheelEvent) => {
       if (el.scrollWidth <= el.clientWidth) return;
-      // 当存在垂直滚轮输入且未明确要求水平移动时，将滚轮平滑映射为横向滚动
-      if (e.deltaY !== 0 && Math.abs(e.deltaY) >= Math.abs(e.deltaX)) {
-        e.preventDefault();
-        el.scrollLeft += e.deltaY * 0.9;
+
+      let rawDelta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (rawDelta === 0) return;
+
+      e.preventDefault();
+
+      if (e.deltaMode === 1) {
+        rawDelta *= 36;
+      } else if (e.deltaMode === 2) {
+        rawDelta *= el.clientWidth;
+      }
+
+      if (momentumAnimRef.current) {
+        cancelAnimationFrame(momentumAnimRef.current);
+        momentumAnimRef.current = null;
+      }
+
+      const isTouchpad = Math.abs(rawDelta) < 35 && e.deltaMode === 0;
+
+      if (isTouchpad) {
+        if (wheelRafRef.current) {
+          cancelAnimationFrame(wheelRafRef.current);
+          wheelRafRef.current = null;
+        }
+        wheelTargetRef.current = null;
+        el.scrollLeft += rawDelta * 1.25;
         checkScroll();
+        return;
+      }
+
+      // 标签栏单书签宽度约 90-130px，一档滚轮 (~100) 对应推进约 180px（约 1.5 ~ 2 个书签）
+      const multiplier = 1.8;
+      const maxScroll = el.scrollWidth - el.clientWidth;
+
+      if (wheelTargetRef.current === null) {
+        wheelTargetRef.current = el.scrollLeft;
+      }
+
+      wheelTargetRef.current = Math.max(0, Math.min(maxScroll, wheelTargetRef.current + rawDelta * multiplier));
+
+      const stepWheel = () => {
+        if (!scrollContainerRef.current || wheelTargetRef.current === null) {
+          wheelRafRef.current = null;
+          return;
+        }
+
+        const current = scrollContainerRef.current.scrollLeft;
+        const target = wheelTargetRef.current;
+        const diff = target - current;
+
+        if (Math.abs(diff) < 0.8) {
+          scrollContainerRef.current.scrollLeft = target;
+          wheelTargetRef.current = null;
+          wheelRafRef.current = null;
+          checkScroll();
+          return;
+        }
+
+        scrollContainerRef.current.scrollLeft += diff * 0.22;
+        checkScroll();
+        wheelRafRef.current = requestAnimationFrame(stepWheel);
+      };
+
+      if (!wheelRafRef.current) {
+        wheelRafRef.current = requestAnimationFrame(stepWheel);
       }
     };
 
     el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      if (wheelRafRef.current) cancelAnimationFrame(wheelRafRef.current);
+    };
   }, [checkScroll]);
+
+  // 鼠标拖拽捕获与惯性滚动
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== 'mouse' || e.button !== 0 || dragRef.current.pointerId !== -1) return;
+    const el = scrollContainerRef.current;
+    if (!el || el.scrollWidth <= el.clientWidth) return;
+
+    if (wheelRafRef.current) {
+      cancelAnimationFrame(wheelRafRef.current);
+      wheelRafRef.current = null;
+      wheelTargetRef.current = null;
+    }
+    if (momentumAnimRef.current) {
+      cancelAnimationFrame(momentumAnimRef.current);
+      momentumAnimRef.current = null;
+    }
+
+    dragRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startScrollLeft: el.scrollLeft,
+      lastX: e.clientX,
+      lastTime: performance.now(),
+      velocity: 0,
+    };
+    hasDraggedRef.current = false;
+    el.setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current.pointerId !== e.pointerId || !scrollContainerRef.current) return;
+    const el = scrollContainerRef.current;
+    const distance = e.clientX - dragRef.current.startX;
+
+    if (!hasDraggedRef.current && Math.abs(distance) > 4) {
+      hasDraggedRef.current = true;
+      setIsDragging(true);
+    }
+
+    if (hasDraggedRef.current) {
+      const now = performance.now();
+      const dt = Math.max(now - dragRef.current.lastTime, 1);
+      const dx = e.clientX - dragRef.current.lastX;
+      dragRef.current.velocity = dx / dt;
+      dragRef.current.lastX = e.clientX;
+      dragRef.current.lastTime = now;
+
+      el.scrollLeft = dragRef.current.startScrollLeft - distance;
+      checkScroll();
+    }
+  };
+
+  const stopDragging = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current.pointerId !== e.pointerId) return;
+    const el = scrollContainerRef.current;
+    if (el && e.currentTarget.hasPointerCapture(e.pointerId)) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {}
+    }
+    dragRef.current.pointerId = -1;
+
+    if (hasDraggedRef.current) {
+      setIsDragging(false);
+
+      const initialVelocity = dragRef.current.velocity;
+      if (el && Math.abs(initialVelocity) > 0.12) {
+        let currentSpeed = initialVelocity * 15;
+        const friction = 0.94;
+
+        const momentumStep = () => {
+          if (!scrollContainerRef.current || Math.abs(currentSpeed) < 0.5) {
+            momentumAnimRef.current = null;
+            checkScroll();
+            return;
+          }
+          scrollContainerRef.current.scrollLeft -= currentSpeed;
+          currentSpeed *= friction;
+          checkScroll();
+          momentumAnimRef.current = requestAnimationFrame(momentumStep);
+        };
+
+        if (momentumAnimRef.current) cancelAnimationFrame(momentumAnimRef.current);
+        momentumAnimRef.current = requestAnimationFrame(momentumStep);
+      }
+
+      setTimeout(() => {
+        hasDraggedRef.current = false;
+      }, 80);
+    } else {
+      setIsDragging(false);
+      hasDraggedRef.current = false;
+    }
+  };
 
   const searchResults: BookmarkSearchResult[] = useMemo(() => {
     if (!searchQuery.trim()) return [];
@@ -250,7 +432,23 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
             <div
               ref={scrollContainerRef}
               onScroll={checkScroll}
-              className="flex-1 min-w-0 flex items-center gap-0.5 overflow-x-auto scrollbar-none py-1 scroll-smooth overscroll-contain"
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={stopDragging}
+              onPointerCancel={stopDragging}
+              onClickCapture={(e) => {
+                if (hasDraggedRef.current) {
+                  e.stopPropagation();
+                  e.preventDefault();
+                }
+              }}
+              className={`flex-1 min-w-0 flex items-center gap-0.5 overflow-x-auto scrollbar-none py-1 overscroll-contain select-none transition-[cursor] ${
+                isDragging
+                  ? 'cursor-grabbing'
+                  : canScrollLeft || canScrollRight
+                    ? 'cursor-grab'
+                    : 'cursor-default'
+              }`}
             >
               {loading ? (
                 <div className="flex items-center gap-1.5 px-2 text-xs opacity-50">
@@ -282,7 +480,9 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                       >
                         <button
                           type="button"
-                          className={`px-1.5 py-1 rounded-lg flex items-center gap-1 text-xs font-medium shrink-0 transition-all cursor-pointer ${
+                          className={`px-1.5 py-1 rounded-lg flex items-center gap-1 text-xs font-medium shrink-0 transition-all ${
+                            isDragging ? 'pointer-events-none' : 'cursor-pointer'
+                          } ${
                             isDark
                               ? 'hover:bg-white/15 text-white/85 hover:text-white active:bg-white/20'
                               : 'hover:bg-black/8 text-gray-700 hover:text-gray-900 active:bg-black/12'
@@ -305,7 +505,9 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                       type="button"
                       onClick={() => handleOpenBookmark(item.url || '')}
                       title={`${item.title}\n${item.url}`}
-                      className={`px-1.5 py-1 rounded-lg flex items-center gap-1 text-xs shrink-0 transition-all cursor-pointer ${
+                      className={`px-1.5 py-1 rounded-lg flex items-center gap-1 text-xs shrink-0 transition-all ${
+                        isDragging ? 'pointer-events-none' : 'cursor-pointer'
+                      } ${
                         isDark
                           ? 'hover:bg-white/15 text-white/85 hover:text-white active:bg-white/20'
                           : 'hover:bg-black/8 text-gray-700 hover:text-gray-900 active:bg-black/12'

@@ -231,34 +231,105 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
     return () => window.removeEventListener('resize', checkScroll);
   }, [checkScroll, displayItems]);
 
+  // 滚轮平滑插值与动量控制器
+  const wheelTargetRef = useRef<number | null>(null);
+  const wheelRafRef = useRef<number | null>(null);
+
   useEffect(() => {
     return () => {
-      if (momentumAnimRef.current) {
-        cancelAnimationFrame(momentumAnimRef.current);
-      }
+      if (momentumAnimRef.current) cancelAnimationFrame(momentumAnimRef.current);
+      if (wheelRafRef.current) cancelAnimationFrame(wheelRafRef.current);
     };
   }, []);
 
-  // 滚轮直接支持横向平滑滚动
+  // 滚轮横向极速丝滑滚动（支持高倍率卡片步进与触控板自适应）
   useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
 
     const onWheel = (e: WheelEvent) => {
       if (el.scrollWidth <= el.clientWidth) return;
+
+      // 提取主轴位移（横向优先，纵向滚轮转横向）
+      let rawDelta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+      if (rawDelta === 0) return;
+
+      e.preventDefault();
+
+      // 规范化 deltaMode (lines -> px, pages -> width)
+      if (e.deltaMode === 1) {
+        rawDelta *= 36;
+      } else if (e.deltaMode === 2) {
+        rawDelta *= el.clientWidth;
+      }
+
+      // 中断可能并行的拖拽惯性
       if (momentumAnimRef.current) {
         cancelAnimationFrame(momentumAnimRef.current);
         momentumAnimRef.current = null;
       }
-      if (e.deltaY !== 0 && Math.abs(e.deltaY) >= Math.abs(e.deltaX)) {
-        e.preventDefault();
-        el.scrollLeft += e.deltaY * 0.9;
+
+      // 触控板检测（微小高频像素位移）
+      const isTouchpad = Math.abs(rawDelta) < 35 && e.deltaMode === 0;
+
+      if (isTouchpad) {
+        if (wheelRafRef.current) {
+          cancelAnimationFrame(wheelRafRef.current);
+          wheelRafRef.current = null;
+        }
+        wheelTargetRef.current = null;
+        el.scrollLeft += rawDelta * 1.25;
         checkScroll();
+        return;
+      }
+
+      // 普通鼠标滚轮：
+      // 单张卡片宽度 205px + 间距 12px = 217px。
+      // 一档滚轮 (delta ~100) 对应推进 210px (正好 1 整张卡片)！
+      // 连续滚轮累加目标值，不再有迟滞感
+      const multiplier = 2.1;
+      const maxScroll = el.scrollWidth - el.clientWidth;
+
+      if (wheelTargetRef.current === null) {
+        wheelTargetRef.current = el.scrollLeft;
+      }
+
+      wheelTargetRef.current = Math.max(0, Math.min(maxScroll, wheelTargetRef.current + rawDelta * multiplier));
+
+      // RAF 平滑逼近
+      const stepWheel = () => {
+        if (!scrollContainerRef.current || wheelTargetRef.current === null) {
+          wheelRafRef.current = null;
+          return;
+        }
+
+        const current = scrollContainerRef.current.scrollLeft;
+        const target = wheelTargetRef.current;
+        const diff = target - current;
+
+        if (Math.abs(diff) < 0.8) {
+          scrollContainerRef.current.scrollLeft = target;
+          wheelTargetRef.current = null;
+          wheelRafRef.current = null;
+          checkScroll();
+          return;
+        }
+
+        scrollContainerRef.current.scrollLeft += diff * 0.22;
+        checkScroll();
+        wheelRafRef.current = requestAnimationFrame(stepWheel);
+      };
+
+      if (!wheelRafRef.current) {
+        wheelRafRef.current = requestAnimationFrame(stepWheel);
       }
     };
 
     el.addEventListener('wheel', onWheel, { passive: false });
-    return () => el.removeEventListener('wheel', onWheel);
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      if (wheelRafRef.current) cancelAnimationFrame(wheelRafRef.current);
+    };
   }, [checkScroll]);
 
   // 鼠标按下：启动拖拽滑动捕获
@@ -268,7 +339,12 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
     const el = scrollContainerRef.current;
     if (!el || el.scrollWidth <= el.clientWidth) return;
 
-    // 中断可能正在运行的惯性动画
+    // 中断可能正在运行的滚轮动画与惯性动画
+    if (wheelRafRef.current) {
+      cancelAnimationFrame(wheelRafRef.current);
+      wheelRafRef.current = null;
+      wheelTargetRef.current = null;
+    }
     if (momentumAnimRef.current) {
       cancelAnimationFrame(momentumAnimRef.current);
       momentumAnimRef.current = null;
@@ -438,10 +514,10 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
           }}
           className={`flex items-center gap-3 overflow-x-auto scrollbar-none py-1 overscroll-contain select-none transition-[cursor] ${
             isDragging
-              ? 'cursor-grabbing scroll-auto'
+              ? 'cursor-grabbing'
               : canScrollLeft || canScrollRight
-                ? 'cursor-grab scroll-smooth'
-                : 'cursor-default scroll-smooth'
+                ? 'cursor-grab'
+                : 'cursor-default'
           }`}
         >
           {loading && displayItems.length === 0 ? (
