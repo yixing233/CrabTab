@@ -428,6 +428,11 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
     },
   }));
 
+  // 统一定义搜索框与下拉联想卡片的毛玻璃材质样式，确保二者在任何壁纸与主题下材质、透明度、模糊度与色彩完全绝对一致
+  const glassBackgroundColor = isDark ? 'rgba(18, 22, 30, 0.65)' : 'rgba(255, 255, 255, 0.68)';
+  const glassBackdropFilter = `blur(${Math.max(glassStyle.blur, 16)}px) saturate(180%)`;
+  const glassBorder = `1px solid ${isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.75)'}`;
+
   return (
     <div ref={containerRef} className="relative w-full max-w-2xl mx-auto flex flex-col items-center">
       {/* Search Input Bar */}
@@ -437,10 +442,10 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
           isFocused ? 'ring-2 ring-blue-500/80 shadow-2xl' : 'hover:shadow-xl'
         }`}
         style={{
-          backgroundColor: isDark ? 'rgba(18, 22, 30, 0.65)' : 'rgba(255, 255, 255, 0.68)',
-          backdropFilter: `blur(${Math.max(glassStyle.blur, 16)}px) saturate(180%)`,
-          WebkitBackdropFilter: `blur(${Math.max(glassStyle.blur, 16)}px) saturate(180%)`,
-          border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.75)'}`,
+          backgroundColor: glassBackgroundColor,
+          backdropFilter: glassBackdropFilter,
+          WebkitBackdropFilter: glassBackdropFilter,
+          border: glassBorder,
         }}
       >
         {/* Search Engine Selector Dropdown */}
@@ -592,13 +597,13 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
               ? 'none'
               : 'height 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s, border-color 0.2s',
             willChange: 'height',
-            backgroundColor: isDark ? 'rgba(18, 22, 30, 0.78)' : 'rgba(255, 255, 255, 0.85)',
-            backdropFilter: `blur(${Math.max(glassStyle.blur, 18)}px) saturate(190%)`,
-            WebkitBackdropFilter: `blur(${Math.max(glassStyle.blur, 18)}px) saturate(190%)`,
-            border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.75)'}`,
+            backgroundColor: glassBackgroundColor,
+            backdropFilter: glassBackdropFilter,
+            WebkitBackdropFilter: glassBackdropFilter,
+            border: glassBorder,
             boxShadow: isDark
-              ? '0 20px 40px -12px rgba(0,0,0,0.5), inset 0 1px 1px 0 rgba(255,255,255,0.1)'
-              : '0 20px 40px -12px rgba(0,0,0,0.12), inset 0 1px 1px 0 rgba(255,255,255,0.8)',
+              ? '0 20px 40px -12px rgba(0,0,0,0.5)'
+              : '0 20px 40px -12px rgba(0,0,0,0.12)',
           }}
         >
           <div
