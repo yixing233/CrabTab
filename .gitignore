@@ -33,3 +33,5 @@ dist-ssr
 *.tmp
 *.bak
 *.zip
+*.pem
+key.pem
