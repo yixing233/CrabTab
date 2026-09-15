@@ -1146,32 +1146,96 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           )}
         </>
       ) : (
-        <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 transition-colors ${
-          isDark ? 'bg-white/[0.03] border-white/10' : 'bg-gray-50 border-gray-100'
-        }`}>
-          <div>
-            <div className="text-xs font-semibold flex items-center gap-2">
-              <span>{t.homeContentRecent}</span>
-              {(settings.pinnedRecentUrls?.length || 0) > 0 && (
-                <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-500 border border-blue-500/20">
-                  {settings.pinnedRecentUrls?.length} {settings.language === 'zh' ? '已置顶' : 'pinned'}
-                </span>
-              )}
+        <div className="flex flex-col gap-3">
+          <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 transition-colors ${
+            isDark ? 'bg-white/[0.03] border-white/10' : 'bg-gray-50 border-gray-100'
+          }`}>
+            <div>
+              <div className="text-xs font-semibold flex items-center gap-2">
+                <span>{t.homeContentRecent}</span>
+                {(settings.pinnedRecentUrls?.length || 0) > 0 && (
+                  <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-500 border border-blue-500/20">
+                    {settings.pinnedRecentUrls?.length} {settings.language === 'zh' ? '已置顶' : 'pinned'}
+                  </span>
+                )}
+              </div>
+              <div className="text-[11px] opacity-60 mt-0.5">
+                {settings.language === 'zh'
+                  ? '以精美卡片流呈现浏览器最近访问记录，点击右下角图钉可置顶喜爱网址'
+                  : 'Browse recent history as elegant cards. Pin your favorite sites to the front.'}
+              </div>
             </div>
-            <div className="text-[11px] opacity-60 mt-0.5">
-              {settings.language === 'zh'
-                ? '以精美卡片流呈现浏览器最近访问记录，点击右下角图钉可置顶喜爱网址'
-                : 'Browse recent history as elegant cards. Pin your favorite sites to the front.'}
+            {(settings.pinnedRecentUrls?.length || 0) > 0 && (
+              <Button
+                size="small"
+                onClick={() => onUpdateSettings({ pinnedRecentUrls: [] })}
+              >
+                {settings.language === 'zh' ? '清空置顶' : 'Clear Pinned'}
+              </Button>
+            )}
+          </div>
+
+          {/* 最近访问垂直位置微调 */}
+          <div className={`p-3 rounded-xl border flex flex-col gap-2.5 transition-colors ${
+            isDark ? 'bg-white/[0.03] border-white/10' : 'bg-gray-50 border-gray-100'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs font-semibold">{t.recentVerticalOffset}</div>
+                <div className="text-[11px] opacity-60 mt-0.5">{t.recentVerticalOffsetDesc}</div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Segmented
+                  size="small"
+                  value={
+                    (settings.recentVerticalOffset ?? 0) <= -25
+                      ? 'top'
+                      : (settings.recentVerticalOffset ?? 0) >= 25
+                        ? 'bottom'
+                        : 'center'
+                  }
+                  onChange={(val) => {
+                    const offsetMap: Record<string, number> = {
+                      top: -40,
+                      center: 0,
+                      bottom: 40,
+                    };
+                    onUpdateSettings({ recentVerticalOffset: offsetMap[val as string] ?? 0 });
+                  }}
+                  options={[
+                    { value: 'top', label: t.recentVerticalTop },
+                    { value: 'center', label: t.recentVerticalCenter },
+                    { value: 'bottom', label: t.recentVerticalBottom },
+                  ]}
+                />
+                <Button
+                  size="small"
+                  type="text"
+                  className="text-xs opacity-70 hover:opacity-100"
+                  onClick={() => onUpdateSettings({ recentVerticalOffset: 0 })}
+                >
+                  {settings.language === 'zh' ? '重置' : 'Reset'}
+                </Button>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 px-1 pt-1">
+              <Slider
+                className="flex-1 my-1"
+                min={-120}
+                max={120}
+                step={2}
+                value={settings.recentVerticalOffset ?? 0}
+                onChange={(value) => onUpdateSettings({ recentVerticalOffset: value })}
+                tooltip={{
+                  formatter: (val) => `${val && val > 0 ? `+${val}` : val ?? 0}px`,
+                }}
+              />
+              <span className="text-xs font-mono w-12 text-right opacity-70">
+                {(settings.recentVerticalOffset ?? 0) > 0 ? `+${settings.recentVerticalOffset}` : (settings.recentVerticalOffset ?? 0)}px
+              </span>
             </div>
           </div>
-          {(settings.pinnedRecentUrls?.length || 0) > 0 && (
-            <Button
-              size="small"
-              onClick={() => onUpdateSettings({ pinnedRecentUrls: [] })}
-            >
-              {settings.language === 'zh' ? '清空置顶' : 'Clear Pinned'}
-            </Button>
-          )}
         </div>
       )}
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Pin, RefreshCw, History } from 'lucide-react';
-import { Tooltip } from 'antd';
+import { Pin, RefreshCw, History, MoveVertical } from 'lucide-react';
+import { Tooltip, Popover, Slider } from 'antd';
 import { BrowserHistoryItem, Language, ThemeMode, GlassStyle } from '../types';
 import { fetchBrowserHistory } from '../utils/history';
 import { ShortcutIconView } from './Shortcuts';
@@ -13,6 +13,8 @@ export interface RecentCardsProps {
   glassStyle: GlassStyle;
   openInNewTab: boolean;
   pinnedUrls: string[];
+  verticalOffset?: number;
+  onUpdateVerticalOffset?: (offset: number) => void;
   onTogglePin: (item: BrowserHistoryItem) => void;
 }
 
@@ -126,6 +128,8 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
   glassStyle,
   openInNewTab,
   pinnedUrls,
+  verticalOffset = 0,
+  onUpdateVerticalOffset,
   onTogglePin,
 }) => {
   const t = i18n[language];
@@ -204,19 +208,6 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
   const [canScrollLeft, setCanScrollLeft] = useState<boolean>(false);
   const [canScrollRight, setCanScrollRight] = useState<boolean>(false);
 
-  // 鼠标拖拽滑动状态管理
-  const dragRef = useRef({
-    pointerId: -1,
-    startX: 0,
-    startScrollLeft: 0,
-    lastX: 0,
-    lastTime: 0,
-    velocity: 0,
-  });
-  const [isDragging, setIsDragging] = useState<boolean>(false);
-  const hasDraggedRef = useRef<boolean>(false);
-  const momentumAnimRef = useRef<number | null>(null);
-
   const checkScroll = useCallback(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
@@ -237,7 +228,6 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
 
   useEffect(() => {
     return () => {
-      if (momentumAnimRef.current) cancelAnimationFrame(momentumAnimRef.current);
       if (wheelRafRef.current) cancelAnimationFrame(wheelRafRef.current);
     };
   }, []);
@@ -248,64 +238,45 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
     if (!el) return;
 
     const onWheel = (e: WheelEvent) => {
+      // 如果没有可滚动的超宽内容，放行默认垂直滚动
       if (el.scrollWidth <= el.clientWidth) return;
 
-      // 提取主轴位移（横向优先，纵向滚轮转横向）
-      let rawDelta = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
-      if (rawDelta === 0) return;
+      const hasHoriz = Math.abs(e.deltaX) > Math.abs(e.deltaY);
+      const rawDelta = hasHoriz ? e.deltaX : e.deltaY;
+
+      if (Math.abs(rawDelta) < 1) return;
 
       e.preventDefault();
 
-      // 规范化 deltaMode (lines -> px, pages -> width)
-      if (e.deltaMode === 1) {
-        rawDelta *= 36;
-      } else if (e.deltaMode === 2) {
-        rawDelta *= el.clientWidth;
-      }
+      // 智能识别：离散鼠标滚轮（通常 deltaY 为整数且幅度较大）vs 精准触控板
+      const isDiscreteWheel = Math.abs(rawDelta) >= 40;
+      // 鼠标滚轮单次齿格大幅加速（约一张卡片宽度），触控板 1:1 自然线性手感
+      const factor = isDiscreteWheel ? 2.1 : 1.0;
+      const step = rawDelta * factor;
 
-      // 中断可能并行的拖拽惯性
-      if (momentumAnimRef.current) {
-        cancelAnimationFrame(momentumAnimRef.current);
-        momentumAnimRef.current = null;
-      }
+      const maxScroll = el.scrollWidth - el.clientWidth;
+      const current = scrollContainerRef.current?.scrollLeft || 0;
+      const base = wheelTargetRef.current !== null ? wheelTargetRef.current : current;
+      const nextTarget = Math.max(0, Math.min(maxScroll, base + step));
+      wheelTargetRef.current = nextTarget;
 
-      // 触控板检测（微小高频像素位移）
-      const isTouchpad = Math.abs(rawDelta) < 35 && e.deltaMode === 0;
-
-      if (isTouchpad) {
-        if (wheelRafRef.current) {
-          cancelAnimationFrame(wheelRafRef.current);
-          wheelRafRef.current = null;
-        }
+      // 触控板直接精准设定，避免多余延迟；鼠标齿轮采用 RAF 动量阻尼插值
+      if (!isDiscreteWheel) {
+        el.scrollLeft = nextTarget;
         wheelTargetRef.current = null;
-        el.scrollLeft += rawDelta * 1.25;
         checkScroll();
         return;
       }
 
-      // 普通鼠标滚轮：
-      // 单张卡片宽度 205px + 间距 12px = 217px。
-      // 一档滚轮 (delta ~100) 对应推进 210px (正好 1 整张卡片)！
-      // 连续滚轮累加目标值，不再有迟滞感
-      const multiplier = 2.1;
-      const maxScroll = el.scrollWidth - el.clientWidth;
-
-      if (wheelTargetRef.current === null) {
-        wheelTargetRef.current = el.scrollLeft;
-      }
-
-      wheelTargetRef.current = Math.max(0, Math.min(maxScroll, wheelTargetRef.current + rawDelta * multiplier));
-
-      // RAF 平滑逼近
       const stepWheel = () => {
         if (!scrollContainerRef.current || wheelTargetRef.current === null) {
           wheelRafRef.current = null;
           return;
         }
 
-        const current = scrollContainerRef.current.scrollLeft;
+        const curr = scrollContainerRef.current.scrollLeft;
         const target = wheelTargetRef.current;
-        const diff = target - current;
+        const diff = target - curr;
 
         if (Math.abs(diff) < 0.8) {
           scrollContainerRef.current.scrollLeft = target;
@@ -332,110 +303,9 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
     };
   }, [checkScroll]);
 
-  // 鼠标按下：启动拖拽滑动捕获
-  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    // 仅响应鼠标左键，且当前没有激活的指针捕获
-    if (e.pointerType !== 'mouse' || e.button !== 0 || dragRef.current.pointerId !== -1) return;
-    const el = scrollContainerRef.current;
-    if (!el || el.scrollWidth <= el.clientWidth) return;
-
-    // 中断可能正在运行的滚轮动画与惯性动画
-    if (wheelRafRef.current) {
-      cancelAnimationFrame(wheelRafRef.current);
-      wheelRafRef.current = null;
-      wheelTargetRef.current = null;
-    }
-    if (momentumAnimRef.current) {
-      cancelAnimationFrame(momentumAnimRef.current);
-      momentumAnimRef.current = null;
-    }
-
-    dragRef.current = {
-      pointerId: e.pointerId,
-      startX: e.clientX,
-      startScrollLeft: el.scrollLeft,
-      lastX: e.clientX,
-      lastTime: performance.now(),
-      velocity: 0,
-    };
-    hasDraggedRef.current = false;
-    el.setPointerCapture(e.pointerId);
-  };
-
-  // 鼠标移动：更新滚动位置与瞬时速度
-  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (dragRef.current.pointerId !== e.pointerId || !scrollContainerRef.current) return;
-    const el = scrollContainerRef.current;
-    const distance = e.clientX - dragRef.current.startX;
-
-    // 移动超过 4px 判定为拖拽行为，避免普通点击轻微位移产生误判
-    if (!hasDraggedRef.current && Math.abs(distance) > 4) {
-      hasDraggedRef.current = true;
-      setIsDragging(true);
-    }
-
-    if (hasDraggedRef.current) {
-      const now = performance.now();
-      const dt = Math.max(now - dragRef.current.lastTime, 1);
-      const dx = e.clientX - dragRef.current.lastX;
-      dragRef.current.velocity = dx / dt;
-      dragRef.current.lastX = e.clientX;
-      dragRef.current.lastTime = now;
-
-      el.scrollLeft = dragRef.current.startScrollLeft - distance;
-      checkScroll();
-    }
-  };
-
-  // 鼠标抬起/取消：释放捕获并施加惯性滚动
-  const stopDragging = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (dragRef.current.pointerId !== e.pointerId) return;
-    const el = scrollContainerRef.current;
-    if (el && e.currentTarget.hasPointerCapture(e.pointerId)) {
-      try {
-        e.currentTarget.releasePointerCapture(e.pointerId);
-      } catch {}
-    }
-    dragRef.current.pointerId = -1;
-
-    if (hasDraggedRef.current) {
-      setIsDragging(false);
-
-      // 施加自然惯性滑行 (Inertia Momentum)
-      const initialVelocity = dragRef.current.velocity;
-      if (el && Math.abs(initialVelocity) > 0.12) {
-        let currentSpeed = initialVelocity * 15;
-        const friction = 0.94;
-
-        const momentumStep = () => {
-          if (!scrollContainerRef.current || Math.abs(currentSpeed) < 0.5) {
-            momentumAnimRef.current = null;
-            checkScroll();
-            return;
-          }
-          scrollContainerRef.current.scrollLeft -= currentSpeed;
-          currentSpeed *= friction;
-          checkScroll();
-          momentumAnimRef.current = requestAnimationFrame(momentumStep);
-        };
-
-        if (momentumAnimRef.current) cancelAnimationFrame(momentumAnimRef.current);
-        momentumAnimRef.current = requestAnimationFrame(momentumStep);
-      }
-
-      // 稍作延迟重置标志，确保本次抬起事件后续冒泡的 click 触发被彻底拦截
-      setTimeout(() => {
-        hasDraggedRef.current = false;
-      }, 80);
-    } else {
-      setIsDragging(false);
-      hasDraggedRef.current = false;
-    }
-  };
-
   // 点击卡片跳转
   const handleCardClick = (url: string) => {
-    if (!url || hasDraggedRef.current || isDragging) return;
+    if (!url) return;
     if (openInNewTab) {
       window.open(url, '_blank');
     } else {
@@ -467,6 +337,104 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
         </div>
 
         <div className="flex items-center gap-1.5">
+          {onUpdateVerticalOffset && (
+            <Popover
+              trigger="click"
+              placement="bottomRight"
+              arrow={false}
+              content={
+                <div className="w-60 p-1 flex flex-col gap-2.5 select-none">
+                  <div className="flex items-center justify-between border-b pb-1.5 dark:border-white/10">
+                    <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-100">
+                      {t.recentVerticalOffset}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => onUpdateVerticalOffset(0)}
+                      className="text-[11px] text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer font-medium"
+                    >
+                      {zh ? '恢复默认' : 'Reset'}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Slider
+                      className="flex-1 my-1"
+                      min={-120}
+                      max={120}
+                      step={2}
+                      value={verticalOffset}
+                      onChange={(v) => onUpdateVerticalOffset(v)}
+                      tooltip={{
+                        formatter: (val) => `${val && val > 0 ? `+${val}` : val ?? 0}px`,
+                      }}
+                    />
+                    <span className="text-xs font-mono w-12 text-right opacity-70">
+                      {verticalOffset > 0 ? `+${verticalOffset}` : verticalOffset}px
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-1 pt-0.5">
+                    <button
+                      type="button"
+                      onClick={() => onUpdateVerticalOffset(-40)}
+                      className={`text-[11px] py-1 px-1.5 rounded-md border transition-all cursor-pointer text-center ${
+                        verticalOffset <= -25
+                          ? 'bg-blue-500 text-white border-blue-500 font-semibold shadow-sm'
+                          : 'border-black/10 dark:border-white/15 text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
+                      }`}
+                    >
+                      {t.recentVerticalTop}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onUpdateVerticalOffset(0)}
+                      className={`text-[11px] py-1 px-1.5 rounded-md border transition-all cursor-pointer text-center ${
+                        verticalOffset > -25 && verticalOffset < 25
+                          ? 'bg-blue-500 text-white border-blue-500 font-semibold shadow-sm'
+                          : 'border-black/10 dark:border-white/15 text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
+                      }`}
+                    >
+                      {t.recentVerticalCenter}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onUpdateVerticalOffset(40)}
+                      className={`text-[11px] py-1 px-1.5 rounded-md border transition-all cursor-pointer text-center ${
+                        verticalOffset >= 25
+                          ? 'bg-blue-500 text-white border-blue-500 font-semibold shadow-sm'
+                          : 'border-black/10 dark:border-white/15 text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
+                      }`}
+                    >
+                      {t.recentVerticalBottom}
+                    </button>
+                  </div>
+                </div>
+              }
+            >
+              <Tooltip title={zh ? '调节垂直位置' : 'Adjust vertical position'} placement="top">
+                <button
+                  type="button"
+                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer border shadow-sm ${
+                    verticalOffset !== 0
+                      ? 'text-blue-500 dark:text-blue-400 font-bold'
+                      : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white'
+                  } active:scale-95`}
+                  style={{
+                    backgroundColor: isDark ? 'rgba(0, 0, 0, 0.42)' : 'rgba(255, 255, 255, 0.68)',
+                    borderColor: verticalOffset !== 0
+                      ? 'rgba(59, 130, 246, 0.5)'
+                      : isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.55)',
+                    backdropFilter: `blur(${glassStyle.blur}px)`,
+                    WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
+                  }}
+                >
+                  <MoveVertical size={12} />
+                </button>
+              </Tooltip>
+            </Popover>
+          )}
+
           <Tooltip title={zh ? '刷新最近访问' : 'Refresh recent'} placement="top">
             <button
               type="button"
@@ -502,23 +470,7 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
         <div
           ref={scrollContainerRef}
           onScroll={checkScroll}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={stopDragging}
-          onPointerCancel={stopDragging}
-          onClickCapture={(e) => {
-            if (hasDraggedRef.current) {
-              e.stopPropagation();
-              e.preventDefault();
-            }
-          }}
-          className={`flex items-center gap-3 overflow-x-auto scrollbar-none py-1 overscroll-contain select-none transition-[cursor] ${
-            isDragging
-              ? 'cursor-grabbing'
-              : canScrollLeft || canScrollRight
-                ? 'cursor-grab'
-                : 'cursor-default'
-          }`}
+          className="flex items-center gap-3 overflow-x-auto scrollbar-none py-1 overscroll-contain select-none"
         >
           {loading && displayItems.length === 0 ? (
             <div className="w-full flex items-center justify-center py-6 text-xs text-neutral-400 gap-2">
@@ -542,9 +494,9 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
                   key={item.id || item.url}
                   onClick={() => handleCardClick(item.url)}
                   title={`${item.title}\n${item.url}`}
-                  className={`w-[205px] h-[104px] shrink-0 rounded-[18px] p-1.5 flex flex-col justify-between border transition-all duration-200 shadow-sm select-none ${
+                  className={`w-[205px] h-[104px] shrink-0 rounded-[18px] p-1.5 flex flex-col justify-between border transition-all duration-200 shadow-sm select-none cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
                     isDark ? themeStyle.dark : themeStyle.light
-                  } ${isDragging ? 'pointer-events-none' : 'cursor-pointer'}`}
+                  }`}
                   style={{
                     backdropFilter: `blur(${glassStyle.blur}px)`,
                     WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,

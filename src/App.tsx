@@ -629,13 +629,21 @@ export const App: React.FC = () => {
           )}
 
           {(settings.homeContentMode ?? 'shortcuts') === 'recent' && (
-            <div className="recent-cards-slot w-full flex justify-center flex-shrink-0 min-h-[110px] transition-all duration-300">
+            <div
+              className="recent-cards-slot w-full flex justify-center flex-shrink-0 min-h-[110px]"
+              style={{
+                transform: `translateY(${settings.recentVerticalOffset || 0}px)`,
+                transition: 'transform 0.25s cubic-bezier(0.2, 0, 0, 1)',
+              }}
+            >
               <RecentCards
                 language={settings.language}
                 theme={settings.theme}
                 glassStyle={settings.glassStyle}
                 openInNewTab={settings.openInNewTab}
                 pinnedUrls={settings.pinnedRecentUrls || []}
+                verticalOffset={settings.recentVerticalOffset || 0}
+                onUpdateVerticalOffset={(val) => handleUpdateSettings({ recentVerticalOffset: val })}
                 onTogglePin={handleTogglePinRecent}
               />
             </div>
