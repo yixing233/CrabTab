@@ -108,6 +108,11 @@ function sanitizeWallpaperConfig(raw: Partial<AppSettings['wallpaper']> | undefi
 
 function normalizeSettings(raw: unknown): AppSettings {
   const loaded = (raw && typeof raw === 'object' ? raw : {}) as Partial<AppSettings>;
+  const homeContentMode = (loaded.homeContentMode === 'recent' || (loaded as any).homeContentMode === 'bookmarks')
+    ? 'recent'
+    : 'shortcuts';
+  const showBookmarkBar = loaded.showBookmarkBar ?? true;
+  const pinnedRecentUrls = Array.isArray(loaded.pinnedRecentUrls) ? loaded.pinnedRecentUrls : [];
   const shortcutMode = loaded.shortcutMode === 'off'
     || loaded.shortcutMode === 'compact'
     || loaded.shortcutMode === 'desktop'
@@ -116,6 +121,11 @@ function normalizeSettings(raw: unknown): AppSettings {
   return {
     ...DEFAULT_SETTINGS,
     ...loaded,
+    searchBookmarks: loaded.searchBookmarks ?? true,
+    searchHistory: loaded.searchHistory ?? true,
+    homeContentMode,
+    showBookmarkBar,
+    pinnedRecentUrls,
     shortcutMode,
     showQuickLinks: shortcutMode !== 'off',
     wallpaper: sanitizeWallpaperConfig(loaded.wallpaper),

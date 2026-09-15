@@ -1207,7 +1207,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                   setOpen(true);
                 }}
                 title={zh ? `${item.title}（点击管理倒数日）` : `${item.title} (Manage)`}
-                className={`w-[240px] flex items-center justify-between px-3.5 py-1.5 rounded-full text-xs font-medium shadow-md transition-colors border cursor-pointer select-none backdrop-blur-md shrink-0 ${
+                className={`w-[240px] h-8 flex items-center justify-between pl-1.5 pr-3.5 rounded-full text-xs font-medium shadow-md transition-colors border cursor-pointer select-none backdrop-blur-md shrink-0 ${
                   isDark
                     ? 'bg-[#181a20]/80 hover:bg-[#181a20]/95 text-white/90 border-white/10 hover:border-white/30'
                     : 'bg-white/80 hover:bg-white/95 text-neutral-800 border-black/10 hover:border-black/20'
@@ -2041,9 +2041,6 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                           {pinnedCountdowns.length} {zh ? '已置顶桌面' : 'pinned'}
                         </span>
                       </div>
-                      <div className="text-[11px] opacity-55 mt-0.5">
-                        {t.pinToClockDesc}
-                      </div>
                     </div>
                     <Button
                       type="primary"
@@ -2289,10 +2286,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
               </div>
 
               <div className="flex items-center justify-between p-2.5 rounded-xl border border-black/5 dark:border-white/10 bg-black/[0.02] dark:bg-white/[0.02]">
-                <div>
-                  <div className="text-xs font-semibold">{t.pinToClock}</div>
-                  <div className="text-[11px] opacity-60">{t.pinToClockDesc}</div>
-                </div>
+                <div className="text-xs font-semibold">{t.pinToClock}</div>
                 <Form.Item name="isPinned" valuePropName="checked" className="mb-0">
                   <Switch checkedChildren={zh ? '开' : 'On'} unCheckedChildren={zh ? '关' : 'Off'} />
                 </Form.Item>

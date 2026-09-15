@@ -25,6 +25,9 @@ export function getAntdTheme(mode: 'dark' | 'light' | 'auto'): ThemeConfig {
           }),
     },
     components: {
+      Dropdown: {
+        colorBgElevated: isDark ? '#1a1d24' : '#ffffff',
+      },
       Popover: {
         colorBgElevated: isDark ? '#1a1d24' : '#ffffff',
       },

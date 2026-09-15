@@ -42,7 +42,7 @@ type GridContextMenu = {
 /**
  * 支持多级 CDN 与源站探测降级加载的快捷图标组件
  */
-const ShortcutIconView: React.FC<{ url: string; icon?: string; title: string; sizeClass?: string }> = ({
+export const ShortcutIconView: React.FC<{ url: string; icon?: string; title: string; sizeClass?: string }> = ({
   url,
   icon,
   title,

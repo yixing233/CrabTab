@@ -62,7 +62,12 @@ export const DEFAULT_SETTINGS: AppSettings = {
   },
   searchEngine: 'google',
   suggestionEngine: 'auto',
+  searchBookmarks: true,
+  searchHistory: true,
   showWeather: true,
+  showBookmarkBar: true,
+  homeContentMode: 'shortcuts',
+  pinnedRecentUrls: [],
   shortcutMode: 'desktop',
   desktopPageCount: 1, // 桌面默认总分页数
   shortcutAutoFill: false, // 默认不自动补位

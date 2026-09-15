@@ -31,10 +31,13 @@ import { Wallpaper } from './components/Wallpaper';
 import { Clock } from './components/Clock';
 import { SearchBox } from './components/SearchBox';
 import { Shortcuts } from './components/Shortcuts';
+import { TopBookmarkBar } from './components/TopBookmarkBar';
 import { Weather } from './components/Weather';
 import { SettingsModal } from './components/SettingsModal';
 import { BrowserHistoryDrawer } from './components/BrowserHistoryDrawer';
 import { UtilityDrawer } from './components/UtilityDrawer';
+import { RecentCards } from './components/RecentCards';
+import { BrowserHistoryItem } from './types';
 
 // 防抖设置持久化：避免滑块滑动高频触发 chrome.storage 写入与跨标签页广播风暴
 let saveSettingsTimer: ReturnType<typeof setTimeout> | null = null;
@@ -383,6 +386,16 @@ export const App: React.FC = () => {
     });
   };
 
+  const handleTogglePinRecent = (item: BrowserHistoryItem) => {
+    if (!settings) return;
+    const currentPinned = settings.pinnedRecentUrls || [];
+    const isPinned = currentPinned.includes(item.url);
+    const nextPinned = isPinned
+      ? currentPinned.filter((u) => u !== item.url)
+      : [item.url, ...currentPinned];
+    handleUpdateSettings({ pinnedRecentUrls: nextPinned });
+  };
+
   if (!initialized || !settings) return null;
 
   const isDark =
@@ -400,10 +413,12 @@ export const App: React.FC = () => {
         {/* Dynamic Multi-source Wallpaper */}
         <Wallpaper config={settings.wallpaper} theme={settings.theme} />
 
-        {/* Top Navigation Bar - 高层叠层级 z-30 确保弹出的天气卡片与操作浮层绝对置顶，绝不被 main 遮挡 */}
-        <header className="header-bar-responsive relative z-30 w-full px-6 py-4 flex items-center justify-between pointer-events-auto">
-          {/* Weather Widget (Top Left) */}
-          <div>
+        {/* Top Navigation Bar: 天气（左） + 书签栏（中） + 操作按钮（右）- 整合于同一行 */}
+        <header
+          className="header-bar-responsive relative z-30 w-full px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3 pointer-events-auto transition-all"
+        >
+          {/* 1. Left: Weather Widget */}
+          <div className="shrink-0 flex items-center">
             {settings.showWeather && (
               <Weather
                 language={settings.language}
@@ -413,82 +428,107 @@ export const App: React.FC = () => {
             )}
           </div>
 
-          {/* Quick Action Buttons (Top Right) */}
-          <div className="flex items-center gap-2.5">
-            {/* Refresh Wallpaper */}
-            <Tooltip title={settings.language === 'zh' ? '换一张壁纸' : 'New Wallpaper'} placement="bottom">
-              <button
-                type="button"
-                onClick={() => handleRefreshWallpaper(false)}
-                className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 text-white/80 hover:text-white cursor-pointer shadow-md border border-white/20 hover:border-white/60 hover:bg-white/20 active:bg-white/30"
-                style={{
-                  backdropFilter: `blur(${settings.glassStyle.blur}px)`,
-                  backgroundColor: settings.theme === 'dark' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(255, 255, 255, 0.25)',
-                }}
-              >
-                  <ReloadOutlined className={`text-sm transition-transform duration-700 ${refreshingWallpaper ? "animate-spin text-blue-400" : ""}`} />
-              </button>
-            </Tooltip>
+          {/* 2. Center: Bookmark Bar (同一行居中展示，常驻) */}
+          {(settings.showBookmarkBar ?? true) ? (
+            <div className="flex-1 min-w-0 max-w-5xl mx-auto flex justify-center px-1 sm:px-2">
+              <TopBookmarkBar
+                language={settings.language}
+                theme={settings.theme}
+                glassStyle={settings.glassStyle}
+                openInNewTab={settings.openInNewTab}
+              />
+            </div>
+          ) : (
+            <div className="flex-1 min-w-0" />
+          )}
 
-            {/* Theme Toggle Button */}
-            <Tooltip title={settings.theme === 'dark' ? (settings.language === 'zh' ? '切换为浅色' : 'Light Mode') : (settings.language === 'zh' ? '切换为深色' : 'Dark Mode')} placement="bottom">
-              <button
-                type="button"
-                onClick={handleToggleTheme}
-                className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 text-white/80 hover:text-white cursor-pointer shadow-md border border-white/20 hover:border-white/60 hover:bg-white/20 active:bg-white/30"
-                style={{
-                  backdropFilter: `blur(${settings.glassStyle.blur}px)`,
-                  backgroundColor: settings.theme === 'dark' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(255, 255, 255, 0.25)',
-                }}
-              >
-                {settings.theme === 'dark' ? <SunOutlined className="text-sm" /> : <MoonOutlined className="text-sm" />}
-              </button>
-            </Tooltip>
+          {/* 3. Right: Quick Action Buttons (统一胶囊形态与毛玻璃材质) */}
+          <div className="shrink-0 flex items-center">
+            <div
+              className={`h-9 px-1.5 rounded-full border flex items-center gap-1 shadow-sm transition-all duration-200 select-none ${
+                isDark
+                  ? 'bg-black/35 hover:bg-black/45 border-white/12 text-white/90 shadow-black/20'
+                  : 'bg-white/65 hover:bg-white/80 border-black/8 text-gray-800 shadow-black/5'
+              }`}
+              style={{
+                backdropFilter: `blur(${settings.glassStyle.blur}px)`,
+              }}
+            >
+              {/* Refresh Wallpaper */}
+              <Tooltip title={settings.language === 'zh' ? '换一张壁纸' : 'New Wallpaper'} placement="bottom">
+                <button
+                  type="button"
+                  onClick={() => handleRefreshWallpaper(false)}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                    isDark
+                      ? 'hover:bg-white/15 text-white/85 hover:text-white active:bg-white/20'
+                      : 'hover:bg-black/8 text-gray-700 hover:text-gray-950 active:bg-black/12'
+                  }`}
+                >
+                  <ReloadOutlined className={`text-xs transition-transform duration-700 ${refreshingWallpaper ? "animate-spin text-blue-400" : ""}`} />
+                </button>
+              </Tooltip>
 
-            {/* Language Toggle Button */}
-            <Tooltip title={settings.language === 'zh' ? 'Switch to English' : '切换为简体中文'} placement="bottom">
-              <button
-                type="button"
-                onClick={handleToggleLanguage}
-                className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 text-white/80 hover:text-white cursor-pointer shadow-md border border-white/20 hover:border-white/60 hover:bg-white/20 active:bg-white/30"
-                style={{
-                  backdropFilter: `blur(${settings.glassStyle.blur}px)`,
-                  backgroundColor: settings.theme === 'dark' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(255, 255, 255, 0.25)',
-                }}
-              >
-                <TranslationOutlined className="text-sm" />
-              </button>
-            </Tooltip>
+              {/* Theme Toggle Button */}
+              <Tooltip title={settings.theme === 'dark' ? (settings.language === 'zh' ? '切换为浅色' : 'Light Mode') : (settings.language === 'zh' ? '切换为深色' : 'Dark Mode')} placement="bottom">
+                <button
+                  type="button"
+                  onClick={handleToggleTheme}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                    isDark
+                      ? 'hover:bg-white/15 text-white/85 hover:text-white active:bg-white/20'
+                      : 'hover:bg-black/8 text-gray-700 hover:text-gray-950 active:bg-black/12'
+                  }`}
+                >
+                  {settings.theme === 'dark' ? <SunOutlined className="text-xs" /> : <MoonOutlined className="text-xs" />}
+                </button>
+              </Tooltip>
 
-            {/* Browser History Drawer Toggle Button */}
-            <Tooltip title={settings.language === 'zh' ? '浏览历史记录' : 'Browser History'} placement="bottom">
-              <button
-                type="button"
-                onClick={() => setHistoryDrawerOpen(true)}
-                className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 text-white/80 hover:text-white cursor-pointer shadow-md border border-white/20 hover:border-white/60 hover:bg-white/20 active:bg-white/30"
-                style={{
-                  backdropFilter: `blur(${settings.glassStyle.blur}px)`,
-                  backgroundColor: settings.theme === 'dark' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(255, 255, 255, 0.25)',
-                }}
-              >
-                <HistoryOutlined className="text-sm" />
-              </button>
-            </Tooltip>
+              {/* Language Toggle Button */}
+              <Tooltip title={settings.language === 'zh' ? 'Switch to English' : '切换为简体中文'} placement="bottom">
+                <button
+                  type="button"
+                  onClick={handleToggleLanguage}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                    isDark
+                      ? 'hover:bg-white/15 text-white/85 hover:text-white active:bg-white/20'
+                      : 'hover:bg-black/8 text-gray-700 hover:text-gray-950 active:bg-black/12'
+                  }`}
+                >
+                  <TranslationOutlined className="text-xs" />
+                </button>
+              </Tooltip>
 
-            {/* Settings Modal Toggle Button */}
-            <Tooltip title={settings.language === 'zh' ? '主页个性化设置' : 'Settings'} placement="bottom">
-              <button
-                type="button"
-                onClick={() => setSettingsOpen(true)}
-                className="w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 text-white/80 hover:text-white cursor-pointer shadow-md border border-white/20 hover:border-white/60 hover:bg-white/20 active:bg-white/30"
-                style={{
-                  backdropFilter: `blur(${settings.glassStyle.blur}px)`,
-                  backgroundColor: settings.theme === 'dark' ? 'rgba(0, 0, 0, 0.45)' : 'rgba(255, 255, 255, 0.25)',
-                }}
-              >
-                <SettingOutlined className="text-sm" />
-              </button>
-            </Tooltip>
+              {/* Browser History Drawer Toggle Button */}
+              <Tooltip title={settings.language === 'zh' ? '浏览历史记录' : 'Browser History'} placement="bottom">
+                <button
+                  type="button"
+                  onClick={() => setHistoryDrawerOpen(true)}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                    isDark
+                      ? 'hover:bg-white/15 text-white/85 hover:text-white active:bg-white/20'
+                      : 'hover:bg-black/8 text-gray-700 hover:text-gray-950 active:bg-black/12'
+                  }`}
+                >
+                  <HistoryOutlined className="text-xs" />
+                </button>
+              </Tooltip>
+
+              {/* Settings Modal Toggle Button */}
+              <Tooltip title={settings.language === 'zh' ? '主页个性化设置' : 'Settings'} placement="bottom">
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen(true)}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                    isDark
+                      ? 'hover:bg-white/15 text-white/85 hover:text-white active:bg-white/20'
+                      : 'hover:bg-black/8 text-gray-700 hover:text-gray-950 active:bg-black/12'
+                  }`}
+                >
+                  <SettingOutlined className="text-xs" />
+                </button>
+              </Tooltip>
+            </div>
           </div>
         </header>
 
@@ -514,6 +554,9 @@ export const App: React.FC = () => {
               currentEngineId={settings.searchEngine}
               suggestionEngine={settings.suggestionEngine}
               searchHistory={searchHistory}
+              searchBookmarks={settings.searchBookmarks ?? true}
+              searchHistoryEnabled={settings.searchHistory ?? true}
+              openInNewTab={settings.openInNewTab}
               language={settings.language}
               theme={settings.theme}
               glassStyle={settings.glassStyle}
@@ -521,11 +564,20 @@ export const App: React.FC = () => {
               onSelectEngine={handleSelectEngine}
               onRemoveHistoryItem={handleRemoveHistoryItem}
               onClearHistory={handleClearHistory}
+              onToggleSearchBookmarks={(enabled) => handleUpdateSettings({ searchBookmarks: enabled })}
+              onToggleSearchHistory={(enabled) => handleUpdateSettings({ searchHistory: enabled })}
+              onOpenUrl={(url) => {
+                if (settings.openInNewTab) {
+                  window.open(url, '_blank');
+                } else {
+                  window.location.href = url;
+                }
+              }}
             />
           </div>
 
-          {/* Quick Shortcuts */}
-          {settings.shortcutMode !== 'off' && (
+          {/* Main Content Area - 快捷方式 vs 最近访问卡片式流 */}
+          {(settings.homeContentMode ?? 'shortcuts') === 'shortcuts' && settings.shortcutMode !== 'off' && (
             <div className={`w-full flex justify-center flex-shrink-0 ${
               settings.shortcutMode === 'desktop' ? 'min-h-[96px]' : 'min-h-0'
             }`}>
@@ -544,6 +596,19 @@ export const App: React.FC = () => {
                 onToggleAutoFill={(autoFill) => handleUpdateSettings({ shortcutAutoFill: autoFill })}
                 desktopPageCount={settings.desktopPageCount || 1}
                 onUpdatePageCount={(count) => handleUpdateSettings({ desktopPageCount: count })}
+              />
+            </div>
+          )}
+
+          {(settings.homeContentMode ?? 'shortcuts') === 'recent' && (
+            <div className="recent-cards-slot w-full flex justify-center flex-shrink-0 min-h-[110px] transition-all duration-300">
+              <RecentCards
+                language={settings.language}
+                theme={settings.theme}
+                glassStyle={settings.glassStyle}
+                openInNewTab={settings.openInNewTab}
+                pinnedUrls={settings.pinnedRecentUrls || []}
+                onTogglePin={handleTogglePinRecent}
               />
             </div>
           )}

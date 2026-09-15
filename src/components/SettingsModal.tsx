@@ -39,8 +39,10 @@ import {
   FolderHeart,
   Sparkles,
   FolderOpen,
+  AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
-import { AppSettings, Language, WallpaperProviderId, HitokotoType, ShortcutDisplayMode } from '../types';
+import { AppSettings, Language, WallpaperProviderId, HitokotoType, ShortcutDisplayMode, HomeContentMode } from '../types';
 import { SEARCH_ENGINES, DEFAULT_LOCAL_WALLPAPER, DEFAULT_SETTINGS } from '../constants';
 import { ALL_HITOKOTO_TYPES, HitokotoTypeOption } from '../utils/hitokoto';
 import { 
@@ -48,6 +50,7 @@ import {
   ONLINE_WALLPAPER_SOURCES,
   fetchFromOnlineSource,
 } from '../utils/wallpaperSources';
+import { checkBookmarkPermission, requestBookmarkPermission } from '../utils/bookmarks';
 import { saveLocalMedia, clearLocalMedia, getLocalMediaInfo } from '../utils/storage';
 import {
   loadFavoriteWallpapers,
@@ -92,8 +95,31 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [customUrlInput, setCustomUrlInput] = useState<string>('');
   const [checkingUpdate, setCheckingUpdate] = useState<boolean>(false);
   const [releaseInfo, setReleaseInfo] = useState<ReleaseInfo | null>(null);
+  const [bookmarkPermGranted, setBookmarkPermGranted] = useState<boolean | null>(null);
+  const [updatingPerm, setUpdatingPerm] = useState<boolean>(false);
   const t = i18n[settings.language];
   const { Text } = Typography;
+
+  useEffect(() => {
+    if (open && (settings.showBookmarkBar ?? true)) {
+      checkBookmarkPermission().then(setBookmarkPermGranted);
+    }
+  }, [open, settings.showBookmarkBar]);
+
+  const handleGrantBookmarkPermission = async () => {
+    setUpdatingPerm(true);
+    try {
+      const ok = await requestBookmarkPermission();
+      setBookmarkPermGranted(ok);
+      if (ok) {
+        message.success(t.bookmarkPermissionSuccess);
+      } else {
+        message.warning(t.bookmarkPermissionDenied);
+      }
+    } finally {
+      setUpdatingPerm(false);
+    }
+  };
 
   // Resolve active theme polarity
   const isDark =
@@ -1015,42 +1041,137 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         />
       </div>
 
+      {/* 常驻顶部书签栏开关 */}
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="font-medium">
+            <Text strong>{t.showBookmarkBar}</Text>
+          </div>
+          <div className="text-xs mt-0.5">
+            <Text type="secondary">{t.showBookmarkBarDesc}</Text>
+          </div>
+        </div>
+        <Switch
+          checked={settings.showBookmarkBar ?? true}
+          onChange={(checked) => onUpdateSettings({ showBookmarkBar: checked })}
+        />
+      </div>
+
+      {/* 书签权限提示（仅当书签栏开启但未获得授权时友好引导） */}
+      {(settings.showBookmarkBar ?? true) && bookmarkPermGranted === false && (
+        <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 -mt-1 mb-2 transition-colors ${
+          isDark ? 'bg-amber-500/10 border-amber-500/25' : 'bg-amber-50 border-amber-200'
+        }`}>
+          <div>
+            <div className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
+              <AlertCircle size={13} className="shrink-0" />
+              <span>{t.bookmarkPermissionNotGranted}</span>
+            </div>
+            <div className="text-[11px] opacity-75 mt-0.5">
+              {t.bookmarkPermissionDesc}
+            </div>
+          </div>
+          <Button
+            type="primary"
+            size="small"
+            loading={updatingPerm}
+            onClick={handleGrantBookmarkPermission}
+            icon={<RefreshCw size={12} className={`shrink-0 ${updatingPerm ? 'animate-spin' : ''}`} />}
+          >
+            {t.bookmarkPermissionGrantBtn}
+          </Button>
+        </div>
+      )}
+
+      {/* 主屏展示内容：快捷方式 vs 最近访问 */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="font-medium">
-            <Text strong>{t.quickLinks}</Text>
+            <Text strong>{t.homeContentMode}</Text>
           </div>
           <div className="text-xs mt-0.5">
-            <Text type="secondary">{t.showQuickLinks}</Text>
+            <Text type="secondary">{t.homeContentModeDesc}</Text>
           </div>
         </div>
-        <Segmented<ShortcutDisplayMode>
-          value={settings.shortcutMode}
-          onChange={(shortcutMode) => onUpdateSettings({
-            shortcutMode,
-            showQuickLinks: shortcutMode !== 'off',
-          })}
+        <Segmented<HomeContentMode>
+          value={settings.homeContentMode ?? 'shortcuts'}
+          onChange={(homeContentMode) => onUpdateSettings({ homeContentMode })}
           options={[
-            { value: 'off', label: t.shortcutModeOff },
-            { value: 'compact', label: t.shortcutModeCompact },
-            { value: 'desktop', label: t.shortcutModeDesktop },
+            { value: 'shortcuts', label: t.homeContentShortcuts },
+            { value: 'recent', label: t.homeContentRecent },
           ]}
         />
       </div>
 
-      {/* 桌面模式下自动补位开关 */}
-      {settings.shortcutMode === 'desktop' && (
-        <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 -mt-2 mb-2 transition-colors ${
+      {/* 快捷方式 vs 最近访问 专有设置 */}
+      {(settings.homeContentMode ?? 'shortcuts') === 'shortcuts' ? (
+        <>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="font-medium">
+                <Text strong>{t.quickLinks}</Text>
+              </div>
+              <div className="text-xs mt-0.5">
+                <Text type="secondary">{t.showQuickLinks}</Text>
+              </div>
+            </div>
+            <Segmented<ShortcutDisplayMode>
+              value={settings.shortcutMode}
+              onChange={(shortcutMode) => onUpdateSettings({
+                shortcutMode,
+                showQuickLinks: shortcutMode !== 'off',
+              })}
+              options={[
+                { value: 'off', label: t.shortcutModeOff },
+                { value: 'compact', label: t.shortcutModeCompact },
+                { value: 'desktop', label: t.shortcutModeDesktop },
+              ]}
+            />
+          </div>
+
+          {/* 桌面模式下自动补位开关 */}
+          {settings.shortcutMode === 'desktop' && (
+            <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 -mt-2 mb-2 transition-colors ${
+              isDark ? 'bg-white/[0.03] border-white/10' : 'bg-gray-50 border-gray-100'
+            }`}>
+              <div>
+                <div className="text-xs font-semibold">{t.shortcutAutoFill}</div>
+                <div className="text-[11px] opacity-60 mt-0.5">{t.shortcutAutoFillDesc}</div>
+              </div>
+              <Switch
+                checked={settings.shortcutAutoFill === true}
+                onChange={(checked) => onUpdateSettings({ shortcutAutoFill: checked })}
+              />
+            </div>
+          )}
+        </>
+      ) : (
+        <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 transition-colors ${
           isDark ? 'bg-white/[0.03] border-white/10' : 'bg-gray-50 border-gray-100'
         }`}>
           <div>
-            <div className="text-xs font-semibold">{t.shortcutAutoFill}</div>
-            <div className="text-[11px] opacity-60 mt-0.5">{t.shortcutAutoFillDesc}</div>
+            <div className="text-xs font-semibold flex items-center gap-2">
+              <span>{t.homeContentRecent}</span>
+              {(settings.pinnedRecentUrls?.length || 0) > 0 && (
+                <span className="text-[10px] font-normal px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-500 border border-blue-500/20">
+                  {settings.pinnedRecentUrls?.length} {settings.language === 'zh' ? '已置顶' : 'pinned'}
+                </span>
+              )}
+            </div>
+            <div className="text-[11px] opacity-60 mt-0.5">
+              {settings.language === 'zh'
+                ? '以精美卡片流呈现浏览器最近访问记录，点击右下角图钉可置顶喜爱网址'
+                : 'Browse recent history as elegant cards. Pin your favorite sites to the front.'}
+            </div>
           </div>
-          <Switch
-            checked={settings.shortcutAutoFill === true}
-            onChange={(checked) => onUpdateSettings({ shortcutAutoFill: checked })}
-          />
+          {(settings.pinnedRecentUrls?.length || 0) > 0 && (
+            <Button
+              size="small"
+              onClick={() => onUpdateSettings({ pinnedRecentUrls: [] })}
+            >
+              {settings.language === 'zh' ? '清空置顶' : 'Clear Pinned'}
+            </Button>
+          )}
         </div>
       )}
 
@@ -1215,6 +1336,38 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             { value: 'duckduckgo', label: 'DuckDuckGo' },
             { value: 'off', label: t.suggestionEngineOff },
           ]}
+        />
+      </div>
+
+      {/* 搜索书签 */}
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="font-medium">
+            <Text strong>{t.searchBookmarks}</Text>
+          </div>
+          <div className="text-xs mt-0.5">
+            <Text type="secondary">{t.searchBookmarksDesc}</Text>
+          </div>
+        </div>
+        <Switch
+          checked={settings.searchBookmarks ?? true}
+          onChange={(checked) => onUpdateSettings({ searchBookmarks: checked })}
+        />
+      </div>
+
+      {/* 搜索历史记录 */}
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="font-medium">
+            <Text strong>{t.searchHistory}</Text>
+          </div>
+          <div className="text-xs mt-0.5">
+            <Text type="secondary">{t.searchHistoryDesc}</Text>
+          </div>
+        </div>
+        <Switch
+          checked={settings.searchHistory ?? true}
+          onChange={(checked) => onUpdateSettings({ searchHistory: checked })}
         />
       </div>
 

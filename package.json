@@ -1,6 +1,6 @@
 {
   "name": "crab-home",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "description": "基于 React 19 与 Ant Design 打造的现代毛玻璃极简新标签页与主页扩展",
   "license": "GPL-3.0-or-later",
   "repository": {

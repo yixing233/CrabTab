@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Dropdown } from 'antd';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { Dropdown, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   Search,
@@ -8,17 +8,25 @@ import {
   History,
   Trash2,
   ArrowUpRight,
+  Bookmark,
+  Clock,
 } from 'lucide-react';
-import { SearchEngineId, SuggestionEngineId, Language } from '../types';
+import { SearchEngineId, SuggestionEngineId, Language, BrowserHistoryItem } from '../types';
 import { SEARCH_ENGINES } from '../constants';
 import { i18n } from '../i18n';
 import { fetchSearchSuggestions } from '../utils/searchSuggestions';
+import { searchBookmarks, BookmarkSearchResult } from '../utils/bookmarks';
+import { searchBrowserHistory } from '../utils/history';
 import { SearchEngineIcon } from './SearchEngineIcons';
+import { ShortcutIconView } from './Shortcuts';
 
 interface SearchBoxProps {
   currentEngineId: SearchEngineId;
   suggestionEngine?: SuggestionEngineId;
   searchHistory: string[];
+  searchBookmarks?: boolean;
+  searchHistoryEnabled?: boolean;
+  openInNewTab?: boolean;
   language: Language;
   theme: 'dark' | 'light' | 'auto';
   glassStyle: {
@@ -30,12 +38,18 @@ interface SearchBoxProps {
   onSelectEngine: (engineId: SearchEngineId) => void;
   onRemoveHistoryItem: (item: string) => void;
   onClearHistory: () => void;
+  onOpenUrl?: (url: string) => void;
+  onToggleSearchBookmarks?: (enabled: boolean) => void;
+  onToggleSearchHistory?: (enabled: boolean) => void;
 }
 
 export const SearchBox: React.FC<SearchBoxProps> = ({
   currentEngineId,
   suggestionEngine = 'auto',
   searchHistory,
+  searchBookmarks: enableBookmarksSearch = true,
+  searchHistoryEnabled = true,
+  openInNewTab = true,
   language,
   theme,
   glassStyle,
@@ -43,12 +57,18 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
   onSelectEngine,
   onRemoveHistoryItem,
   onClearHistory,
+  onOpenUrl,
+  onToggleSearchBookmarks,
+  onToggleSearchHistory,
 }) => {
   const [keyword, setKeyword] = useState<string>('');
   const [isFocused, setIsFocused] = useState<boolean>(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [matchedBookmarks, setMatchedBookmarks] = useState<BookmarkSearchResult[]>([]);
+  const [matchedHistoryItems, setMatchedHistoryItems] = useState<BrowserHistoryItem[]>([]);
   const [isLoadingSuggestions, setIsLoadingSuggestions] = useState<boolean>(false);
   const [dropdownHeight, setDropdownHeight] = useState<number | undefined>(undefined);
+  const [activeIndex, setActiveIndex] = useState<number>(-1);
 
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -73,14 +93,64 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
   const currentEngine =
     SEARCH_ENGINES.find((e) => e.id === currentEngineId) || SEARCH_ENGINES[0];
 
-  // 搜索联想请求防抖与请求管理
+  const trimmed = keyword.trim();
+  const trimmedLower = trimmed.toLowerCase();
+
+  // 搜索词历史匹配：输入文本时显示与关键词匹配的几条（前 2 条）；未输入文本时显示最近历史（前 8 条）
+  const matchedHistory = trimmedLower
+    ? searchHistory.filter((item) => item.toLowerCase().includes(trimmedLower)).slice(0, 2)
+    : searchHistory.slice(0, 8);
+
+  // 统一构建可键盘导航的平面列表
+  type NavItem =
+    | { type: 'bookmark'; item: BookmarkSearchResult; key: string }
+    | { type: 'history'; item: BrowserHistoryItem; key: string }
+    | { type: 'suggestion'; text: string; key: string }
+    | { type: 'searchHistory'; text: string; key: string };
+
+  const navigableItems: NavItem[] = useMemo(() => {
+    const list: NavItem[] = [];
+    if (trimmed) {
+      matchedBookmarks.forEach((b) => {
+        list.push({ type: 'bookmark', item: b, key: `bm-${b.bookmark.id || b.bookmark.url}` });
+      });
+      matchedHistoryItems.forEach((h) => {
+        list.push({ type: 'history', item: h, key: `hist-${h.id || h.url}` });
+      });
+      suggestions.forEach((s) => {
+        list.push({ type: 'suggestion', text: s, key: `sug-${s}` });
+      });
+      matchedHistory.forEach((h) => {
+        list.push({ type: 'searchHistory', text: h, key: `shist-${h}` });
+      });
+    } else {
+      matchedHistory.forEach((h) => {
+        list.push({ type: 'searchHistory', text: h, key: `shist-${h}` });
+      });
+    }
+    return list;
+  }, [trimmed, matchedBookmarks, matchedHistoryItems, suggestions, matchedHistory]);
+
+  const keyToIndexMap = useMemo(() => {
+    const map = new Map<string, number>();
+    navigableItems.forEach((item, index) => {
+      map.set(item.key, index);
+    });
+    return map;
+  }, [navigableItems]);
+
+  // 并行防抖调度：书签、历史记录与网络搜索建议
   useEffect(() => {
-    const trimmed = keyword.trim();
     if (!trimmed || !isFocused) {
       setSuggestions([]);
+      setMatchedBookmarks([]);
+      setMatchedHistoryItems([]);
       setIsLoadingSuggestions(false);
+      setActiveIndex(-1);
       return;
     }
+
+    setActiveIndex(-1);
 
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
@@ -93,22 +163,37 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
 
     const timer = setTimeout(async () => {
       try {
-        const results = await fetchSearchSuggestions(
-          trimmed,
-          currentEngineId,
-          suggestionEngine,
-          controller.signal
-        );
+        const promises: [
+          Promise<string[]>,
+          Promise<BookmarkSearchResult[]>,
+          Promise<BrowserHistoryItem[]>
+        ] = [
+          fetchSearchSuggestions(trimmed, currentEngineId, suggestionEngine, controller.signal),
+          enableBookmarksSearch ? searchBookmarks(trimmed, 4) : Promise.resolve([]),
+          searchHistoryEnabled ? searchBrowserHistory(trimmed, 6) : Promise.resolve([]),
+        ];
+
+        const [sugResults, bmResults, histResults] = await Promise.all(promises);
 
         if (!controller.signal.aborted) {
-          // 过滤掉完全与当前输入相同的联想词（如果有更丰富的长尾扩展），并去重
-          const filtered = results.filter(
-            (s) => s.toLowerCase() !== trimmed.toLowerCase()
+          // 过滤掉已被书签匹配的重复历史记录 URL，避免信息冗余
+          const bookmarkedUrls = new Set(
+            bmResults.map((b) => b.bookmark.url?.toLowerCase().replace(/\/$/, '')).filter(Boolean)
           );
-          setSuggestions(filtered.slice(0, 6));
+          const filteredHist = histResults
+            .filter((h) => !bookmarkedUrls.has(h.url?.toLowerCase().replace(/\/$/, '')))
+            .slice(0, 3);
+
+          const filteredSug = sugResults
+            .filter((s) => s.toLowerCase() !== trimmedLower)
+            .slice(0, 4);
+
+          setSuggestions(filteredSug);
+          setMatchedBookmarks(bmResults.slice(0, 3));
+          setMatchedHistoryItems(filteredHist);
           setIsLoadingSuggestions(false);
         }
-      } catch (err) {
+      } catch {
         if (!controller.signal.aborted) {
           setSuggestions([]);
           setIsLoadingSuggestions(false);
@@ -120,7 +205,15 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
       clearTimeout(timer);
       controller.abort();
     };
-  }, [keyword, currentEngineId, suggestionEngine, isFocused]);
+  }, [
+    trimmed,
+    trimmedLower,
+    currentEngineId,
+    suggestionEngine,
+    isFocused,
+    enableBookmarksSearch,
+    searchHistoryEnabled,
+  ]);
 
   // Tab 按键监听：阻止浏览器默认跳焦并即时切换搜索引擎
   useEffect(() => {
@@ -161,14 +254,12 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
   // 全局快捷键监听：按 `/` 键或 `Ctrl+K` / `Cmd+K` 直接聚焦到搜索框；按 Escape 退出
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // 当按下 Escape 时收起搜索框
       if (e.key === 'Escape') {
         setIsFocused(false);
         inputRef.current?.blur();
         return;
       }
 
-      // 如果当前焦点已经在可输入组件内（input, textarea, contenteditable, modal），则不抢占按键
       const target = e.target as HTMLElement | null;
       const isInputFocused =
         target &&
@@ -178,7 +269,6 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
           target.closest('.ant-modal') ||
           target.closest('.ant-drawer'));
 
-      // 1. Ctrl+K 或 Cmd+K 全局聚焦
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         inputRef.current?.focus();
@@ -187,7 +277,6 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
         return;
       }
 
-      // 2. 在非输入状态下按单键 `/` 全局聚焦
       if (e.key === '/' && !isInputFocused && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         inputRef.current?.focus();
@@ -202,10 +291,28 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
-    if (keyword.trim()) {
-      onSearch(keyword.trim());
+    if (trimmed) {
+      onSearch(trimmed);
       setIsFocused(false);
     }
+  };
+
+  const handleSelectItem = (text: string) => {
+    setKeyword(text);
+    onSearch(text);
+    setIsFocused(false);
+  };
+
+  const handleOpenUrl = (url?: string) => {
+    if (!url) return;
+    if (onOpenUrl) {
+      onOpenUrl(url);
+    } else if (openInNewTab) {
+      window.open(url, '_blank');
+    } else {
+      window.location.href = url;
+    }
+    setIsFocused(false);
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -217,25 +324,52 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
         ? (currentIndex - 1 + total) % total
         : (currentIndex + 1) % total;
       onSelectEngine(SEARCH_ENGINES[nextIndex].id);
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      if (navigableItems.length > 0) {
+        e.preventDefault();
+        setActiveIndex((prev) => (prev < navigableItems.length - 1 ? prev + 1 : 0));
+      }
+      return;
+    }
+
+    if (e.key === 'ArrowUp') {
+      if (navigableItems.length > 0) {
+        e.preventDefault();
+        setActiveIndex((prev) => (prev > 0 ? prev - 1 : navigableItems.length - 1));
+      }
+      return;
+    }
+
+    if (e.key === 'Enter') {
+      if (activeIndex >= 0 && activeIndex < navigableItems.length) {
+        e.preventDefault();
+        const selected = navigableItems[activeIndex];
+        if (selected.type === 'bookmark') {
+          handleOpenUrl(selected.item.bookmark.url);
+        } else if (selected.type === 'history') {
+          handleOpenUrl(selected.item.url);
+        } else if (selected.type === 'suggestion' || selected.type === 'searchHistory') {
+          handleSelectItem(selected.text);
+        }
+      }
     }
   };
 
-  const handleSelectItem = (text: string) => {
-    setKeyword(text);
-    onSearch(text);
-    setIsFocused(false);
-  };
-
-  // 匹配的历史记录：未输入文本时显示最近历史（前 8 条）；输入文本后显示与关键词匹配的几条历史（前 3 条）
-  const trimmed = keyword.trim().toLowerCase();
-  const matchedHistory = trimmed
-    ? searchHistory.filter((item) => item.toLowerCase().includes(trimmed)).slice(0, 3)
-    : searchHistory.slice(0, 8);
-
   // 判断是否展示浮层卡片
+  const hasBookmarks = matchedBookmarks.length > 0;
+  const hasHistoryItems = matchedHistoryItems.length > 0;
   const hasHistory = matchedHistory.length > 0;
   const hasSuggestions = suggestions.length > 0;
-  const showDropdown = isFocused && (hasHistory || hasSuggestions || (trimmed.length > 0 && isLoadingSuggestions));
+  const showDropdown =
+    isFocused &&
+    (hasBookmarks ||
+      hasHistoryItems ||
+      hasHistory ||
+      hasSuggestions ||
+      (trimmed.length > 0 && isLoadingSuggestions));
 
   // 动态测量内部内容高度，支持高度平滑自然过渡动画
   useEffect(() => {
@@ -248,14 +382,12 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
     const innerEl = contentInnerRef.current;
     if (!innerEl) return;
 
-    // 立即同步读取首帧内容高度
     let rafId: number | null = null;
     const currentH = innerEl.offsetHeight;
     if (currentH > 0) {
       setDropdownHeight((prev) => (prev === currentH ? prev : currentH));
     }
 
-    // 首帧后允许高度自然过渡
     const timer = setTimeout(() => {
       isInitialOpenRef.current = false;
     }, 60);
@@ -281,7 +413,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
     };
   }, [showDropdown]);
 
-  // 搜索引擎下拉菜单配置（从文本改为对应的图标）
+  // 搜索引擎下拉菜单配置
   const engineMenuItems: MenuProps['items'] = SEARCH_ENGINES.map((engine) => ({
     key: engine.id,
     label: (
@@ -298,7 +430,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
 
   return (
     <div ref={containerRef} className="relative w-full max-w-2xl mx-auto flex flex-col items-center">
-      {/* Search Input Bar (聚焦时绝不放大，保持精准尺寸) */}
+      {/* Search Input Bar */}
       <form
         onSubmit={handleSubmit}
         className={`w-full relative transition-all duration-300 rounded-2xl flex items-center shadow-lg ${
@@ -319,10 +451,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
             aria-label="切换搜索引擎"
             title={`当前搜索引擎：${currentEngine.name}`}
           >
-            <SearchEngineIcon
-              engineId={currentEngine.id}
-              size={18}
-            />
+            <SearchEngineIcon engineId={currentEngine.id} size={18} />
             <ChevronDown className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 transition-transform ml-0.5" />
           </button>
         </Dropdown>
@@ -364,6 +493,83 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
             </button>
           )}
 
+          {/* Quick Toggles: 书签与历史记录快捷开关 */}
+          <div className="flex items-center gap-1 ml-1 mr-1.5 pl-2 border-l border-black/8 dark:border-white/10 shrink-0 select-none">
+            <Tooltip
+              title={
+                enableBookmarksSearch
+                  ? t.searchBookmarksQuickToggleOn
+                  : t.searchBookmarksQuickToggleOff
+              }
+              placement="top"
+            >
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleSearchBookmarks?.(!enableBookmarksSearch);
+                  inputRef.current?.focus();
+                }}
+                className={`h-6 px-1.5 sm:px-2 rounded-lg flex items-center gap-1 text-[11px] font-medium transition-all cursor-pointer border ${
+                  enableBookmarksSearch
+                    ? 'bg-emerald-500/12 text-emerald-600 dark:text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20'
+                    : 'bg-black/[0.03] dark:bg-white/[0.04] text-neutral-400 dark:text-neutral-500 border-transparent hover:text-neutral-600 dark:hover:text-neutral-300 opacity-60 hover:opacity-90'
+                }`}
+                aria-label="切换书签搜索"
+              >
+                <Bookmark
+                  className={`w-3 h-3 shrink-0 ${
+                    enableBookmarksSearch ? 'fill-emerald-500/20 text-emerald-500' : 'opacity-50'
+                  }`}
+                />
+                <span
+                  className={`hidden sm:inline ${
+                    !enableBookmarksSearch ? 'line-through decoration-neutral-400/60' : ''
+                  }`}
+                >
+                  {t.searchResultBookmarks}
+                </span>
+              </button>
+            </Tooltip>
+
+            <Tooltip
+              title={
+                searchHistoryEnabled
+                  ? t.searchHistoryQuickToggleOn
+                  : t.searchHistoryQuickToggleOff
+              }
+              placement="top"
+            >
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleSearchHistory?.(!searchHistoryEnabled);
+                  inputRef.current?.focus();
+                }}
+                className={`h-6 px-1.5 sm:px-2 rounded-lg flex items-center gap-1 text-[11px] font-medium transition-all cursor-pointer border ${
+                  searchHistoryEnabled
+                    ? 'bg-purple-500/12 text-purple-600 dark:text-purple-400 border-purple-500/25 hover:bg-purple-500/20'
+                    : 'bg-black/[0.03] dark:bg-white/[0.04] text-neutral-400 dark:text-neutral-500 border-transparent hover:text-neutral-600 dark:hover:text-neutral-300 opacity-60 hover:opacity-90'
+                }`}
+                aria-label="切换历史记录搜索"
+              >
+                <Clock
+                  className={`w-3 h-3 shrink-0 ${
+                    searchHistoryEnabled ? 'text-purple-500' : 'opacity-50'
+                  }`}
+                />
+                <span
+                  className={`hidden sm:inline ${
+                    !searchHistoryEnabled ? 'line-through decoration-neutral-400/60' : ''
+                  }`}
+                >
+                  {t.searchResultHistory}
+                </span>
+              </button>
+            </Tooltip>
+          </div>
+
           {/* Submit Search Button */}
           <button
             type="submit"
@@ -375,133 +581,290 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
         </div>
       </form>
 
-      {/* Floating Dropdown: 搜索历史与实时搜索联想卡片 */}
+      {/* Floating Dropdown: 聚合搜索卡片（书签、历史记录、联想词与搜索历史） */}
       {showDropdown && (
         <div
           className="absolute top-[calc(100%+8px)] left-0 w-full z-50 rounded-2xl shadow-xl overflow-hidden history-dropdown-enter"
           style={{
             height: dropdownHeight !== undefined ? `${dropdownHeight}px` : 'auto',
+            maxHeight: '480px',
             transition: isInitialOpenRef.current
               ? 'none'
               : 'height 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s, border-color 0.2s',
             willChange: 'height',
-            backgroundColor: isDark ? 'rgba(18, 22, 30, 0.65)' : 'rgba(255, 255, 255, 0.68)',
-            backdropFilter: `blur(${Math.max(glassStyle.blur, 16)}px) saturate(180%)`,
-            WebkitBackdropFilter: `blur(${Math.max(glassStyle.blur, 16)}px) saturate(180%)`,
+            backgroundColor: isDark ? 'rgba(18, 22, 30, 0.78)' : 'rgba(255, 255, 255, 0.85)',
+            backdropFilter: `blur(${Math.max(glassStyle.blur, 18)}px) saturate(190%)`,
+            WebkitBackdropFilter: `blur(${Math.max(glassStyle.blur, 18)}px) saturate(190%)`,
             border: `1px solid ${isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.75)'}`,
             boxShadow: isDark
               ? '0 20px 40px -12px rgba(0,0,0,0.5), inset 0 1px 1px 0 rgba(255,255,255,0.1)'
               : '0 20px 40px -12px rgba(0,0,0,0.12), inset 0 1px 1px 0 rgba(255,255,255,0.8)',
           }}
         >
-          <div ref={contentInnerRef} className="w-full flex flex-col">
-          {/* Section 1: 匹配的搜索历史记录 */}
-          {hasHistory && (
-            <div>
-              {/* History Item Entries */}
-              <div className="py-1">
-                {matchedHistory.map((item, idx) => (
-                  <div
-                    key={`hist-${item}-${idx}`}
-                    onClick={() => handleSelectItem(item)}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      handleSelectItem(item);
-                    }}
-                    style={{ animationDelay: `${idx * 25}ms` }}
-                    className={`group flex items-center justify-between px-4 py-2 cursor-pointer transition-colors history-item-enter ${
-                      isDark
-                        ? 'hover:bg-white/10 text-gray-200 hover:text-white'
-                        : 'hover:bg-black/5 text-gray-700 hover:text-neutral-900'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <History className="w-3.5 h-3.5 text-blue-400/80 group-hover:text-blue-500 transition-colors flex-shrink-0" />
-                      <span className="text-sm truncate font-normal">
-                        {/* 高亮匹配字符 */}
-                        {highlightKeyword(item, trimmed)}
-                      </span>
-                    </div>
+          <div
+            ref={contentInnerRef}
+            className="w-full flex flex-col max-h-[480px] overflow-y-auto scrollbar-none py-1.5"
+          >
+            {/* 分组 1：书签检索结果 */}
+            {trimmed && hasBookmarks && (
+              <div className="space-y-0.5">
+                {matchedBookmarks.map((b) => {
+                  const key = `bm-${b.bookmark.id || b.bookmark.url}`;
+                  const globalIdx = keyToIndexMap.get(key) ?? -1;
+                  const isActive = activeIndex === globalIdx;
+                  const displayDomain = formatDisplayUrl(b.bookmark.url || '');
 
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-3">
-                      <span className="text-xs text-gray-400 flex items-center gap-0.5">
-                        <ArrowUpRight className="w-3 h-3" />
-                      </span>
-                      <button
-                        type="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          onRemoveHistoryItem(item);
-                        }}
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          onRemoveHistoryItem(item);
-                        }}
-                        className="p-1 rounded-md text-gray-400 hover:text-red-500 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
-                        title={language === 'zh' ? '删除此条记录' : 'Remove entry'}
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
+                  return (
+                    <div
+                      key={key}
+                      onClick={() => handleOpenUrl(b.bookmark.url)}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleOpenUrl(b.bookmark.url);
+                      }}
+                      onMouseEnter={() => setActiveIndex(globalIdx)}
+                      className={`group flex items-center justify-between px-3 py-1.5 mx-1.5 rounded-xl cursor-pointer transition-colors ${
+                        isActive
+                          ? isDark
+                            ? 'bg-white/12 text-white'
+                            : 'bg-black/8 text-neutral-950'
+                          : isDark
+                            ? 'hover:bg-white/8 text-neutral-200 hover:text-white'
+                            : 'hover:bg-black/5 text-neutral-700 hover:text-neutral-950'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="w-4 h-4 rounded flex items-center justify-center shrink-0">
+                          <ShortcutIconView
+                            url={b.bookmark.url || ''}
+                            title={b.bookmark.title || displayDomain}
+                            sizeClass="w-3.5 h-3.5 shrink-0"
+                          />
+                        </div>
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <span className="text-xs sm:text-sm truncate font-medium">
+                            {highlightKeyword(b.bookmark.title || displayDomain, trimmed)}
+                          </span>
+                          <span className="text-[10.5px] text-neutral-400 dark:text-neutral-500 truncate font-mono">
+                            {displayDomain}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-medium">
+                          {t.searchResultBookmarks}
+                        </span>
+                        {isActive ? (
+                          <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono opacity-80 pl-1">
+                            ↵
+                          </span>
+                        ) : (
+                          <ArrowUpRight className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
+            )}
 
-              {/* 未输入任何关键词时，底部提供轻量清空历史按钮 */}
-              {!trimmed && (
-                <div className="px-4 py-2 border-t border-black/5 dark:border-white/10 flex justify-end select-none">
-                  <button
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      onClearHistory();
-                    }}
-                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer px-1.5 py-0.5 rounded"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                    {t.clearHistory}
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
+            {/* 分组 2：历史记录检索结果 */}
+            {trimmed && hasHistoryItems && (
+              <div className="space-y-0.5">
+                {matchedHistoryItems.map((h) => {
+                  const key = `hist-${h.id || h.url}`;
+                  const globalIdx = keyToIndexMap.get(key) ?? -1;
+                  const isActive = activeIndex === globalIdx;
+                  const displayDomain = formatDisplayUrl(h.url);
 
-          {/* Section 2: 实时搜索联想词建议 */}
-          {hasSuggestions && (
-            <div className={hasHistory ? 'border-t border-black/5 dark:border-white/10' : ''}>
-              {/* Suggestions Item Entries */}
-              <div className="py-1">
-                {suggestions.map((item, idx) => (
-                  <div
-                    key={`sug-${item}-${idx}`}
-                    onClick={() => handleSelectItem(item)}
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      handleSelectItem(item);
-                    }}
-                    className={`group flex items-center justify-between px-4 py-2 cursor-pointer transition-colors ${
-                      isDark
-                        ? 'hover:bg-white/10 text-gray-200 hover:text-white'
-                        : 'hover:bg-black/5 text-gray-700 hover:text-neutral-900'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                      <Search className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-500 transition-colors flex-shrink-0" />
-                      <span className="text-sm truncate font-normal">
-                        {highlightKeyword(item, trimmed)}
-                      </span>
+                  return (
+                    <div
+                      key={key}
+                      onClick={() => handleOpenUrl(h.url)}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleOpenUrl(h.url);
+                      }}
+                      onMouseEnter={() => setActiveIndex(globalIdx)}
+                      className={`group flex items-center justify-between px-3 py-1.5 mx-1.5 rounded-xl cursor-pointer transition-colors ${
+                        isActive
+                          ? isDark
+                            ? 'bg-white/12 text-white'
+                            : 'bg-black/8 text-neutral-950'
+                          : isDark
+                            ? 'hover:bg-white/8 text-neutral-200 hover:text-white'
+                            : 'hover:bg-black/5 text-neutral-700 hover:text-neutral-950'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <div className="w-4 h-4 rounded flex items-center justify-center shrink-0">
+                          <ShortcutIconView
+                            url={h.url || ''}
+                            title={h.title || displayDomain}
+                            sizeClass="w-3.5 h-3.5 shrink-0"
+                          />
+                        </div>
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <span className="text-xs sm:text-sm truncate font-medium">
+                            {highlightKeyword(h.title || displayDomain, trimmed)}
+                          </span>
+                          <span className="text-[10.5px] text-neutral-400 dark:text-neutral-500 truncate font-mono">
+                            {displayDomain}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-purple-500/15 text-purple-600 dark:text-purple-400 font-medium">
+                          {t.searchResultHistory}
+                        </span>
+                        {isActive ? (
+                          <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono opacity-80 pl-1">
+                            ↵
+                          </span>
+                        ) : (
+                          <ArrowUpRight className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        )}
+                      </div>
                     </div>
-
-                    <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 ml-3 text-gray-400">
-                      <ArrowUpRight className="w-3 h-3" />
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-            </div>
-          )}
+            )}
+
+            {/* 分组 3：实时搜索联想词建议 */}
+            {hasSuggestions && (
+              <div className="space-y-0.5">
+                {suggestions.map((item) => {
+                  const key = `sug-${item}`;
+                  const globalIdx = keyToIndexMap.get(key) ?? -1;
+                  const isActive = activeIndex === globalIdx;
+
+                  return (
+                    <div
+                      key={key}
+                      onClick={() => handleSelectItem(item)}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleSelectItem(item);
+                      }}
+                      onMouseEnter={() => setActiveIndex(globalIdx)}
+                      className={`group flex items-center justify-between px-3.5 py-1.5 mx-1.5 rounded-xl cursor-pointer transition-colors ${
+                        isActive
+                          ? isDark
+                            ? 'bg-white/12 text-white'
+                            : 'bg-black/8 text-neutral-950'
+                          : isDark
+                            ? 'hover:bg-white/8 text-neutral-200 hover:text-white'
+                            : 'hover:bg-black/5 text-neutral-700 hover:text-neutral-950'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <Search className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-500 transition-colors flex-shrink-0" />
+                        <span className="text-sm truncate font-normal">
+                          {highlightKeyword(item, trimmed)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 shrink-0 ml-3 text-gray-400">
+                        {isActive ? (
+                          <span className="text-[10px] font-mono opacity-80">↵</span>
+                        ) : (
+                          <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* 分组 4：历史搜索词记录 */}
+            {hasHistory && (
+              <div className="space-y-0.5">
+                {matchedHistory.map((item, idx) => {
+                  const key = `shist-${item}`;
+                  const globalIdx = keyToIndexMap.get(key) ?? -1;
+                  const isActive = activeIndex === globalIdx;
+
+                  return (
+                    <div
+                      key={`hist-${item}-${idx}`}
+                      onClick={() => handleSelectItem(item)}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleSelectItem(item);
+                      }}
+                      onMouseEnter={() => setActiveIndex(globalIdx)}
+                      style={{ animationDelay: `${idx * 25}ms` }}
+                      className={`group flex items-center justify-between px-3.5 py-1.5 mx-1.5 rounded-xl cursor-pointer transition-colors history-item-enter ${
+                        isActive
+                          ? isDark
+                            ? 'bg-white/12 text-white'
+                            : 'bg-black/8 text-neutral-950'
+                          : isDark
+                            ? 'hover:bg-white/8 text-neutral-200 hover:text-white'
+                            : 'hover:bg-black/5 text-neutral-700 hover:text-neutral-950'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                        <History className="w-3.5 h-3.5 text-amber-500/75 group-hover:text-amber-500 transition-colors flex-shrink-0" />
+                        <span className="text-sm truncate font-normal">
+                          {highlightKeyword(item, trimmed)}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                        {isActive ? (
+                          <span className="text-[10px] text-neutral-400 dark:text-neutral-500 font-mono opacity-80">
+                            ↵
+                          </span>
+                        ) : (
+                          <span className="text-xs text-gray-400 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <ArrowUpRight className="w-3 h-3" />
+                          </span>
+                        )}
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onRemoveHistoryItem(item);
+                          }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onRemoveHistoryItem(item);
+                          }}
+                          className="p-1 rounded-md text-gray-400 hover:text-red-500 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                          title={language === 'zh' ? '删除此条记录' : 'Remove entry'}
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* 未输入任何关键词时，底部提供轻量清空历史按钮 */}
+                {!trimmed && (
+                  <div className="px-4 py-2 mt-1 border-t border-black/5 dark:border-white/10 flex justify-end select-none">
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        onClearHistory();
+                      }}
+                      className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer px-1.5 py-0.5 rounded"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                      {t.clearHistory}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -531,4 +894,19 @@ function highlightKeyword(fullText: string, searchKeyword: string) {
       {after}
     </>
   );
+}
+
+/**
+ * 辅助函数：格式化展示 URL（去除 http/https/www 与末尾斜杠）
+ */
+function formatDisplayUrl(rawUrl: string): string {
+  try {
+    const formatted = rawUrl.startsWith('http') ? rawUrl : `https://${rawUrl}`;
+    const u = new URL(formatted);
+    const host = u.hostname.replace(/^www\./i, '');
+    const path = u.pathname !== '/' ? u.pathname : '';
+    return `${host}${path}`.replace(/\/$/, '');
+  } catch {
+    return rawUrl.replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, '');
+  }
 }

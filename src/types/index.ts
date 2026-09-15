@@ -167,13 +167,31 @@ export interface CountdownItem {
 
 export type ShortcutDisplayMode = 'off' | 'compact' | 'desktop';
 
+export type HomeContentMode = 'shortcuts' | 'recent';
+
+export interface BookmarkNode {
+  id: string;
+  parentId?: string;
+  index?: number;
+  url?: string;
+  title: string;
+  dateAdded?: number;
+  dateGroupModified?: number;
+  children?: BookmarkNode[];
+}
+
 export interface AppSettings {
   language: Language;
   theme: ThemeMode;
   wallpaper: WallpaperConfig;
   searchEngine: SearchEngineId;
   suggestionEngine?: SuggestionEngineId;
+  searchBookmarks?: boolean; // 搜索框是否搜索书签（默认 true）
+  searchHistory?: boolean; // 搜索框是否搜索历史记录（默认 true）
   showWeather: boolean;
+  showBookmarkBar?: boolean; // 顶部常驻书签栏开关（默认 true）
+  homeContentMode?: HomeContentMode; // 主屏内容展示模式：快捷方式或最近访问
+  pinnedRecentUrls?: string[]; // 置顶钉住的最近访问网址
   shortcutMode: ShortcutDisplayMode;
   desktopPageCount?: number; // 桌面总分页数（默认 1，最多 9 页）
   /** @deprecated Kept for compatibility with settings saved by older versions. */
@@ -193,3 +211,6 @@ export interface AppSettings {
     radius: 'sm' | 'md' | 'lg' | 'xl' | '2xl' | '3xl';
   };
 }
+
+export type GlassStyle = AppSettings['glassStyle'];
+

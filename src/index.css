@@ -734,6 +734,10 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
     margin-bottom: 14px !important;
   }
 
+  .recent-cards-slot {
+    margin-top: 1.25rem !important;
+  }
+
   .desktop-pagination-container {
     margin-top: 8px !important;
   }
@@ -823,6 +827,10 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
 
   .searchbox-slot-responsive {
     margin-bottom: 8px !important;
+  }
+
+  .recent-cards-slot {
+    margin-top: 0.5rem !important;
   }
 
   .hitokoto-container {
@@ -978,3 +986,139 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
     gap: 12px 20px;
   }
 }
+
+/* 顶部书签栏下拉菜单与级联子菜单（纯色卡片，无需毛玻璃） */
+.crab-bookmark-dropdown,
+.ant-dropdown.crab-bookmark-dropdown,
+.ant-dropdown-menu-submenu-popup {
+  border-radius: 14px !important;
+}
+
+.crab-bookmark-dropdown .ant-dropdown-menu,
+.ant-dropdown-menu-submenu-popup .ant-dropdown-menu,
+.crab-bookmark-dropdown-menu {
+  max-height: 480px;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  border-radius: 14px !important;
+  padding: 6px !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* 浅色纯白与深色纯色卡片背景与精细边框 */
+:where(:not(.dark, .dark *)) .crab-bookmark-dropdown .ant-dropdown-menu,
+:where(:not(.dark, .dark *)) .ant-dropdown-menu-submenu-popup .ant-dropdown-menu,
+:where(:not(.dark, .dark *)) .crab-bookmark-dropdown-menu {
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 12px 32px -4px rgba(0, 0, 0, 0.12), 0 4px 12px -2px rgba(0, 0, 0, 0.06) !important;
+}
+
+.dark .crab-bookmark-dropdown .ant-dropdown-menu,
+.dark .ant-dropdown-menu-submenu-popup .ant-dropdown-menu,
+.dark .crab-bookmark-dropdown-menu,
+:where(.dark, .dark *) .crab-bookmark-dropdown .ant-dropdown-menu,
+:where(.dark, .dark *) .ant-dropdown-menu-submenu-popup .ant-dropdown-menu,
+:where(.dark, .dark *) .crab-bookmark-dropdown-menu {
+  background-color: #1e222d !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  box-shadow: 0 16px 36px -6px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.06) !important;
+}
+
+/* 彻底解决滚动条遮挡/破坏右上角与右下角圆角的问题：
+   1. 移除 scrollbar-width: thin，防止 Windows 原生系统控件强行渲染带方角和箭头的粗滚动条
+   2. 采用 WebKit 极简悬浮式细滑块，轨道 100% 透明
+   3. 轨道上下设置 margin-top / margin-bottom，确保滑块即使滑到顶端或底端也不会侵入圆角曲率区域
+   4. 隐藏上下箭头与拐角
+*/
+.crab-bookmark-dropdown .ant-dropdown-menu::-webkit-scrollbar,
+.ant-dropdown-menu-submenu-popup .ant-dropdown-menu::-webkit-scrollbar,
+.crab-bookmark-dropdown-menu::-webkit-scrollbar {
+  width: 5px !important;
+}
+
+.crab-bookmark-dropdown .ant-dropdown-menu::-webkit-scrollbar-track,
+.ant-dropdown-menu-submenu-popup .ant-dropdown-menu::-webkit-scrollbar-track,
+.crab-bookmark-dropdown-menu::-webkit-scrollbar-track {
+  background: transparent !important;
+  margin-top: 10px !important;
+  margin-bottom: 10px !important;
+}
+
+.crab-bookmark-dropdown .ant-dropdown-menu::-webkit-scrollbar-thumb,
+.ant-dropdown-menu-submenu-popup .ant-dropdown-menu::-webkit-scrollbar-thumb,
+.crab-bookmark-dropdown-menu::-webkit-scrollbar-thumb {
+  background: rgba(140, 140, 140, 0.3) !important;
+  border-radius: 9999px !important;
+  transition: background-color 0.2s ease;
+}
+
+.crab-bookmark-dropdown .ant-dropdown-menu:hover::-webkit-scrollbar-thumb,
+.ant-dropdown-menu-submenu-popup .ant-dropdown-menu:hover::-webkit-scrollbar-thumb,
+.crab-bookmark-dropdown-menu:hover::-webkit-scrollbar-thumb {
+  background: rgba(140, 140, 140, 0.45) !important;
+}
+
+.crab-bookmark-dropdown .ant-dropdown-menu::-webkit-scrollbar-thumb:hover,
+.ant-dropdown-menu-submenu-popup .ant-dropdown-menu::-webkit-scrollbar-thumb:hover,
+.crab-bookmark-dropdown-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(140, 140, 140, 0.7) !important;
+}
+
+.crab-bookmark-dropdown .ant-dropdown-menu::-webkit-scrollbar-button,
+.ant-dropdown-menu-submenu-popup .ant-dropdown-menu::-webkit-scrollbar-button,
+.crab-bookmark-dropdown-menu::-webkit-scrollbar-button {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+.crab-bookmark-dropdown .ant-dropdown-menu::-webkit-scrollbar-corner,
+.ant-dropdown-menu-submenu-popup .ant-dropdown-menu::-webkit-scrollbar-corner,
+.crab-bookmark-dropdown-menu::-webkit-scrollbar-corner {
+  display: none !important;
+  background: transparent !important;
+}
+
+/* 顶部书签搜索模态框（消除 AntD 默认内边距与多重卡片嵌套） */
+.crab-bookmark-search-modal .ant-modal-content {
+  padding: 0 !important;
+  border-radius: 16px !important;
+  overflow: hidden !important;
+  backdrop-filter: blur(20px) !important;
+  -webkit-backdrop-filter: blur(20px) !important;
+}
+
+.dark .crab-bookmark-search-modal .ant-modal-content,
+:where(.dark, .dark *) .crab-bookmark-search-modal .ant-modal-content {
+  background-color: rgba(26, 29, 36, 0.92) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 20px 48px -8px rgba(0, 0, 0, 0.65) !important;
+}
+
+:where(:not(.dark, .dark *)) .crab-bookmark-search-modal .ant-modal-content {
+  background-color: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid rgba(0, 0, 0, 0.08) !important;
+  box-shadow: 0 20px 48px -8px rgba(0, 0, 0, 0.18) !important;
+}
+
+/* 最近访问卡片流整体下沉排版（拉开呼吸间隙，随屏幕高度智能伸缩） */
+.recent-cards-slot {
+  margin-top: 3.5rem; /* ~56px 基础下沉间距 */
+}
+
+@media (min-height: 800px) {
+  .recent-cards-slot {
+    margin-top: 5.5rem; /* ~88px 常规 1080p 桌面屏幕舒适沉淀间距 */
+  }
+}
+
+@media (min-height: 960px) {
+  .recent-cards-slot {
+    margin-top: 7rem; /* ~112px 大屏/2K/4K 优雅下沉 */
+  }
+}
+
+
+
