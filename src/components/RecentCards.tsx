@@ -204,6 +204,19 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
   const [canScrollLeft, setCanScrollLeft] = useState<boolean>(false);
   const [canScrollRight, setCanScrollRight] = useState<boolean>(false);
 
+  // 鼠标拖拽滑动状态管理
+  const dragRef = useRef({
+    pointerId: -1,
+    startX: 0,
+    startScrollLeft: 0,
+    lastX: 0,
+    lastTime: 0,
+    velocity: 0,
+  });
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const hasDraggedRef = useRef<boolean>(false);
+  const momentumAnimRef = useRef<number | null>(null);
+
   const checkScroll = useCallback(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
@@ -219,11 +232,24 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
   }, [checkScroll, displayItems]);
 
   useEffect(() => {
+    return () => {
+      if (momentumAnimRef.current) {
+        cancelAnimationFrame(momentumAnimRef.current);
+      }
+    };
+  }, []);
+
+  // 滚轮直接支持横向平滑滚动
+  useEffect(() => {
     const el = scrollContainerRef.current;
     if (!el) return;
 
     const onWheel = (e: WheelEvent) => {
       if (el.scrollWidth <= el.clientWidth) return;
+      if (momentumAnimRef.current) {
+        cancelAnimationFrame(momentumAnimRef.current);
+        momentumAnimRef.current = null;
+      }
       if (e.deltaY !== 0 && Math.abs(e.deltaY) >= Math.abs(e.deltaX)) {
         e.preventDefault();
         el.scrollLeft += e.deltaY * 0.9;
@@ -235,9 +261,105 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
     return () => el.removeEventListener('wheel', onWheel);
   }, [checkScroll]);
 
+  // 鼠标按下：启动拖拽滑动捕获
+  const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // 仅响应鼠标左键，且当前没有激活的指针捕获
+    if (e.pointerType !== 'mouse' || e.button !== 0 || dragRef.current.pointerId !== -1) return;
+    const el = scrollContainerRef.current;
+    if (!el || el.scrollWidth <= el.clientWidth) return;
+
+    // 中断可能正在运行的惯性动画
+    if (momentumAnimRef.current) {
+      cancelAnimationFrame(momentumAnimRef.current);
+      momentumAnimRef.current = null;
+    }
+
+    dragRef.current = {
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startScrollLeft: el.scrollLeft,
+      lastX: e.clientX,
+      lastTime: performance.now(),
+      velocity: 0,
+    };
+    hasDraggedRef.current = false;
+    el.setPointerCapture(e.pointerId);
+  };
+
+  // 鼠标移动：更新滚动位置与瞬时速度
+  const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current.pointerId !== e.pointerId || !scrollContainerRef.current) return;
+    const el = scrollContainerRef.current;
+    const distance = e.clientX - dragRef.current.startX;
+
+    // 移动超过 4px 判定为拖拽行为，避免普通点击轻微位移产生误判
+    if (!hasDraggedRef.current && Math.abs(distance) > 4) {
+      hasDraggedRef.current = true;
+      setIsDragging(true);
+    }
+
+    if (hasDraggedRef.current) {
+      const now = performance.now();
+      const dt = Math.max(now - dragRef.current.lastTime, 1);
+      const dx = e.clientX - dragRef.current.lastX;
+      dragRef.current.velocity = dx / dt;
+      dragRef.current.lastX = e.clientX;
+      dragRef.current.lastTime = now;
+
+      el.scrollLeft = dragRef.current.startScrollLeft - distance;
+      checkScroll();
+    }
+  };
+
+  // 鼠标抬起/取消：释放捕获并施加惯性滚动
+  const stopDragging = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current.pointerId !== e.pointerId) return;
+    const el = scrollContainerRef.current;
+    if (el && e.currentTarget.hasPointerCapture(e.pointerId)) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {}
+    }
+    dragRef.current.pointerId = -1;
+
+    if (hasDraggedRef.current) {
+      setIsDragging(false);
+
+      // 施加自然惯性滑行 (Inertia Momentum)
+      const initialVelocity = dragRef.current.velocity;
+      if (el && Math.abs(initialVelocity) > 0.12) {
+        let currentSpeed = initialVelocity * 15;
+        const friction = 0.94;
+
+        const momentumStep = () => {
+          if (!scrollContainerRef.current || Math.abs(currentSpeed) < 0.5) {
+            momentumAnimRef.current = null;
+            checkScroll();
+            return;
+          }
+          scrollContainerRef.current.scrollLeft -= currentSpeed;
+          currentSpeed *= friction;
+          checkScroll();
+          momentumAnimRef.current = requestAnimationFrame(momentumStep);
+        };
+
+        if (momentumAnimRef.current) cancelAnimationFrame(momentumAnimRef.current);
+        momentumAnimRef.current = requestAnimationFrame(momentumStep);
+      }
+
+      // 稍作延迟重置标志，确保本次抬起事件后续冒泡的 click 触发被彻底拦截
+      setTimeout(() => {
+        hasDraggedRef.current = false;
+      }, 80);
+    } else {
+      setIsDragging(false);
+      hasDraggedRef.current = false;
+    }
+  };
+
   // 点击卡片跳转
   const handleCardClick = (url: string) => {
-    if (!url) return;
+    if (!url || hasDraggedRef.current || isDragging) return;
     if (openInNewTab) {
       window.open(url, '_blank');
     } else {
@@ -304,7 +426,23 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
         <div
           ref={scrollContainerRef}
           onScroll={checkScroll}
-          className="flex items-center gap-3 overflow-x-auto scrollbar-none py-1 scroll-smooth overscroll-contain"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={stopDragging}
+          onPointerCancel={stopDragging}
+          onClickCapture={(e) => {
+            if (hasDraggedRef.current) {
+              e.stopPropagation();
+              e.preventDefault();
+            }
+          }}
+          className={`flex items-center gap-3 overflow-x-auto scrollbar-none py-1 overscroll-contain select-none transition-[cursor] ${
+            isDragging
+              ? 'cursor-grabbing scroll-auto'
+              : canScrollLeft || canScrollRight
+                ? 'cursor-grab scroll-smooth'
+                : 'cursor-default scroll-smooth'
+          }`}
         >
           {loading && displayItems.length === 0 ? (
             <div className="w-full flex items-center justify-center py-6 text-xs text-neutral-400 gap-2">
@@ -328,9 +466,9 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
                   key={item.id || item.url}
                   onClick={() => handleCardClick(item.url)}
                   title={`${item.title}\n${item.url}`}
-                  className={`w-[205px] h-[104px] shrink-0 rounded-[18px] p-1.5 flex flex-col justify-between border transition-all duration-200 cursor-pointer shadow-sm select-none ${
+                  className={`w-[205px] h-[104px] shrink-0 rounded-[18px] p-1.5 flex flex-col justify-between border transition-all duration-200 shadow-sm select-none ${
                     isDark ? themeStyle.dark : themeStyle.light
-                  }`}
+                  } ${isDragging ? 'pointer-events-none' : 'cursor-pointer'}`}
                   style={{
                     backdropFilter: `blur(${glassStyle.blur}px)`,
                     WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
