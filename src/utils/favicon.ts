@@ -23,8 +23,11 @@ export function parseDomainAndOrigin(inputUrl: string): {
     const parts = domain.split('.');
     let rootDomain = domain;
 
+    const isIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(domain) || domain.includes(':');
+    const isLocalhost = domain === 'localhost' || domain.endsWith('.local') || isIp;
+
     // 智能提取二级根域名，处理形如 chat.deepseek.com -> deepseek.com, www.bilibili.com -> bilibili.com
-    if (parts.length >= 2) {
+    if (!isLocalhost && parts.length >= 2) {
       const isSpecialTld =
         parts.length >= 3 &&
         ['com', 'net', 'org', 'gov', 'edu', 'co'].includes(parts[parts.length - 2]);
@@ -160,16 +163,19 @@ export function getFaviconCandidates(siteUrl: string, customIcon?: string): stri
     add(`https://www.${rootDomain}/favicon.ico`);
   }
 
-  // 4. 高可靠全球与国内 CDN 智能探测（同时覆盖当前域名与根域名）
-  add(`https://icon.horse/icon/${domain}`);
-  if (rootDomain && rootDomain !== domain) {
-    add(`https://icon.horse/icon/${rootDomain}`);
+  // 4. 高可靠全球与国内 CDN 智能探测（仅对公网域名生效，局域网与 IP 直接使用原生源或首字徽标）
+  const isLocalOrIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(domain) || domain.includes(':') || domain === 'localhost' || domain.endsWith('.local');
+  if (!isLocalOrIp) {
+    add(`https://icon.horse/icon/${domain}`);
+    if (rootDomain && rootDomain !== domain) {
+      add(`https://icon.horse/icon/${rootDomain}`);
+    }
+    add(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
+    if (rootDomain && rootDomain !== domain) {
+      add(`https://icons.duckduckgo.com/ip3/${rootDomain}.ico`);
+    }
+    add(`https://www.google.com/s2/favicons?domain=${rootDomain || domain}&sz=128`);
   }
-  add(`https://icons.duckduckgo.com/ip3/${domain}.ico`);
-  if (rootDomain && rootDomain !== domain) {
-    add(`https://icons.duckduckgo.com/ip3/${rootDomain}.ico`);
-  }
-  add(`https://www.google.com/s2/favicons?domain=${rootDomain || domain}&sz=128`);
 
   // 5. Chrome 原生本地 Favicon（作为环境候选之一）
   const chromeFavicon = getChromeNativeFaviconUrl(siteUrl, 64);

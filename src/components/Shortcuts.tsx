@@ -73,10 +73,13 @@ export const ShortcutIconView: React.FC<{ url: string; icon?: string; title: str
   if (icon === 'avatar:letter' || !currentSrc || hasError) {
     const palette = getAvatarPalette(title || url);
     const char = (title || url || 'A').trim().charAt(0).toUpperCase();
+    const isTiny = sizeClass.includes('w-3') || sizeClass.includes('w-4');
     return (
       <div
         style={{ background: palette.background, color: palette.color }}
-        className={`${sizeClass} rounded-xl flex items-center justify-center font-bold text-xs sm:text-sm shadow-sm select-none transition-transform duration-200`}
+        className={`${sizeClass} ${
+          isTiny ? 'rounded text-[9.5px] leading-none font-bold' : 'rounded-xl text-xs sm:text-sm font-bold'
+        } flex items-center justify-center shadow-sm select-none transition-transform duration-200 shrink-0`}
       >
         {char}
       </div>

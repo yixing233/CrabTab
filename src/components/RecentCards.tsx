@@ -97,10 +97,26 @@ function extractBrandName(url: string, title?: string): string {
     if (BRAND_MAP[rootDomain]) return BRAND_MAP[rootDomain];
     if (BRAND_MAP[domain]) return BRAND_MAP[domain];
 
+    // IP 地址与 localhost 特殊处理
+    const isIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(domain) || domain.includes(':');
+    if (domain === 'localhost' || isIp) {
+      if (title && title.trim() && !title.startsWith('http')) {
+        const clean = title.split(/[-_|–—]/)[0].trim();
+        return clean || title.trim();
+      }
+      return domain === 'localhost' ? 'Localhost' : domain;
+    }
+
     const namePart = rootDomain.split('.')[0];
-    if (namePart) {
+    if (namePart && !/^\d+$/.test(namePart)) {
       return namePart.charAt(0).toUpperCase() + namePart.slice(1);
     }
+
+    if (title && title.trim() && !title.startsWith('http')) {
+      const clean = title.split(/[-_|–—]/)[0].trim();
+      return clean || title.trim();
+    }
+
     return domain;
   } catch {
     return title || 'Link';
@@ -212,8 +228,8 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
     const el = scrollContainerRef.current;
     if (!el) return;
     const hasScroll = el.scrollWidth > el.clientWidth;
-    setCanScrollLeft(hasScroll && el.scrollLeft > 4);
-    setCanScrollRight(hasScroll && el.scrollLeft < el.scrollWidth - el.clientWidth - 4);
+    setCanScrollLeft(hasScroll && el.scrollLeft > 6);
+    setCanScrollRight(hasScroll && el.scrollLeft < el.scrollWidth - el.clientWidth - 6);
   }, []);
 
   useEffect(() => {
@@ -470,7 +486,7 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
         <div
           ref={scrollContainerRef}
           onScroll={checkScroll}
-          className="flex items-center gap-3 overflow-x-auto scrollbar-none py-1 overscroll-contain select-none"
+          className="flex items-center gap-3 overflow-x-auto scrollbar-none px-1.5 py-1.5 overscroll-contain select-none"
         >
           {loading && displayItems.length === 0 ? (
             <div className="w-full flex items-center justify-center py-6 text-xs text-neutral-400 gap-2">
