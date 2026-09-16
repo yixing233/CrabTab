@@ -1,5 +1,5 @@
 import React from 'react';
-import { Rocket, X, ExternalLink, ChevronRight } from 'lucide-react';
+import { X, ExternalLink, ChevronRight } from 'lucide-react';
 import { ReleaseInfo } from '../utils/versionCheck';
 import { Language, ThemeMode } from '../types';
 
@@ -28,6 +28,11 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({
     theme === 'dark' ||
     (theme === 'auto' && typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches);
 
+  const iconSrc =
+    typeof chrome !== 'undefined' && chrome.runtime?.getURL
+      ? chrome.runtime.getURL('/icon.png')
+      : '/icon.png';
+
   return (
     <aside
       role="status"
@@ -43,9 +48,14 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({
       }}
     >
       <div className="flex items-start gap-3">
-        {/* 图标徽标 */}
-        <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white shrink-0 shadow-md shadow-blue-500/25 mt-0.5">
-          <Rocket size={16} className="animate-pulse" />
+        {/* 扩展 Logo 图标徽标 */}
+        <div className="relative w-8 h-8 rounded-xl overflow-hidden shrink-0 shadow-md border border-black/10 dark:border-white/10 mt-0.5 select-none bg-black/5 dark:bg-white/5">
+          <img
+            src={iconSrc}
+            alt="CrabTab Logo"
+            className="w-full h-full object-cover select-none pointer-events-none"
+            draggable={false}
+          />
         </div>
 
         {/* 核心文案与操作 */}
