@@ -195,42 +195,59 @@ export const CITY_NAME_TO_ID: Record<string, string> = {
   '温州': '101210701', '烟台': '101120501', '泉州': '101230501', '珠海': '101280701',
 };
 
+export const CHINA_CITY_COORDINATES: Array<{ id: string; name: string; lat: number; lon: number }> = [
+  { id: '101110101', name: '西安', lat: 34.3416, lon: 108.9398 },
+  { id: '101010100', name: '北京', lat: 39.9042, lon: 116.4074 },
+  { id: '101020100', name: '上海', lat: 31.2304, lon: 121.4737 },
+  { id: '101280101', name: '广州', lat: 23.1291, lon: 113.2644 },
+  { id: '101280601', name: '深圳', lat: 22.5431, lon: 114.0579 },
+  { id: '101270101', name: '成都', lat: 30.5728, lon: 104.0668 },
+  { id: '101200101', name: '武汉', lat: 30.5928, lon: 114.3055 },
+  { id: '101210101', name: '杭州', lat: 30.2741, lon: 120.1551 },
+  { id: '101190101', name: '南京', lat: 32.0603, lon: 118.7969 },
+  { id: '101040100', name: '重庆', lat: 29.5630, lon: 106.5516 },
+  { id: '101030100', name: '天津', lat: 39.0842, lon: 117.2009 },
+  { id: '101180101', name: '郑州', lat: 34.7466, lon: 113.6253 },
+  { id: '101250101', name: '长沙', lat: 28.2282, lon: 112.9388 },
+  { id: '101070101', name: '沈阳', lat: 41.8057, lon: 123.4315 },
+  { id: '101120201', name: '青岛', lat: 36.0671, lon: 120.3826 },
+  { id: '101120101', name: '济南', lat: 36.6512, lon: 117.1201 },
+  { id: '101070201', name: '大连', lat: 38.9140, lon: 121.6147 },
+  { id: '101230201', name: '厦门', lat: 24.4798, lon: 118.0894 },
+  { id: '101220101', name: '合肥', lat: 31.8206, lon: 117.2272 },
+  { id: '101230101', name: '福州', lat: 26.0745, lon: 119.2965 },
+  { id: '101290101', name: '昆明', lat: 25.0406, lon: 102.7123 },
+  { id: '101050101', name: '哈尔滨', lat: 45.8038, lon: 126.5350 },
+  { id: '101060101', name: '长春', lat: 43.8171, lon: 125.3235 },
+  { id: '101240101', name: '南昌', lat: 28.6829, lon: 115.8582 },
+  { id: '101300101', name: '南宁', lat: 22.8170, lon: 108.3665 },
+  { id: '101260101', name: '贵阳', lat: 26.6477, lon: 106.6302 },
+  { id: '101310101', name: '海口', lat: 20.0440, lon: 110.1999 },
+  { id: '101090101', name: '石家庄', lat: 38.0428, lon: 114.5149 },
+  { id: '101100101', name: '太原', lat: 37.8706, lon: 112.5489 },
+  { id: '101130101', name: '乌鲁木齐', lat: 43.8256, lon: 87.6168 },
+  { id: '101160101', name: '兰州', lat: 36.0611, lon: 103.8343 },
+  { id: '101150101', name: '西宁', lat: 36.6171, lon: 101.7782 },
+  { id: '101170101', name: '银川', lat: 38.4872, lon: 106.2309 },
+  { id: '101080101', name: '呼和浩特', lat: 40.8427, lon: 111.7511 },
+  { id: '101190401', name: '苏州', lat: 31.2989, lon: 120.5853 },
+  { id: '101190201', name: '无锡', lat: 31.5747, lon: 120.3017 },
+  { id: '101191101', name: '常州', lat: 31.8112, lon: 119.9741 },
+  { id: '101210401', name: '宁波', lat: 29.8683, lon: 121.5440 },
+  { id: '101210701', name: '温州', lat: 27.9943, lon: 120.6994 },
+  { id: '101281601', name: '东莞', lat: 23.0207, lon: 113.7518 },
+  { id: '101280800', name: '佛山', lat: 23.0215, lon: 113.1214 },
+  { id: '101280701', name: '珠海', lat: 22.2707, lon: 113.5767 },
+  { id: '101120501', name: '烟台', lat: 37.4638, lon: 121.4479 },
+  { id: '101230501', name: '泉州', lat: 24.8741, lon: 118.6757 },
+];
+
 // 粗粒度反查经纬度最近的中国主要城市 ID
 function getClosestCityId(lat: number, lon: number): { cityId: string; name: string } {
-  const coordinates: Array<{ id: string; name: string; lat: number; lon: number }> = [
-    { id: '101110101', name: '西安', lat: 34.3416, lon: 108.9398 },
-    { id: '101010100', name: '北京', lat: 39.9042, lon: 116.4074 },
-    { id: '101020100', name: '上海', lat: 31.2304, lon: 121.4737 },
-    { id: '101280101', name: '广州', lat: 23.1291, lon: 113.2644 },
-    { id: '101280601', name: '深圳', lat: 22.5431, lon: 114.0579 },
-    { id: '101270101', name: '成都', lat: 30.5728, lon: 104.0668 },
-    { id: '101200101', name: '武汉', lat: 30.5928, lon: 114.3055 },
-    { id: '101210101', name: '杭州', lat: 30.2741, lon: 120.1551 },
-    { id: '101190101', name: '南京', lat: 32.0603, lon: 118.7969 },
-    { id: '101040100', name: '重庆', lat: 29.5630, lon: 106.5516 },
-    { id: '101030100', name: '天津', lat: 39.0842, lon: 117.2009 },
-    { id: '101180101', name: '郑州', lat: 34.7466, lon: 113.6253 },
-    { id: '101250101', name: '长沙', lat: 28.2282, lon: 112.9388 },
-    { id: '101070101', name: '沈阳', lat: 41.8057, lon: 123.4315 },
-    { id: '101120201', name: '青岛', lat: 36.0671, lon: 120.3826 },
-    { id: '101220101', name: '合肥', lat: 31.8206, lon: 117.2272 },
-    { id: '101230101', name: '福州', lat: 26.0745, lon: 119.2965 },
-    { id: '101290101', name: '昆明', lat: 25.0406, lon: 102.7123 },
-    { id: '101050101', name: '哈尔滨', lat: 45.8038, lon: 126.5350 },
-    { id: '101240101', name: '南昌', lat: 28.6829, lon: 115.8582 },
-    { id: '101300101', name: '南宁', lat: 22.8170, lon: 108.3665 },
-    { id: '101310101', name: '海口', lat: 20.0440, lon: 110.1999 },
-    { id: '101090101', name: '石家庄', lat: 38.0428, lon: 114.5149 },
-    { id: '101100101', name: '太原', lat: 37.8706, lon: 112.5489 },
-    { id: '101130101', name: '乌鲁木齐', lat: 43.8256, lon: 87.6168 },
-    { id: '101160101', name: '兰州', lat: 36.0611, lon: 103.8343 },
-    { id: '101080101', name: '呼和浩特', lat: 40.8427, lon: 111.7511 },
-  ];
-
-  let best = coordinates[0];
+  let best = CHINA_CITY_COORDINATES[0];
   let minDistance = Infinity;
 
-  for (const c of coordinates) {
+  for (const c of CHINA_CITY_COORDINATES) {
     const d = Math.pow(c.lat - lat, 2) + Math.pow(c.lon - lon, 2);
     if (d < minDistance) {
       minDistance = d;
@@ -825,24 +842,59 @@ export async function fetchCurrentWeather(lang: 'zh' | 'en', forceRefresh = fals
     }
   }
 
+  // 检查是否由控制台/用户配置了自定义固定城市或经纬度
+  let customCityConfig: { city?: string; lat?: number; lon?: number; cityId?: string } | null = null;
+  try {
+    const raw = localStorage.getItem('crab_custom_weather_location');
+    if (raw) {
+      customCityConfig = JSON.parse(raw);
+    }
+  } catch (e) {
+    console.warn('Failed to parse crab_custom_weather_location:', e);
+  }
+
   // 默认使用西安（完美贴合截屏演示与高质量体验）
   let lat = 34.3416;
   let lon = 108.9398;
   let cityName = lang === 'zh' ? '西安' : 'Xi\'an';
   let hasUserLocation = false;
+  let forcedCityId: string | undefined = undefined;
 
-  try {
-    const loc = await requestUserLocation();
-    lat = loc.lat;
-    lon = loc.lon;
+  if (customCityConfig && (customCityConfig.city || (typeof customCityConfig.lat === 'number' && typeof customCityConfig.lon === 'number'))) {
     hasUserLocation = true;
-  } catch (geoErr) {
-    // 定位未允许时，使用默认城市
+    if (customCityConfig.city) {
+      cityName = customCityConfig.city;
+      const matched = CHINA_CITY_COORDINATES.find(c => c.name === customCityConfig!.city || customCityConfig!.city!.includes(c.name));
+      if (matched) {
+        lat = matched.lat;
+        lon = matched.lon;
+        forcedCityId = matched.id;
+      }
+    }
+    if (typeof customCityConfig.lat === 'number' && typeof customCityConfig.lon === 'number') {
+      lat = customCityConfig.lat;
+      lon = customCityConfig.lon;
+    }
+    if (customCityConfig.cityId) {
+      forcedCityId = customCityConfig.cityId;
+    }
+  } else {
+    try {
+      const loc = await requestUserLocation();
+      lat = loc.lat;
+      lon = loc.lon;
+      hasUserLocation = true;
+    } catch (geoErr) {
+      // 定位未允许时，使用默认城市
+    }
   }
 
   // 1. 根据坐标计算最近的城市信息
-  const closest = getClosestCityId(lat, lon);
-  if (hasUserLocation) {
+  const closest = forcedCityId
+    ? { cityId: forcedCityId, name: cityName }
+    : getClosestCityId(lat, lon);
+
+  if (hasUserLocation && !customCityConfig?.city) {
     cityName = closest.name;
     if (lang === 'en') {
       cityName = closest.name;
