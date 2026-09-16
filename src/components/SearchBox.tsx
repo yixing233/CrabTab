@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Dropdown, Tooltip } from 'antd';
+import { Dropdown, Tooltip, Popover, Switch, Slider } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   Search,
@@ -11,6 +11,8 @@ import {
   Bookmark,
   Clock,
   Check,
+  SlidersHorizontal,
+  MoveVertical,
 } from 'lucide-react';
 import { SearchEngineId, SuggestionEngineId, Language, BrowserHistoryItem } from '../types';
 import { SEARCH_ENGINES } from '../constants';
@@ -27,6 +29,7 @@ interface SearchBoxProps {
   searchHistory: string[];
   searchBookmarks?: boolean;
   searchHistoryEnabled?: boolean;
+  verticalOffset?: number;
   openInNewTab?: boolean;
   language: Language;
   theme: 'dark' | 'light' | 'auto';
@@ -42,6 +45,7 @@ interface SearchBoxProps {
   onOpenUrl?: (url: string) => void;
   onToggleSearchBookmarks?: (enabled: boolean) => void;
   onToggleSearchHistory?: (enabled: boolean) => void;
+  onUpdateVerticalOffset?: (offset: number) => void;
 }
 
 export const SearchBox: React.FC<SearchBoxProps> = ({
@@ -50,6 +54,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
   searchHistory,
   searchBookmarks: enableBookmarksSearch = true,
   searchHistoryEnabled = true,
+  verticalOffset = 0,
   openInNewTab = true,
   language,
   theme,
@@ -61,9 +66,11 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
   onOpenUrl,
   onToggleSearchBookmarks,
   onToggleSearchHistory,
+  onUpdateVerticalOffset,
 }) => {
   const [keyword, setKeyword] = useState<string>('');
   const [isFocused, setIsFocused] = useState<boolean>(false);
+  const [settingsPopoverOpen, setSettingsPopoverOpen] = useState<boolean>(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [matchedBookmarks, setMatchedBookmarks] = useState<BookmarkSearchResult[]>([]);
   const [matchedHistoryItems, setMatchedHistoryItems] = useState<BrowserHistoryItem[]>([]);
@@ -434,6 +441,145 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
   const glassBackdropFilter = `blur(${Math.max(glassStyle.blur, 16)}px) saturate(180%)`;
   const glassBorder = `1px solid ${isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.75)'}`;
 
+  // 搜索偏好与位置调节下拉浮层内容
+  const searchSettingsContent = (
+    <div className="w-72 p-1.5 flex flex-col gap-2.5 select-none text-neutral-800 dark:text-neutral-100">
+      {/* 标题 */}
+      <div className="flex items-center justify-between pb-1.5 border-b border-black/8 dark:border-white/10">
+        <span className="text-xs font-semibold flex items-center gap-1.5">
+          <SlidersHorizontal className="w-3.5 h-3.5 text-blue-500" />
+          {t.searchPreferences}
+        </span>
+      </div>
+
+      {/* 功能开关列表 */}
+      <div className="flex flex-col gap-1.5">
+        {/* 书签快速开关 */}
+        <div className="flex items-center justify-between py-1 px-1.5 rounded-lg hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors">
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${
+                enableBookmarksSearch
+                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
+                  : 'bg-black/5 dark:bg-white/5 text-neutral-400 dark:text-neutral-500'
+              }`}
+            >
+              <Bookmark className="w-3.5 h-3.5" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-medium">{t.searchBookmarks}</span>
+              <span className="text-[10px] opacity-60">{t.searchBookmarksDesc}</span>
+            </div>
+          </div>
+          <Switch
+            size="small"
+            checked={enableBookmarksSearch}
+            onChange={(checked) => onToggleSearchBookmarks?.(checked)}
+          />
+        </div>
+
+        {/* 历史记录快速开关 */}
+        <div className="flex items-center justify-between py-1 px-1.5 rounded-lg hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors">
+          <div className="flex items-center gap-2">
+            <div
+              className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${
+                searchHistoryEnabled
+                  ? 'bg-purple-500/15 text-purple-600 dark:text-purple-400'
+                  : 'bg-black/5 dark:bg-white/5 text-neutral-400 dark:text-neutral-500'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xs font-medium">{t.searchHistory}</span>
+              <span className="text-[10px] opacity-60">{t.searchHistoryDesc}</span>
+            </div>
+          </div>
+          <Switch
+            size="small"
+            checked={searchHistoryEnabled}
+            onChange={(checked) => onToggleSearchHistory?.(checked)}
+          />
+        </div>
+      </div>
+
+      {/* 搜索框垂直位置调节 */}
+      {onUpdateVerticalOffset && (
+        <>
+          <div className="border-t border-black/8 dark:border-white/10" />
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold flex items-center gap-1.5">
+                <MoveVertical className="w-3.5 h-3.5 text-blue-500" />
+                {t.searchVerticalOffset}
+              </span>
+              <button
+                type="button"
+                onClick={() => onUpdateVerticalOffset(0)}
+                className="text-[11px] text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer font-medium"
+              >
+                {t.resetDefault}
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2 px-0.5">
+              <Slider
+                className="flex-1 my-1"
+                min={-120}
+                max={120}
+                step={2}
+                value={verticalOffset ?? 0}
+                onChange={(v) => onUpdateVerticalOffset(v)}
+                tooltip={{
+                  formatter: (val) => `${val && val > 0 ? `+${val}` : val ?? 0}px`,
+                }}
+              />
+              <span className="text-xs font-mono w-12 text-right opacity-70">
+                {(verticalOffset ?? 0) > 0 ? `+${verticalOffset}` : (verticalOffset ?? 0)}px
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1">
+              <button
+                type="button"
+                onClick={() => onUpdateVerticalOffset(-40)}
+                className={`text-[11px] py-1 px-1 rounded-md border transition-all cursor-pointer text-center ${
+                  (verticalOffset ?? 0) <= -25
+                    ? 'bg-blue-500 text-white border-blue-500 font-semibold shadow-xs'
+                    : 'border-black/10 dark:border-white/15 text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
+                }`}
+              >
+                {t.searchVerticalTop}
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateVerticalOffset(0)}
+                className={`text-[11px] py-1 px-1 rounded-md border transition-all cursor-pointer text-center ${
+                  (verticalOffset ?? 0) > -25 && (verticalOffset ?? 0) < 25
+                    ? 'bg-blue-500 text-white border-blue-500 font-semibold shadow-xs'
+                    : 'border-black/10 dark:border-white/15 text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
+                }`}
+              >
+                {t.searchVerticalCenter}
+              </button>
+              <button
+                type="button"
+                onClick={() => onUpdateVerticalOffset(40)}
+                className={`text-[11px] py-1 px-1 rounded-md border transition-all cursor-pointer text-center ${
+                  (verticalOffset ?? 0) >= 25
+                    ? 'bg-blue-500 text-white border-blue-500 font-semibold shadow-xs'
+                    : 'border-black/10 dark:border-white/15 text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
+                }`}
+              >
+                {t.searchVerticalBottom}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+
   return (
     <div ref={containerRef} className="relative w-full max-w-2xl mx-auto flex flex-col items-center">
       {/* Search Input Bar */}
@@ -499,96 +645,37 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
             </button>
           )}
 
-          {/* Quick Toggles: 书签与历史记录快捷开关（图标 + 右上角圆形复选框） */}
-          <div className="flex items-center gap-2 ml-1 mr-1.5 pl-2 border-l border-black/8 dark:border-white/10 shrink-0 select-none">
-            {/* 书签快速开关 */}
-            <Tooltip
-              title={
-                enableBookmarksSearch
-                  ? t.searchBookmarksQuickToggleOn
-                  : t.searchBookmarksQuickToggleOff
-              }
-              placement="top"
-            >
+          {/* Search Preferences Dropdown Trigger Button (Arrow) */}
+          <Popover
+            open={settingsPopoverOpen}
+            onOpenChange={setSettingsPopoverOpen}
+            trigger="click"
+            placement="bottomRight"
+            arrow={false}
+            content={searchSettingsContent}
+          >
+            <Tooltip title={t.searchPreferences} placement="top">
               <button
                 type="button"
                 onClick={(e) => {
                   e.stopPropagation();
-                  onToggleSearchBookmarks?.(!enableBookmarksSearch);
-                  inputRef.current?.focus();
+                  setIsFocused(false);
                 }}
-                className={`relative w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer border ${
-                  enableBookmarksSearch
-                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/25 shadow-xs'
-                    : 'bg-black/[0.03] dark:bg-white/[0.04] text-neutral-400 dark:text-neutral-500 border-black/[0.06] dark:border-white/[0.08] hover:text-neutral-600 dark:hover:text-neutral-300 opacity-60 hover:opacity-100'
+                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer border ml-1 mr-1 shrink-0 ${
+                  settingsPopoverOpen
+                    ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 shadow-xs'
+                    : 'bg-black/[0.03] dark:bg-white/[0.04] text-neutral-400 dark:text-neutral-400 border-black/[0.06] dark:border-white/[0.08] hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/[0.06] dark:hover:bg-white/[0.08]'
                 } active:scale-95`}
-                aria-label="切换书签搜索"
+                aria-label={t.searchPreferences}
               >
-                <Bookmark
-                  className={`w-3.5 h-3.5 transition-colors ${
-                    enableBookmarksSearch ? 'fill-emerald-500/25 text-emerald-600 dark:text-emerald-400' : 'opacity-60'
+                <ChevronDown
+                  className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                    settingsPopoverOpen ? 'rotate-180 text-blue-600 dark:text-blue-400' : ''
                   }`}
                 />
-
-                {/* 右上角圆形复选框 */}
-                <span
-                  className={`absolute -top-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center transition-all ring-1.5 ring-white dark:ring-[#141820] pointer-events-none ${
-                    enableBookmarksSearch
-                      ? 'bg-emerald-500 text-white shadow-xs'
-                      : 'border border-neutral-400/80 dark:border-neutral-500/80 bg-white/95 dark:bg-neutral-800/95'
-                  }`}
-                >
-                  {enableBookmarksSearch && (
-                    <Check className="w-2 h-2 stroke-[3]" />
-                  )}
-                </span>
               </button>
             </Tooltip>
-
-            {/* 历史记录快速开关 */}
-            <Tooltip
-              title={
-                searchHistoryEnabled
-                  ? t.searchHistoryQuickToggleOn
-                  : t.searchHistoryQuickToggleOff
-              }
-              placement="top"
-            >
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleSearchHistory?.(!searchHistoryEnabled);
-                  inputRef.current?.focus();
-                }}
-                className={`relative w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer border ${
-                  searchHistoryEnabled
-                    ? 'bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30 hover:bg-purple-500/25 shadow-xs'
-                    : 'bg-black/[0.03] dark:bg-white/[0.04] text-neutral-400 dark:text-neutral-500 border-black/[0.06] dark:border-white/[0.08] hover:text-neutral-600 dark:hover:text-neutral-300 opacity-60 hover:opacity-100'
-                } active:scale-95`}
-                aria-label="切换历史记录搜索"
-              >
-                <Clock
-                  className={`w-3.5 h-3.5 transition-colors ${
-                    searchHistoryEnabled ? 'text-purple-600 dark:text-purple-400' : 'opacity-60'
-                  }`}
-                />
-
-                {/* 右上角圆形复选框 */}
-                <span
-                  className={`absolute -top-1 -right-1 w-3 h-3 rounded-full flex items-center justify-center transition-all ring-1.5 ring-white dark:ring-[#141820] pointer-events-none ${
-                    searchHistoryEnabled
-                      ? 'bg-purple-500 text-white shadow-xs'
-                      : 'border border-neutral-400/80 dark:border-neutral-500/80 bg-white/95 dark:bg-neutral-800/95'
-                  }`}
-                >
-                  {searchHistoryEnabled && (
-                    <Check className="w-2 h-2 stroke-[3]" />
-                  )}
-                </span>
-              </button>
-            </Tooltip>
-          </div>
+          </Popover>
 
           {/* Submit Search Button */}
           <button

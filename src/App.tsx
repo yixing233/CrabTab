@@ -642,6 +642,7 @@ export const App: React.FC = () => {
               searchHistory={searchHistory}
               searchBookmarks={settings.searchBookmarks ?? true}
               searchHistoryEnabled={settings.searchHistory ?? true}
+              verticalOffset={settings.searchVerticalOffset || 0}
               openInNewTab={settings.openInNewTab}
               language={settings.language}
               theme={settings.theme}
@@ -652,6 +653,7 @@ export const App: React.FC = () => {
               onClearHistory={handleClearHistory}
               onToggleSearchBookmarks={(enabled) => handleUpdateSettings({ searchBookmarks: enabled })}
               onToggleSearchHistory={(enabled) => handleUpdateSettings({ searchHistory: enabled })}
+              onUpdateVerticalOffset={(val) => handleUpdateSettings({ searchVerticalOffset: val })}
               onOpenUrl={(url) => {
                 if (settings.openInNewTab) {
                   window.open(url, '_blank');
