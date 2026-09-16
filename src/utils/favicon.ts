@@ -3,6 +3,8 @@
  * 具备根域名智能识别、高频官方高清映射、Touch-Icon 探测、高可用全球/国内 CDN 与哈希渐变兜底。
  */
 
+import { getCachedFavicon } from './faviconCache';
+
 /**
  * 提取 URL 的域名、根域名与源
  */
@@ -140,30 +142,54 @@ export function getFaviconCandidates(siteUrl: string, customIcon?: string): stri
       return []; // 触发首字徽标
     }
     add(customIcon);
+  } else {
+    // 2. 优先命中本地持久化与内存缓存（0ms 秒级直出）
+    const cached = getCachedFavicon(siteUrl);
+    if (cached) {
+      if (cached === 'avatar:letter') {
+        return []; // 已知无可用图标，直接触发首字徽标，避免反复网络重试
+      }
+      const isExt = typeof chrome !== 'undefined' && !!chrome.runtime?.getURL;
+      if (!cached.startsWith('chrome-extension://') || isExt) {
+        add(cached);
+      }
+    }
   }
 
   const { domain, rootDomain, origin, rootOrigin } = parseDomainAndOrigin(siteUrl);
   if (!domain) return result;
 
-  // 2. 匹配官方高清晰度图源（直接覆盖 DeepSeek、ChatGPT、GitHub 等主流网站）
+  // 3. 匹配官方高清晰度图源（直接覆盖 DeepSeek、ChatGPT、GitHub 等主流网站）
   const known = getKnownHighResIcon(domain, rootDomain);
   if (known) {
     add(known);
   }
 
-  // 3. 源站 Touch 图标与根域名备选
+  // 4. Chrome 原生本地 Favicon（仅在扩展环境可用时激活，本地数据库极速读取、免联网、0ms、无 404）
+  const chromeFavicon = getChromeNativeFaviconUrl(siteUrl, 64);
+  if (chromeFavicon) {
+    add(chromeFavicon);
+  }
+
+  // 5. 源站基础 Favicon 与根站 Favicon（绝大多数正常站点均提供）
   if (origin) {
-    add(`${origin}/apple-touch-icon.png`);
-    add(`${origin}/apple-touch-icon-precomposed.png`);
     add(`${origin}/favicon.ico`);
   }
   if (rootOrigin && rootOrigin !== origin) {
-    add(`${rootOrigin}/apple-touch-icon.png`);
     add(`${rootOrigin}/favicon.ico`);
     add(`https://www.${rootDomain}/favicon.ico`);
   }
 
-  // 4. 高可靠全球与国内 CDN 智能探测（仅对公网域名生效，局域网与 IP 直接使用原生源或首字徽标）
+  // 6. 源站 Touch 图标与根域名备选（部分站点仅有高清 touch-icon）
+  if (origin) {
+    add(`${origin}/apple-touch-icon.png`);
+    add(`${origin}/apple-touch-icon-precomposed.png`);
+  }
+  if (rootOrigin && rootOrigin !== origin) {
+    add(`${rootOrigin}/apple-touch-icon.png`);
+  }
+
+  // 7. 高可靠全球与国内 CDN 智能探测（仅对公网域名生效，局域网与 IP 直接使用原生源或首字徽标）
   const isLocalOrIp = /^(\d{1,3}\.){3}\d{1,3}$/.test(domain) || domain.includes(':') || domain === 'localhost' || domain.endsWith('.local');
   if (!isLocalOrIp) {
     add(`https://icon.horse/icon/${domain}`);
@@ -175,12 +201,6 @@ export function getFaviconCandidates(siteUrl: string, customIcon?: string): stri
       add(`https://icons.duckduckgo.com/ip3/${rootDomain}.ico`);
     }
     add(`https://www.google.com/s2/favicons?domain=${rootDomain || domain}&sz=128`);
-  }
-
-  // 5. Chrome 原生本地 Favicon（作为环境候选之一）
-  const chromeFavicon = getChromeNativeFaviconUrl(siteUrl, 64);
-  if (chromeFavicon) {
-    add(chromeFavicon);
   }
 
   return result;
@@ -233,44 +253,19 @@ export function getIconCandidateOptions(siteUrl: string): IconCandidateOption[] 
     });
   }
 
-  // 2. 源站 Apple Touch Icon（高质量大图）
-  if (origin) {
+  // 2. Chrome 原生本地 Favicon（仅在扩展环境可用时提供，极速且与浏览器完全一致）
+  const chromeUrl = getChromeNativeFaviconUrl(siteUrl, 64);
+  if (chromeUrl) {
     pushOpt({
-      id: 'touch-origin',
-      name: '高清Touch',
-      nameEn: 'Touch Icon',
-      url: `${origin}/apple-touch-icon.png`,
-      type: 'touch',
-    });
-  }
-  if (rootOrigin && rootOrigin !== origin) {
-    pushOpt({
-      id: 'touch-root',
-      name: '根站Touch',
-      nameEn: 'Root Touch',
-      url: `${rootOrigin}/apple-touch-icon.png`,
-      type: 'touch',
+      id: 'chrome-native',
+      name: '浏览器本地',
+      nameEn: 'Browser Native',
+      url: chromeUrl,
+      type: 'chrome',
     });
   }
 
-  // 3. 高质量 CDN 镜像
-  pushOpt({
-    id: 'cdn-iconhorse',
-    name: '高清镜像',
-    nameEn: 'HD Mirror',
-    url: `https://icon.horse/icon/${rootDomain || domain}`,
-    type: 'cdn',
-  });
-
-  pushOpt({
-    id: 'cdn-ddg',
-    name: 'DuckDuckGo',
-    nameEn: 'DuckDuckGo',
-    url: `https://icons.duckduckgo.com/ip3/${rootDomain || domain}.ico`,
-    type: 'cdn',
-  });
-
-  // 4. 源站基础 Favicon
+  // 3. 源站基础 Favicon
   if (origin) {
     pushOpt({
       id: 'favicon-origin',
@@ -290,17 +285,42 @@ export function getIconCandidateOptions(siteUrl: string): IconCandidateOption[] 
     });
   }
 
-  // 5. Chrome 原生本地 Favicon（仅在扩展环境可用时提供）
-  const chromeUrl = getChromeNativeFaviconUrl(siteUrl, 64);
-  if (chromeUrl) {
+  // 4. 源站 Apple Touch Icon（高质量大图）
+  if (origin) {
     pushOpt({
-      id: 'chrome-native',
-      name: '浏览器本地',
-      nameEn: 'Browser Native',
-      url: chromeUrl,
-      type: 'chrome',
+      id: 'touch-origin',
+      name: '高清Touch',
+      nameEn: 'Touch Icon',
+      url: `${origin}/apple-touch-icon.png`,
+      type: 'touch',
     });
   }
+  if (rootOrigin && rootOrigin !== origin) {
+    pushOpt({
+      id: 'touch-root',
+      name: '根站Touch',
+      nameEn: 'Root Touch',
+      url: `${rootOrigin}/apple-touch-icon.png`,
+      type: 'touch',
+    });
+  }
+
+  // 5. 高质量 CDN 镜像
+  pushOpt({
+    id: 'cdn-iconhorse',
+    name: '高清镜像',
+    nameEn: 'HD Mirror',
+    url: `https://icon.horse/icon/${rootDomain || domain}`,
+    type: 'cdn',
+  });
+
+  pushOpt({
+    id: 'cdn-ddg',
+    name: 'DuckDuckGo',
+    nameEn: 'DuckDuckGo',
+    url: `https://icons.duckduckgo.com/ip3/${rootDomain || domain}.ico`,
+    type: 'cdn',
+  });
 
   // 6. 动态首字渐变徽标（保底选项）
   pushOpt({

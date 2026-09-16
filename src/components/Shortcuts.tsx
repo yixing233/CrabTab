@@ -10,6 +10,11 @@ import {
   parseDomainAndOrigin,
 } from '../utils/favicon';
 import {
+  setCachedFavicon,
+  setCachedFaviconFailed,
+  subscribeFaviconCache,
+} from '../utils/faviconCache';
+import {
   Folder,
   Edit2,
   Trash2,
@@ -40,7 +45,7 @@ type GridContextMenu = {
 };
 
 /**
- * 支持多级 CDN 与源站探测降级加载的快捷图标组件
+ * 支持本地 IndexedDB 缓存、极速 Chrome 原生与多级降级兜底的快捷图标组件
  */
 export const ShortcutIconView: React.FC<{ url: string; icon?: string; title: string; sizeClass?: string }> = ({
   url,
@@ -48,24 +53,43 @@ export const ShortcutIconView: React.FC<{ url: string; icon?: string; title: str
   title,
   sizeClass = 'w-7 h-7 sm:w-8 sm:h-8',
 }) => {
-  const candidates = React.useMemo(() => getFaviconCandidates(url, icon), [url, icon]);
+  // 订阅本地 IndexedDB 缓存加载与更新事件
+  const [cacheVersion, setCacheVersion] = useState<number>(0);
+  React.useEffect(() => {
+    return subscribeFaviconCache(() => {
+      setCacheVersion((v) => v + 1);
+    });
+  }, []);
+
+  const candidates = React.useMemo(() => getFaviconCandidates(url, icon), [url, icon, cacheVersion]);
   const [candidateIndex, setCandidateIndex] = useState<number>(0);
   const [hasError, setHasError] = useState<boolean>(false);
 
-  // 当外部 url 或 icon 变更时重置探测状态
+  // 当外部 url 或 icon 或缓存更新变更时重置探测状态
   React.useEffect(() => {
     setCandidateIndex(0);
     setHasError(false);
-  }, [url, icon]);
+  }, [url, icon, cacheVersion]);
 
   const currentSrc = candidates[candidateIndex];
+
+  // 图标探测成功后写入本地持久化缓存
+  const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const target = e.currentTarget;
+    const loadedSrc = target.currentSrc || currentSrc;
+    if (loadedSrc && !loadedSrc.startsWith('data:image/svg+xml;base64,PHN2Zy')) {
+      setCachedFavicon(url, loadedSrc);
+    }
+  };
 
   const handleImageError = () => {
     setCandidateIndex((prev) => {
       if (prev + 1 < candidates.length) {
         return prev + 1;
       }
+      // 所有候选耗尽后，记录失败状态到缓存，避免后续每次打开新标签页重复发起十几个 404 网络请求
       setHasError(true);
+      setCachedFaviconFailed(url);
       return prev;
     });
   };
@@ -94,6 +118,7 @@ export const ShortcutIconView: React.FC<{ url: string; icon?: string; title: str
       decoding="async"
       draggable={false}
       className={`${sizeClass} object-contain rounded-lg select-none pointer-events-none`}
+      onLoad={handleImageLoad}
       onError={handleImageError}
     />
   );
