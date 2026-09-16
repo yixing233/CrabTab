@@ -2,7 +2,7 @@
  * 版本检测工具：从项目静态元数据源读取线上版本
  */
 
-export const CURRENT_VERSION = '1.1.1';
+export const CURRENT_VERSION = '1.1.2';
 export const REPO_OWNER = 'yixing233';
 export const REPO_NAME = 'CrabTab';
 export const GITHUB_REPO_URL = `https://github.com/${REPO_OWNER}/${REPO_NAME}`;
