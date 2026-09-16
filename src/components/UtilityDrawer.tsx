@@ -26,6 +26,8 @@ import {
   CheckSquare,
   ChevronUp,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ArrowLeft,
   Copy,
   Trash2,
@@ -226,6 +228,38 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
   const pinnedCountdowns = useMemo(() => {
     return countdowns.filter((item) => item.isPinned);
   }, [countdowns]);
+
+  // 倒数日桌面置顶向右收起状态（支持本地持久化记忆）
+  const [isCountdownCollapsed, setIsCountdownCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('crab_pinned_countdown_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleCountdownCollapse = (collapsed: boolean) => {
+    setIsCountdownCollapsed(collapsed);
+    try {
+      localStorage.setItem('crab_pinned_countdown_collapsed', String(collapsed));
+    } catch {}
+  };
+
+  // 获取距离当前最近 / 最紧急的置顶倒数日，用于收起状态胶囊展示
+  const nearestPinnedCountdown = useMemo(() => {
+    if (pinnedCountdowns.length === 0) return null;
+    const sorted = [...pinnedCountdowns].sort((a, b) => {
+      const aTime = dayjs(a.targetDate).valueOf();
+      const bTime = dayjs(b.targetDate).valueOf();
+      return aTime - bTime;
+    });
+    return sorted[0];
+  }, [pinnedCountdowns]);
+
+  const nearestStatus = useMemo(() => {
+    if (!nearestPinnedCountdown) return null;
+    return calculateCountdownStatus(nearestPinnedCountdown, language);
+  }, [nearestPinnedCountdown, language]);
 
   const handleTogglePinCountdown = (item: CountdownItem) => {
     const next = countdowns.map((c) =>
@@ -1193,57 +1227,150 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
         </div>
       )}
 
-      {/* 底部右下角独立倒数日胶囊区（纵向靠右堆叠，统一定宽与两端对齐，保证边距与视觉间距完全均匀） */}
+      {/* 底部右下角独立倒数日胶囊区（支持向右平滑收起与展开，纵向靠右堆叠） */}
       {!open && pinnedCountdowns.length > 0 && (
-        <div className="pinned-countdown-container fixed right-6 bottom-4 z-40 flex flex-col items-end gap-2 max-h-[42vh] overflow-y-auto custom-scrollbar pointer-events-auto p-1 select-none">
-          {pinnedCountdowns.map((item) => {
-            const status = calculateCountdownStatus(item, language);
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  setTab('countdown');
-                  setOpen(true);
-                }}
-                title={zh ? `${item.title}（点击管理倒数日）` : `${item.title} (Manage)`}
-                className={`w-[240px] h-8 flex items-center justify-between pl-1.5 pr-3.5 rounded-full text-xs font-medium shadow-md transition-colors border cursor-pointer select-none backdrop-blur-md shrink-0 ${
-                  isDark
-                    ? 'bg-[#181a20]/80 hover:bg-[#181a20]/95 text-white/90 border-white/10 hover:border-white/30'
-                    : 'bg-white/80 hover:bg-white/95 text-neutral-800 border-black/10 hover:border-black/20'
-                }`}
-                style={{
-                  backdropFilter: `blur(${glassStyle.blur}px)`,
-                  WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
-                }}
-              >
-                {/* 左侧：图标与标题 */}
-                <div className="flex items-center gap-2 min-w-0 pr-2">
+        <>
+          {/* 收起状态：贴附在屏幕右侧边缘的精致浮动标签 */}
+          <div
+            className={`fixed right-0 bottom-4 z-40 transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              isCountdownCollapsed
+                ? 'translate-x-0 opacity-100 pointer-events-auto'
+                : 'translate-x-full opacity-0 pointer-events-none'
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => toggleCountdownCollapse(false)}
+              title={zh ? '展开倒数日（点击展开）' : 'Expand countdowns'}
+              className={`group h-8 flex items-center gap-1.5 pl-2.5 pr-3 rounded-l-full text-xs font-medium shadow-md transition-all duration-200 border border-r-0 cursor-pointer select-none backdrop-blur-md hover:pl-3.5 ${
+                isDark
+                  ? 'bg-[#181a20]/85 hover:bg-[#181a20] text-white/90 border-white/10 hover:border-white/30'
+                  : 'bg-white/85 hover:bg-white text-neutral-800 border-black/10 hover:border-black/20'
+              }`}
+              style={{
+                backdropFilter: `blur(${glassStyle.blur}px)`,
+                WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
+              }}
+            >
+              <ChevronLeft
+                size={13}
+                className="text-neutral-400 group-hover:text-current transition-transform duration-200 group-hover:-translate-x-0.5 shrink-0"
+              />
+              {nearestPinnedCountdown && nearestStatus ? (
+                <>
                   <div
-                    className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                    className="w-4.5 h-4.5 rounded-full flex items-center justify-center shrink-0"
                     style={{
-                      backgroundColor: `${status.color}22`,
-                      color: status.color,
+                      backgroundColor: `${nearestStatus.color}22`,
+                      color: nearestStatus.color,
                     }}
                   >
-                    <CountdownIcon name={item.icon} size={12} />
+                    <CountdownIcon name={nearestPinnedCountdown.icon} size={11} />
                   </div>
-                  <span className="truncate max-w-[110px] text-neutral-800 dark:text-neutral-100">
-                    {item.title}
+                  <span className="truncate max-w-[85px] text-[11px] text-neutral-800 dark:text-neutral-100">
+                    {nearestPinnedCountdown.title}
                   </span>
-                </div>
-
-                {/* 右侧：状态文案与天数 */}
-                <span
-                  className="text-[11px] font-semibold opacity-95 shrink-0 tabular-nums"
-                  style={{ color: status.color }}
-                >
-                  {status.displayText}
+                  <span
+                    className="text-[11px] font-semibold tabular-nums shrink-0"
+                    style={{ color: nearestStatus.color }}
+                  >
+                    {nearestStatus.displayText}
+                  </span>
+                  {pinnedCountdowns.length > 1 && (
+                    <span className="text-[10px] px-1 py-0.2 rounded-full bg-black/5 dark:bg-white/10 opacity-70 text-neutral-500 dark:text-neutral-400 shrink-0 font-medium">
+                      +{pinnedCountdowns.length - 1}
+                    </span>
+                  )}
+                </>
+              ) : (
+                <span className="text-[11px] text-neutral-600 dark:text-neutral-300">
+                  {zh ? '倒数日' : 'Countdowns'}
                 </span>
+              )}
+            </button>
+          </div>
+
+          {/* 展开状态：完整倒数日胶囊堆叠区（配备向右收起按钮与平滑滑出动画） */}
+          <div
+            className={`pinned-countdown-container fixed right-6 bottom-4 z-40 flex flex-col items-end gap-1.5 max-h-[42vh] overflow-y-auto custom-scrollbar p-1 select-none transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              !isCountdownCollapsed
+                ? 'translate-x-0 opacity-100 pointer-events-auto'
+                : 'translate-x-[calc(100%+32px)] opacity-0 pointer-events-none'
+            }`}
+          >
+            {/* 顶栏微控制条：倒数日标题与「向右收起」操作按钮 */}
+            <div className="flex items-center justify-between w-[240px] px-2 py-0.5 rounded-lg select-none">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
+                <CalendarClock size={12} className="opacity-75" />
+                <span>{zh ? '倒数日' : 'Countdowns'}</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/5 dark:bg-white/10 opacity-70 tabular-nums font-semibold">
+                  {pinnedCountdowns.length}
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleCountdownCollapse(true);
+                }}
+                title={zh ? '向右侧收起' : 'Collapse to right'}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100 hover:bg-black/8 dark:hover:bg-white/12 transition-all cursor-pointer"
+              >
+                <span className="text-[10px]">{zh ? '收起' : 'Collapse'}</span>
+                <ChevronRight size={13} />
               </button>
-            );
-          })}
-        </div>
+            </div>
+
+            {/* 倒数日胶囊列表 */}
+            {pinnedCountdowns.map((item) => {
+              const status = calculateCountdownStatus(item, language);
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    setTab('countdown');
+                    setOpen(true);
+                  }}
+                  title={zh ? `${item.title}（点击管理倒数日）` : `${item.title} (Manage)`}
+                  className={`w-[240px] h-8 flex items-center justify-between pl-1.5 pr-3.5 rounded-full text-xs font-medium shadow-md transition-colors border cursor-pointer select-none backdrop-blur-md shrink-0 ${
+                    isDark
+                      ? 'bg-[#181a20]/80 hover:bg-[#181a20]/95 text-white/90 border-white/10 hover:border-white/30'
+                      : 'bg-white/80 hover:bg-white/95 text-neutral-800 border-black/10 hover:border-black/20'
+                  }`}
+                  style={{
+                    backdropFilter: `blur(${glassStyle.blur}px)`,
+                    WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
+                  }}
+                >
+                  {/* 左侧：图标与标题 */}
+                  <div className="flex items-center gap-2 min-w-0 pr-2">
+                    <div
+                      className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
+                      style={{
+                        backgroundColor: `${status.color}22`,
+                        color: status.color,
+                      }}
+                    >
+                      <CountdownIcon name={item.icon} size={12} />
+                    </div>
+                    <span className="truncate max-w-[110px] text-neutral-800 dark:text-neutral-100">
+                      {item.title}
+                    </span>
+                  </div>
+
+                  {/* 右侧：状态文案与天数 */}
+                  <span
+                    className="text-[11px] font-semibold opacity-95 shrink-0 tabular-nums"
+                    style={{ color: status.color }}
+                  >
+                    {status.displayText}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {/* 底部居中外壳：包含抽屉面板与居中把手 */}
