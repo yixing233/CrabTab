@@ -843,7 +843,7 @@ export function setCachedWeather(data: WeatherData, lang: 'zh' | 'en'): void {
 }
 
 /**
- * 根据经纬度通过逆地理编码动态解析真实的市/区/县名称（支持全国 2800+ 区县及全球海外城市）
+ * 根据经纬度通过逆地理编码动态解析真实的市/区/县/乡镇街道名称（支持全国 2800+ 区县、高精度乡镇街道及全球海外城市）
  */
 export async function reverseGeocodeCity(lat: number, lon: number, lang: 'zh' | 'en' = 'zh'): Promise<string | null> {
   try {
@@ -858,8 +858,18 @@ export async function reverseGeocodeCity(lat: number, lon: number, lang: 'zh' | 
 
     if (lang === 'zh') {
       const isMunicipality = ['北京市', '上海市', '天津市', '重庆市'].includes(data.principalSubdivision);
+      const adminList = Array.isArray(data.localityInfo?.administrative) ? data.localityInfo.administrative : [];
+
+      // 深度优先：查找乡镇/街道级别（adminLevel 8 或 7，例如 街道、镇、乡）
+      const town = adminList.find(
+        (a: any) => (a.adminLevel === 8 || a.adminLevel === 7) && /(?:街道|镇|乡)$/.test(a.name)
+      );
+
       let raw = '';
-      if (isMunicipality) {
+      if (town && town.name) {
+        // 精确深入到乡镇/街道（例如 "大同镇"、"乌镇"、"中关村街道"、"沧浪街道"）
+        raw = town.name;
+      } else if (isMunicipality) {
         raw = data.principalSubdivision;
       } else if (data.locality && /(?:县|市)$/.test(data.locality)) {
         // 县级市或县，例如 长汀县、昆山市、义乌市、景洪市
@@ -870,8 +880,14 @@ export async function reverseGeocodeCity(lat: number, lon: number, lang: 'zh' | 
       } else {
         raw = data.locality || data.principalSubdivision || '';
       }
+
       if (raw) {
-        return raw.replace(/(?:省|自治区|特别行政区|壮族自治区|维吾尔自治区|回族自治区|市|县|区)$/, '');
+        // 剥离行政层级后缀，保持顶栏纯粹美观（保留 2 字及以上如 "乌镇"）
+        raw = raw.replace(/(?:省|自治区|特别行政区|壮族自治区|维吾尔自治区|回族自治区|市|县|区)$/, '');
+        if (raw.length > 2) {
+          raw = raw.replace(/(?:街道|镇|乡)$/, '');
+        }
+        return raw;
       }
     } else {
       return data.city || data.locality || data.principalSubdivision || null;
