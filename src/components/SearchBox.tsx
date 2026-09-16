@@ -13,6 +13,7 @@ import {
   Check,
   SlidersHorizontal,
   MoveVertical,
+  RotateCcw,
 } from 'lucide-react';
 import { SearchEngineId, SuggestionEngineId, Language, BrowserHistoryItem } from '../types';
 import { SEARCH_ENGINES } from '../constants';
@@ -441,35 +442,16 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
   const glassBackdropFilter = `blur(${Math.max(glassStyle.blur, 16)}px) saturate(180%)`;
   const glassBorder = `1px solid ${isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.75)'}`;
 
-  // 搜索偏好与位置调节下拉浮层内容
+  // 搜索偏好与位置调节下拉浮层内容（极简轻量版）
   const searchSettingsContent = (
-    <div className="w-72 p-1.5 flex flex-col gap-2.5 select-none text-neutral-800 dark:text-neutral-100">
-      {/* 标题 */}
-      <div className="flex items-center justify-between pb-1.5 border-b border-black/8 dark:border-white/10">
-        <span className="text-xs font-semibold flex items-center gap-1.5">
-          <SlidersHorizontal className="w-3.5 h-3.5 text-blue-500" />
-          {t.searchPreferences}
-        </span>
-      </div>
-
-      {/* 功能开关列表 */}
-      <div className="flex flex-col gap-1.5">
+    <div className="w-56 p-0.5 flex flex-col gap-2 select-none text-neutral-800 dark:text-neutral-100">
+      {/* 快捷功能开关列表 */}
+      <div className="flex flex-col gap-0.5">
         {/* 书签快速开关 */}
-        <div className="flex items-center justify-between py-1 px-1.5 rounded-lg hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors">
-          <div className="flex items-center gap-2">
-            <div
-              className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${
-                enableBookmarksSearch
-                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400'
-                  : 'bg-black/5 dark:bg-white/5 text-neutral-400 dark:text-neutral-500'
-              }`}
-            >
-              <Bookmark className="w-3.5 h-3.5" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-medium">{t.searchBookmarks}</span>
-              <span className="text-[10px] opacity-60">{t.searchBookmarksDesc}</span>
-            </div>
+        <div className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+          <div className="flex items-center gap-2 text-xs font-medium text-neutral-700 dark:text-neutral-200">
+            <Bookmark className="w-3.5 h-3.5 text-emerald-500" />
+            <span>{t.searchBookmarks}</span>
           </div>
           <Switch
             size="small"
@@ -479,21 +461,10 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
         </div>
 
         {/* 历史记录快速开关 */}
-        <div className="flex items-center justify-between py-1 px-1.5 rounded-lg hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors">
-          <div className="flex items-center gap-2">
-            <div
-              className={`w-6 h-6 rounded-md flex items-center justify-center transition-colors ${
-                searchHistoryEnabled
-                  ? 'bg-purple-500/15 text-purple-600 dark:text-purple-400'
-                  : 'bg-black/5 dark:bg-white/5 text-neutral-400 dark:text-neutral-500'
-              }`}
-            >
-              <Clock className="w-3.5 h-3.5" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xs font-medium">{t.searchHistory}</span>
-              <span className="text-[10px] opacity-60">{t.searchHistoryDesc}</span>
-            </div>
+        <div className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+          <div className="flex items-center gap-2 text-xs font-medium text-neutral-700 dark:text-neutral-200">
+            <Clock className="w-3.5 h-3.5 text-purple-500" />
+            <span>{t.searchHistory}</span>
           </div>
           <Switch
             size="small"
@@ -507,26 +478,35 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
       {onUpdateVerticalOffset && (
         <>
           <div className="border-t border-black/8 dark:border-white/10" />
-          <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold flex items-center gap-1.5">
+
+          <div className="flex flex-col gap-1 px-1">
+            <div className="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-300">
+              <span className="flex items-center gap-1.5">
                 <MoveVertical className="w-3.5 h-3.5 text-blue-500" />
-                {t.searchVerticalOffset}
+                <span>{t.searchVerticalOffset}</span>
               </span>
-              <button
-                type="button"
-                onClick={() => onUpdateVerticalOffset(0)}
-                className="text-[11px] text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer font-medium"
-              >
-                {t.resetDefault}
-              </button>
+              <div className="flex items-center gap-1 font-mono text-[11px]">
+                <span className={verticalOffset !== 0 ? 'text-blue-500 font-medium' : 'opacity-40'}>
+                  {(verticalOffset ?? 0) > 0 ? `+${verticalOffset}` : (verticalOffset ?? 0)}px
+                </span>
+                {verticalOffset !== 0 && (
+                  <button
+                    type="button"
+                    onClick={() => onUpdateVerticalOffset(0)}
+                    className="p-0.5 text-neutral-400 hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer transition-colors"
+                    title={t.resetDefault}
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 px-0.5">
+            <div className="pt-0.5 px-0.5">
               <Slider
-                className="flex-1 my-1"
-                min={-120}
-                max={120}
+                className="my-1"
+                min={-100}
+                max={100}
                 step={2}
                 value={verticalOffset ?? 0}
                 onChange={(v) => onUpdateVerticalOffset(v)}
@@ -534,19 +514,15 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                   formatter: (val) => `${val && val > 0 ? `+${val}` : val ?? 0}px`,
                 }}
               />
-              <span className="text-xs font-mono w-12 text-right opacity-70">
-                {(verticalOffset ?? 0) > 0 ? `+${verticalOffset}` : (verticalOffset ?? 0)}px
-              </span>
             </div>
 
-            <div className="grid grid-cols-3 gap-1">
+            {/* 极简快捷档位 */}
+            <div className="flex items-center justify-between text-[11px] text-neutral-400 dark:text-neutral-500 px-0.5 pt-0.5">
               <button
                 type="button"
                 onClick={() => onUpdateVerticalOffset(-40)}
-                className={`text-[11px] py-1 px-1 rounded-md border transition-all cursor-pointer text-center ${
-                  (verticalOffset ?? 0) <= -25
-                    ? 'bg-blue-500 text-white border-blue-500 font-semibold shadow-xs'
-                    : 'border-black/10 dark:border-white/15 text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
+                className={`transition-colors cursor-pointer hover:text-neutral-700 dark:hover:text-neutral-200 ${
+                  (verticalOffset ?? 0) <= -25 ? 'text-blue-500 font-medium' : ''
                 }`}
               >
                 {t.searchVerticalTop}
@@ -554,10 +530,8 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
               <button
                 type="button"
                 onClick={() => onUpdateVerticalOffset(0)}
-                className={`text-[11px] py-1 px-1 rounded-md border transition-all cursor-pointer text-center ${
-                  (verticalOffset ?? 0) > -25 && (verticalOffset ?? 0) < 25
-                    ? 'bg-blue-500 text-white border-blue-500 font-semibold shadow-xs'
-                    : 'border-black/10 dark:border-white/15 text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
+                className={`transition-colors cursor-pointer hover:text-neutral-700 dark:hover:text-neutral-200 ${
+                  (verticalOffset ?? 0) > -25 && (verticalOffset ?? 0) < 25 ? 'text-blue-500 font-medium' : ''
                 }`}
               >
                 {t.searchVerticalCenter}
@@ -565,10 +539,8 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
               <button
                 type="button"
                 onClick={() => onUpdateVerticalOffset(40)}
-                className={`text-[11px] py-1 px-1 rounded-md border transition-all cursor-pointer text-center ${
-                  (verticalOffset ?? 0) >= 25
-                    ? 'bg-blue-500 text-white border-blue-500 font-semibold shadow-xs'
-                    : 'border-black/10 dark:border-white/15 text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
+                className={`transition-colors cursor-pointer hover:text-neutral-700 dark:hover:text-neutral-200 ${
+                  (verticalOffset ?? 0) >= 25 ? 'text-blue-500 font-medium' : ''
                 }`}
               >
                 {t.searchVerticalBottom}
@@ -638,7 +610,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                 setKeyword('');
                 inputRef.current?.focus();
               }}
-              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer transition-colors mr-1"
+              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer transition-colors mr-0.5"
               aria-label="清空输入"
             >
               <X className="w-4 h-4" />
@@ -661,16 +633,16 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                   e.stopPropagation();
                   setIsFocused(false);
                 }}
-                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer border ml-1 mr-1 shrink-0 ${
+                className={`p-1 rounded-md flex items-center justify-center transition-all cursor-pointer mr-0.5 shrink-0 ${
                   settingsPopoverOpen
-                    ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 shadow-xs'
-                    : 'bg-black/[0.03] dark:bg-white/[0.04] text-neutral-400 dark:text-neutral-400 border-black/[0.06] dark:border-white/[0.08] hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/[0.06] dark:hover:bg-white/[0.08]'
+                    ? 'text-blue-500 bg-blue-500/10'
+                    : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
                 } active:scale-95`}
                 aria-label={t.searchPreferences}
               >
                 <ChevronDown
-                  className={`w-3.5 h-3.5 transition-transform duration-200 ${
-                    settingsPopoverOpen ? 'rotate-180 text-blue-600 dark:text-blue-400' : ''
+                  className={`w-4 h-4 transition-transform duration-200 ${
+                    settingsPopoverOpen ? 'rotate-180 text-blue-500' : ''
                   }`}
                 />
               </button>
