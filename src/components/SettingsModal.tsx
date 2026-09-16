@@ -1034,7 +1034,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         />
       </div>
 
-      {/* 全局界面缩放比例 (UI Scale) */}
+      {/* 全局界面缩放比例 (UI Scale)
+          说明：该值经 --ui-scale + zoom 生效，根节点以百分比链反算真实布局视口，
+          因此任何档位下都不会溢出裁切。 */}
       <div className={`p-3.5 rounded-xl border space-y-2.5 ${
         isDark ? 'border-white/8 bg-white/[0.03]' : 'border-gray-200/80 bg-gray-50/50'
       }`}>
@@ -1899,7 +1901,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const wrapTabScroll = (content: React.ReactNode) => (
     <div
       style={{
-        maxHeight: 'calc(68vh - 60px)',
+        maxHeight: 'calc(var(--viewport-height) * 0.68 - 60px)',
         overflowY: 'auto',
         overflowX: 'hidden',
         paddingRight: '6px',

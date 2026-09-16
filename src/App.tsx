@@ -19,12 +19,16 @@ import {
   saveSearchHistory,
   loadCountdownsFromStorage,
   saveCountdownsToStorage,
+  isStorageHydrationDegraded,
+  markStorageHydrated,
+  isAuthoritativeStorageReadable,
   SETTINGS_KEY,
   SHORTCUTS_KEY,
   SEARCH_HISTORY_KEY
 } from './utils/storage';
 import { getDefaultCountdowns } from './utils/countdown';
 import { getAntdTheme } from './theme';
+import { syncViewportHeightClasses } from './utils/viewport';
 import { SEARCH_ENGINES, RANDOM_WALLPAPER_POOL } from './constants';
 import { fetchFromOnlineSource, ONLINE_WALLPAPER_SOURCES } from './utils/wallpaperSources';
 import { 
@@ -67,6 +71,8 @@ export const App: React.FC = () => {
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
   const [refreshingWallpaper, setRefreshingWallpaper] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  // 递增即触发一次全量重新水合（用于存储降级后的自愈与跨标签页恢复）
+  const [rehydrateTick, setRehydrateTick] = useState(0);
   const [settingsInitialTab, setSettingsInitialTab] = useState<string>('wallpaper');
   const [availableUpdate, setAvailableUpdate] = useState<ReleaseInfo | null>(() => {
     const cached = getCachedReleaseInfo();
@@ -107,20 +113,91 @@ export const App: React.FC = () => {
     initData();
   }, []);
 
+  /**
+   * 存储降级自愈。
+   *
+   * 扩展重新加载 / 升级的瞬间 chrome.storage 可能短暂不可读。此时首屏只能用默认值，
+   * 且 storage 层会暂停一切写回以免覆盖用户数据。这里做后台重试：一旦权威介质恢复
+   * 可读，就用真实数据替换内存中的默认值，并解除写回封锁。
+   */
+  useEffect(() => {
+    if (!initialized || !isStorageHydrationDegraded()) return;
+
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    let attempt = 0;
+
+    const rehydrate = async () => {
+      if (cancelled) return;
+      attempt += 1;
+      try {
+        // 先确认权威介质确实恢复可读，再断言「读取成功」——
+        // 降级标记是单调累积的，不能只凭 loadX 未抛错就认为已经恢复。
+        const readable = await isAuthoritativeStorageReadable();
+        if (cancelled) return;
+
+        if (readable) {
+          markStorageHydrated();
+          const [s, sc, sh, cd] = await Promise.all([
+            loadSettings(),
+            loadShortcuts(),
+            loadSearchHistory(),
+            loadCountdownsFromStorage<CountdownItem>(),
+          ]);
+          if (cancelled) return;
+          // 用真实数据替换首屏的默认值
+          setSettings(s);
+          setShortcuts(sc);
+          setSearchHistory(sh);
+          if (cd !== null) setCountdowns(cd);
+          console.info('[Storage] 已从存储成功重新水合用户数据。');
+          return;
+        }
+      } catch {
+        // 继续退避重试
+      }
+
+      if (cancelled) return;
+      if (attempt < 8) {
+        // 指数退避，最长约 60 秒，覆盖扩展升级/重载后的恢复窗口
+        timer = setTimeout(rehydrate, Math.min(1000 * 2 ** (attempt - 1), 30000));
+      }
+    };
+
+    timer = setTimeout(rehydrate, 800);
+
+    return () => {
+      cancelled = true;
+      if (timer !== null) clearTimeout(timer);
+    };
+  }, [initialized, rehydrateTick]);
+
   const handleUpdateCountdowns = (newCountdowns: CountdownItem[]) => {
     setCountdowns(newCountdowns);
     saveCountdownsToStorage(newCountdowns);
   };
 
   // 全局界面缩放响应（根据设置中的 uiScale 动态调整，默认 100% 保持原生精致尺寸）
+  // 关键：zoom 挂在 <html> 上时，vw/vh 与 CSS 媒体查询仍按「未缩放的物理视口」求值，
+  // 因此必须同步暴露 --ui-scale（供根节点定尺与 --viewport-* 计算），
+  // 并由 JS 依据真实布局视口高度打分级 class，否则高缩放下矮屏收缩规则不触发、
+  // 内容溢出后被 overflow:hidden 裁掉且无法滚动到。
   useEffect(() => {
     const scale = settings?.uiScale ?? 100;
-    if (scale && scale !== 100) {
-      document.documentElement.style.zoom = `${scale}%`;
-    } else {
-      document.documentElement.style.zoom = '';
-    }
-  }, [settings?.uiScale]);
+    const normalized = scale >= 80 && scale <= 140 ? scale : 100;
+    const root = document.documentElement;
+    root.style.setProperty('--ui-scale', String(normalized / 100));
+    // 仅在非 100% 时写 zoom，避免留下内联样式干扰后续精确测量
+    root.style.zoom = normalized === 100 ? '' : `${normalized}%`;
+    syncViewportHeightClasses();
+  }, [settings?.uiScale, initialized]);
+
+  // 视口尺寸变化时同步刷新高度分级（窗口拖拽、系统缩放变更等）
+  useEffect(() => {
+    const handleResize = () => syncViewportHeightClasses();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // 监听多标签页同步：当用户在其他标签页修改设置、快捷方式或搜索历史时实时同步，避免多标签页陈旧数据互相覆盖
   useEffect(() => {
@@ -131,6 +208,19 @@ export const App: React.FC = () => {
       areaName: string
     ) => {
       if (areaName !== 'local') return;
+
+      // 能收到其它标签页的写入事件，说明权威存储此刻是可用的。
+      // 但本次事件只携带了「被改动的那几个 key」，其余 key 在本标签页内存里
+      // 仍是降级启动时的默认值。此时绝不能直接解除写回封锁 —— 否则用户的下一次
+      // 操作会把默认值当作真实数据写回去。正确做法是请求一次全量重新水合。
+      const hasUsableChange =
+        !!changes[SETTINGS_KEY]?.newValue ||
+        !!changes[SHORTCUTS_KEY]?.newValue ||
+        !!changes[SEARCH_HISTORY_KEY]?.newValue ||
+        !!changes['crab_utility_countdowns_v1']?.newValue;
+      if (hasUsableChange && isStorageHydrationDegraded()) {
+        setRehydrateTick((t) => t + 1);
+      }
 
       if (changes[SETTINGS_KEY]?.newValue) {
         const nextVal = changes[SETTINGS_KEY].newValue as AppSettings;
@@ -448,9 +538,11 @@ export const App: React.FC = () => {
 
   return (
     <ConfigProvider theme={getAntdTheme(settings.theme)}>
-      {/* Root Container strictly constrained to screen dimensions (no horizontal overflow) */}
+      {/* Root Container strictly constrained to screen dimensions (no horizontal overflow)
+          定尺使用百分比链（100%）而非 w-screen/h-screen：vw/vh 在 zoom 缩放下不会剔除放大倍数，
+          会撑出比真实视口更大的画布，导致右侧与底部内容被裁切。 */}
       <div
-        className={`relative w-screen h-screen overflow-hidden flex flex-col justify-between select-none ${
+        className={`relative w-full h-full overflow-hidden flex flex-col justify-between select-none ${
           isDark ? 'dark text-white' : 'text-gray-900'
         }`}
       >
@@ -694,6 +786,11 @@ export const App: React.FC = () => {
                 onToggleAutoFill={(autoFill) => handleUpdateSettings({ shortcutAutoFill: autoFill })}
                 desktopPageCount={settings.desktopPageCount || 1}
                 onUpdatePageCount={(count) => handleUpdateSettings({ desktopPageCount: count })}
+                shortcutMode={settings.shortcutMode}
+                onUpdateShortcutMode={(shortcutMode) => handleUpdateSettings({
+                  shortcutMode,
+                  showQuickLinks: shortcutMode !== 'off',
+                })}
               />
             </div>
           )}

@@ -191,6 +191,11 @@ export const i18n = {
     shortcutModeOff: '关闭',
     shortcutModeCompact: '简洁',
     shortcutModeDesktop: '桌面',
+    shortcutSettings: '快捷方式设置',
+    shortcutSettingsShort: '快捷设置',
+    shortcutDisplayModeLabel: '显示模式',
+    desktopPagesLabel: '桌面分页',
+    desktopPagesSummary: '共 {total} 页 · 已用 {used} 页',
     shortcutAutoFill: '桌面快捷方式自动补位',
     shortcutAutoFillMenu: '自动补位',
     shortcutAutoFillDesc: '删除或移动图标时自动向前补齐网格空缺（默认关闭，保持自由网格留白）',
@@ -542,6 +547,11 @@ export const i18n = {
     shortcutModeOff: 'Off',
     shortcutModeCompact: 'Compact',
     shortcutModeDesktop: 'Desktop',
+    shortcutSettings: 'Shortcut Settings',
+    shortcutSettingsShort: 'Settings',
+    shortcutDisplayModeLabel: 'Display Mode',
+    desktopPagesLabel: 'Desktop Pages',
+    desktopPagesSummary: '{total} pages · {used} in use',
 
     // Wallpaper Types Dropdown
     wallpaperTypeOnline: 'Online Curated Wallpapers',

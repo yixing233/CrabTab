@@ -37,7 +37,7 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({
     <aside
       role="status"
       aria-live="polite"
-      className={`fixed top-16 right-6 z-40 max-w-[340px] w-[calc(100vw-48px)] p-3 rounded-2xl shadow-xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] border select-none pointer-events-auto backdrop-blur-md animate-in fade-in slide-in-from-top-3 ${
+      className={`fixed top-16 right-6 z-40 max-w-[340px] w-[calc(var(--viewport-width)-48px)] p-3 rounded-2xl shadow-xl transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] border select-none pointer-events-auto backdrop-blur-md animate-in fade-in slide-in-from-top-3 ${
         isDark
           ? 'bg-[#181a20]/90 hover:bg-[#181a20] text-white/90 border-blue-500/35 shadow-black/50'
           : 'bg-white/90 hover:bg-white text-neutral-800 border-blue-400/35 shadow-black/10'

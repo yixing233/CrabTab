@@ -517,7 +517,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
 
       {/* 书签内容展示区 */}
       <div
-        className={`w-full border rounded-2xl p-3 sm:p-5 shadow-xl transition-all duration-300 max-h-[min(52vh,540px)] overflow-y-auto custom-scrollbar flex flex-col gap-4 ${
+        className={`w-full border rounded-2xl p-3 sm:p-5 shadow-xl transition-all duration-300 max-h-[min(calc(var(--viewport-height)*0.52),540px)] overflow-y-auto custom-scrollbar flex flex-col gap-4 ${
           isDark
             ? 'bg-black/40 border-white/15 text-white shadow-black/40'
             : 'bg-white/55 border-white/60 text-gray-900 shadow-gray-900/10'

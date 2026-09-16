@@ -7,15 +7,35 @@
     <meta name="referrer" content="no-referrer" />
     <title>新标签页</title>
     <script>
-      try {
-        var raw = localStorage.getItem('crab_home_settings_v1');
-        if (raw) {
-          var s = JSON.parse(raw);
-          if (s && s.uiScale && s.uiScale !== 100) {
-            document.documentElement.style.zoom = s.uiScale + '%';
+      // 首屏秒级无感注入全局缩放：必须在样式与 React 挂载前设置，
+      // 同时写入 --ui-scale 供根节点反算真实布局视口（避免 vw/vh 被二次放大导致溢出裁切）。
+      // 注意：读取 localStorage 与 chrome.storage 双通道，兼容扩展环境与普通网页调试。
+      (function () {
+        function apply(scale) {
+          var n = typeof scale === 'number' && isFinite(scale) ? scale : 100;
+          if (n < 80 || n > 140) n = 100;
+          var root = document.documentElement;
+          root.style.setProperty('--ui-scale', String(n / 100));
+          if (n !== 100) {
+            root.style.zoom = n + '%';
           }
         }
-      } catch (e) {}
+        try {
+          var raw = localStorage.getItem('crab_home_settings_v1');
+          if (raw) {
+            var s = JSON.parse(raw);
+            if (s && s.uiScale) apply(s.uiScale);
+          }
+        } catch (e) {}
+        try {
+          if (typeof chrome !== 'undefined' && chrome.storage && chrome.storage.local) {
+            chrome.storage.local.get('crab_home_settings_v1', function (res) {
+              var s = res && res['crab_home_settings_v1'];
+              if (s && s.uiScale) apply(s.uiScale);
+            });
+          }
+        } catch (e) {}
+      })();
     </script>
   </head>
   <body>

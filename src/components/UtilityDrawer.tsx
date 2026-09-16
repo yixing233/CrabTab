@@ -1179,7 +1179,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
 
       {/* 底部左下角独立待办胶囊区（抽屉未展开时显示在视口左下角，不与中央工具把手挤在一起） */}
       {!open && uncompletedTodos.length > 0 && (
-        <div className="fixed left-6 bottom-4 z-40 flex items-center gap-2 max-w-[45vw] overflow-x-auto custom-scrollbar pointer-events-auto py-1">
+        <div className="fixed left-6 bottom-4 z-40 flex items-center gap-2 max-w-[calc(var(--viewport-width)*0.45)] overflow-x-auto custom-scrollbar pointer-events-auto py-1">
           {uncompletedTodos.slice(0, 3).map((item) => (
             <button
               key={item.id}
@@ -1292,7 +1292,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
 
           {/* 展开状态：完整倒数日胶囊堆叠区（配备向右收起按钮与平滑滑出动画） */}
           <div
-            className={`pinned-countdown-container fixed right-6 bottom-4 z-40 flex flex-col items-end gap-1.5 max-h-[42vh] overflow-y-auto custom-scrollbar p-1 select-none transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+            className={`pinned-countdown-container fixed right-6 bottom-4 z-40 flex flex-col items-end gap-1.5 max-h-[calc(var(--viewport-height)*0.42)] overflow-y-auto custom-scrollbar p-1 select-none transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
               !isCountdownCollapsed
                 ? 'translate-x-0 opacity-100 pointer-events-auto'
                 : 'translate-x-[calc(100%+32px)] opacity-0 pointer-events-none'

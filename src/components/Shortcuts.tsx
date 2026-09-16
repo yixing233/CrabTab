@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Modal, Form, Input, message } from 'antd';
-import { SiteShortcut, Language } from '../types';
+import { SiteShortcut, Language, ShortcutDisplayMode } from '../types';
 import { i18n } from '../i18n';
 import {
   getFaviconCandidates,
@@ -14,6 +14,11 @@ import {
   setCachedFaviconFailed,
   subscribeFaviconCache,
 } from '../utils/faviconCache';
+import {
+  deviceToLayoutPx,
+  getLayoutViewport,
+  resolveFloatingPosition,
+} from '../utils/viewport';
 import {
   Folder,
   Edit2,
@@ -30,6 +35,10 @@ import {
   LayoutGrid,
   ChevronLeft,
   ChevronRight,
+  Settings2,
+  ChevronDown,
+  EyeOff,
+  Rows3,
 } from 'lucide-react';
 
 type ShortcutContextMenu = {
@@ -412,6 +421,8 @@ interface ShortcutsProps {
   onToggleAutoFill?: (autoFill: boolean) => void;
   desktopPageCount?: number;
   onUpdatePageCount?: (count: number) => void;
+  shortcutMode?: ShortcutDisplayMode;
+  onUpdateShortcutMode?: (mode: ShortcutDisplayMode) => void;
 }
 
 export const Shortcuts: React.FC<ShortcutsProps> = ({
@@ -429,6 +440,8 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
   onToggleAutoFill,
   desktopPageCount = 1,
   onUpdatePageCount,
+  shortcutMode,
+  onUpdateShortcutMode,
 }) => {
   const t = i18n[language];
   const isDark = theme === 'dark';
@@ -635,6 +648,44 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
   const [contextMenu, setContextMenu] = useState<ShortcutContextMenu | null>(null);
   const [gridContextMenu, setGridContextMenu] = useState<GridContextMenu | null>(null);
   const [pendingAddPosition, setPendingAddPosition] = useState<{ column: number; row: number } | null>(null);
+  // 「快捷方式设置」下拉菜单开关（桌面模式锚定工具栏按钮，简洁模式锚定网格磁贴）
+  const [toolbarMenuOpen, setToolbarMenuOpen] = useState<boolean>(false);
+  // 简洁模式：设置入口已融入网格磁贴，菜单改为 fixed 定位并用磁贴位置换算锚点
+  const compactSettingsRef = React.useRef<HTMLDivElement | null>(null);
+  const [compactMenuPos, setCompactMenuPos] = useState<{ left: number; top: number } | null>(null);
+  const SETTINGS_MENU_WIDTH = 264;
+
+  /** 简洁模式打开设置菜单：以磁贴为锚点，按可用空间自动上下翻转并夹取在布局视口内 */
+  const openCompactSettingsMenu = React.useCallback(() => {
+    if (toolbarMenuOpen) {
+      setToolbarMenuOpen(false);
+      return;
+    }
+    const el = compactSettingsRef.current;
+    if (el) {
+      const rect = el.getBoundingClientRect();
+      const layoutTop = deviceToLayoutPx(rect.top);
+      const layoutBottom = deviceToLayoutPx(rect.bottom);
+      const layoutRight = deviceToLayoutPx(rect.right);
+      const { width: vpWidth, height: vpHeight } = getLayoutViewport();
+      const margin = 8;
+      // 简洁模式菜单只保留「显示模式」一组，实测约 120px，留余量便于翻转判断
+      const estimatedHeight = 150;
+
+      let left = layoutRight - SETTINGS_MENU_WIDTH;
+      left = Math.max(margin, Math.min(left, vpWidth - SETTINGS_MENU_WIDTH - margin));
+
+      // 磁贴下方通常是空白区域，优先向下展开；下方确实放不下再向上翻转
+      let top = layoutBottom + margin;
+      if (top + estimatedHeight + margin > vpHeight) {
+        top = layoutTop - estimatedHeight - margin;
+      }
+      top = Math.max(margin, Math.min(top, vpHeight - estimatedHeight - margin));
+
+      setCompactMenuPos({ left: Math.round(left), top: Math.round(top) });
+    }
+    setToolbarMenuOpen(true);
+  }, [toolbarMenuOpen]);
 
   // 文件夹展开气泡状态
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
@@ -670,11 +721,12 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
   }, []);
 
   React.useEffect(() => {
-    if (!contextMenu && !gridContextMenu && !pageDotContextMenu) return;
+    if (!contextMenu && !gridContextMenu && !pageDotContextMenu && !toolbarMenuOpen) return;
     const closeMenu = () => {
       setContextMenu(null);
       setGridContextMenu(null);
       setPageDotContextMenu(null);
+      setToolbarMenuOpen(false);
     };
     window.addEventListener('click', closeMenu);
     window.addEventListener('blur', closeMenu);
@@ -686,7 +738,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
       window.removeEventListener('resize', closeMenu);
       window.removeEventListener('scroll', closeMenu, true);
     };
-  }, [contextMenu, gridContextMenu, pageDotContextMenu]);
+  }, [contextMenu, gridContextMenu, pageDotContextMenu, toolbarMenuOpen]);
 
   React.useEffect(() => {
     orderedShortcutsRef.current = orderedShortcuts;
@@ -1842,6 +1894,10 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
     const menuWidth = 176;
     const menuHeight = totalPages > maxUsedPage ? 116 : 76;
 
+    // 注意：rect 与 window.innerWidth/Height 均为「设备空间」（zoom 后的实际像素），
+    // 而写入 style.left/top/bottom 的数值属于「布局空间」，两者相差一个缩放倍数，
+    // 故先在设备空间完成居中与夹取计算，再统一换算到布局空间。
+
     // 水平方向：以点击的指示器为中心居中展示，并保留左右安全视口边距
     const targetCenterX = rect.left + rect.width / 2;
     const clampedX = Math.max(12, Math.min(targetCenterX - menuWidth / 2, window.innerWidth - menuWidth - 12));
@@ -1854,14 +1910,14 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
     if (shouldShowAbove) {
       setPageDotContextMenu({
         page: pageIndex,
-        x: clampedX,
-        bottom: Math.max(12, window.innerHeight - rect.top + 8),
+        x: deviceToLayoutPx(clampedX),
+        bottom: deviceToLayoutPx(Math.max(12, window.innerHeight - rect.top + 8)),
       });
     } else {
       setPageDotContextMenu({
         page: pageIndex,
-        x: clampedX,
-        y: Math.min(rect.bottom + 8, window.innerHeight - menuHeight - 12),
+        x: deviceToLayoutPx(clampedX),
+        y: deviceToLayoutPx(Math.min(rect.bottom + 8, window.innerHeight - menuHeight - 12)),
       });
     }
   };
@@ -2032,21 +2088,252 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
         </>
       )}
 
-      {/* 桌面模式下悬浮添加按钮：仅在桌面自由网格模式下且鼠标悬浮在区域时显现，避免与简洁模式及搜索栏冲突 */}
+      {/* 快捷方式工具栏（仅桌面模式）：左侧「快捷方式设置」、右侧「添加快捷站点」。
+          简洁模式的设置入口已作为磁贴融入列表末尾，不再单独占一行。 */}
       {isDesktop && (
-        <button
-          type="button"
-          onClick={() => handleOpenAdd()}
-          aria-label={t.addShortcut}
-          title={t.addShortcut}
-          className={`absolute -right-3 -top-7 z-30 flex h-7 w-7 items-center justify-center rounded-full border shadow-md backdrop-blur-xl transition-all active:scale-90 opacity-0 group-hover/shortcut-area:opacity-70 hover:!opacity-100 cursor-pointer ${
-            isDark
-              ? 'border-white/15 bg-[#16181f]/80 text-white hover:bg-[#20242d]'
-              : 'border-black/10 bg-white/80 text-neutral-700 hover:bg-white'
-          }`}
-        >
-          <Plus size={15} strokeWidth={2.4} />
-        </button>
+      <div className="shortcut-toolbar mb-3 flex items-center justify-between gap-3 select-none">
+        {/* 快捷方式设置菜单 */}
+        <div className="relative">
+          <button
+            type="button"
+            aria-haspopup="menu"
+            aria-expanded={toolbarMenuOpen}
+            aria-label={t.shortcutSettings}
+            title={t.shortcutSettings}
+            onClick={(e) => {
+              e.stopPropagation();
+              setToolbarMenuOpen((prev) => !prev);
+            }}
+            className={`flex h-8 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-medium shadow-sm backdrop-blur-xl transition-all cursor-pointer active:scale-95 ${
+              toolbarMenuOpen
+                ? isDark
+                  ? 'border-white/35 bg-white/15 text-white'
+                  : 'border-black/25 bg-white/85 text-neutral-900'
+                : isDark
+                ? 'border-white/15 bg-white/[0.06] text-white/75 hover:border-white/35 hover:bg-white/12 hover:text-white'
+                : 'border-black/12 bg-white/50 text-neutral-600 hover:border-black/25 hover:bg-white/80 hover:text-neutral-900'
+            }`}
+          >
+            <Settings2 size={14} strokeWidth={2.2} className="shrink-0" />
+            <span>{t.shortcutSettings}</span>
+            <ChevronDown
+              size={13}
+              strokeWidth={2.4}
+              className={`shrink-0 transition-transform duration-200 ${toolbarMenuOpen ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+            {toolbarMenuOpen && (
+              <div
+                role="menu"
+                aria-label={t.shortcutSettings}
+                className={`absolute left-0 top-[calc(100%+8px)] z-[70] w-[264px] overflow-hidden rounded-2xl border p-1.5 shadow-2xl backdrop-blur-2xl ${
+                  isDark
+                    ? 'border-white/15 bg-[#16181f]/95 text-white shadow-black/60'
+                    : 'border-black/10 bg-white/95 text-neutral-800 shadow-neutral-900/15'
+                }`}
+                onClick={(e) => e.stopPropagation()}
+                onContextMenu={(e) => e.preventDefault()}
+              >
+                {/* 1. 显示模式 */}
+                <div className="px-2.5 pt-1.5 pb-2">
+                  <div className="text-[11px] font-semibold opacity-55 mb-1.5">{t.shortcutDisplayModeLabel}</div>
+                  <div className={`flex items-center gap-0.5 rounded-xl p-0.5 ${isDark ? 'bg-white/8' : 'bg-black/6'}`}>
+                    {([
+                      { value: 'off' as ShortcutDisplayMode, label: t.shortcutModeOff, Icon: EyeOff },
+                      { value: 'compact' as ShortcutDisplayMode, label: t.shortcutModeCompact, Icon: Rows3 },
+                      { value: 'desktop' as ShortcutDisplayMode, label: t.shortcutModeDesktop, Icon: LayoutGrid },
+                    ]).map(({ value, label, Icon }) => {
+                      const active = (shortcutMode ?? displayMode) === value;
+                      return (
+                        <button
+                          key={value}
+                          type="button"
+                          role="menuitemradio"
+                          aria-checked={active}
+                          onClick={() => {
+                            onUpdateShortcutMode?.(value);
+                            setToolbarMenuOpen(false);
+                          }}
+                          className={`flex flex-1 items-center justify-center gap-1 rounded-[9px] px-1.5 py-1.5 text-[11px] font-medium transition-all cursor-pointer ${
+                            active
+                              ? isDark
+                                ? 'bg-white/18 text-white shadow-sm'
+                                : 'bg-white text-blue-600 shadow-sm'
+                              : 'opacity-65 hover:opacity-100'
+                          }`}
+                        >
+                          <Icon size={12} strokeWidth={2.3} className="shrink-0" />
+                          <span className="truncate">{label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="my-1 h-px bg-black/5 dark:bg-white/10" />
+
+                {/* 2. 自动补位开关（仅桌面自由网格模式有意义） */}
+                {isDesktop && onToggleAutoFill && (
+                  <button
+                    type="button"
+                    role="menuitemcheckbox"
+                    aria-checked={autoFill}
+                    className="flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                    onClick={() => {
+                      if (autoFill) {
+                        // 关闭自动补位前，确保当前页补位坐标固化锁定
+                        const locked = orderedShortcuts.map((item) => {
+                          if ((item.gridPosition?.page || 1) !== currentPage) return item;
+                          const pos = gridPositions.get(item.id);
+                          return {
+                            ...item,
+                            gridPosition: pos ? { ...pos, page: currentPage } : item.gridPosition || null,
+                          };
+                        });
+                        orderedShortcutsRef.current = locked;
+                        setOrderedShortcuts(locked);
+                        onReorderShortcuts?.(locked);
+                      } else {
+                        const currentItems = orderedShortcuts.filter((s) => (s.gridPosition?.page || 1) === currentPage);
+                        const otherItems = orderedShortcuts.filter((s) => (s.gridPosition?.page || 1) !== currentPage);
+                        const sorted = [...currentItems].sort((a, b) => {
+                          const posA = a.gridPosition || { column: 1, row: 1 };
+                          const posB = b.gridPosition || { column: 1, row: 1 };
+                          if (posA.row !== posB.row) return posA.row - posB.row;
+                          return posA.column - posB.column;
+                        });
+                        const compactedPositions = resolveGridPositions(sorted, desktopColumns, true);
+                        const nextCurrent = sorted.map((item) => ({
+                          ...item,
+                          gridPosition: compactedPositions.get(item.id)
+                            ? { ...compactedPositions.get(item.id)!, page: currentPage }
+                            : null,
+                        }));
+                        const next = [...nextCurrent, ...otherItems];
+                        orderedShortcutsRef.current = next;
+                        setOrderedShortcuts(next);
+                        onReorderShortcuts?.(next);
+                      }
+                      onToggleAutoFill(!autoFill);
+                      setToolbarMenuOpen(false);
+                    }}
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <LayoutGrid size={15} className="shrink-0 text-neutral-500 dark:text-neutral-400" />
+                      <span className="truncate font-medium">{t.shortcutAutoFillMenu || '自动补位'}</span>
+                    </div>
+                    {autoFill ? (
+                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] bg-blue-500 text-white shadow-xs">
+                        <Check size={12} strokeWidth={3} />
+                      </div>
+                    ) : (
+                      <div className="h-4 w-4 shrink-0 rounded-[5px] border border-neutral-400/60 dark:border-neutral-500/60 bg-transparent" />
+                    )}
+                  </button>
+                )}
+
+                {/* 3. 紧凑重整图标（仅桌面自由网格模式有意义） */}
+                {isDesktop && (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                    onClick={() => {
+                      handleCompactGrid();
+                      setToolbarMenuOpen(false);
+                    }}
+                  >
+                    <Maximize2 size={15} className="shrink-0" />
+                    <span>{t.compactGridNow}</span>
+                  </button>
+                )}
+
+                <div className="my-1 h-px bg-black/5 dark:bg-white/10" />
+
+                {/* 4. 桌面分页管理（仅桌面模式有意义） */}
+                {isDesktop && (
+                <div className="px-2.5 pb-1 pt-0.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="text-[11px] font-semibold opacity-55">{t.desktopPagesLabel}</div>
+                    <div className="text-[11px] tabular-nums opacity-55">
+                      {t.desktopPagesSummary
+                        .replace('{total}', String(totalPages))
+                        .replace('{used}', String(maxUsedPage))}
+                    </div>
+                  </div>
+                  <div className="mt-1.5 flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={totalPages >= 9}
+                      onClick={() => {
+                        handleAddPage();
+                        setToolbarMenuOpen(false);
+                      }}
+                      className={`flex flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-lg border px-1.5 py-1.5 text-[10.5px] font-medium transition-all ${
+                        totalPages >= 9
+                          ? 'cursor-not-allowed opacity-40'
+                          : 'cursor-pointer hover:bg-black/5 dark:hover:bg-white/10'
+                      } ${isDark ? 'border-white/12' : 'border-black/10'}`}
+                    >
+                      <Plus size={12} strokeWidth={2.5} />
+                      <span>{t.addDesktopPage}</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      disabled={totalPages <= 1}
+                      onClick={() => {
+                        handleDeletePage(currentPage);
+                        setToolbarMenuOpen(false);
+                      }}
+                      className={`flex flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-lg border px-1.5 py-1.5 text-[10.5px] font-medium transition-all ${
+                        totalPages <= 1
+                          ? 'cursor-not-allowed opacity-40'
+                          : 'cursor-pointer text-red-500 hover:bg-red-500/10'
+                      } ${isDark ? 'border-white/12' : 'border-black/10'}`}
+                    >
+                      <Trash2 size={12} strokeWidth={2.3} />
+                      <span>{t.deleteDesktopPage}</span>
+                    </button>
+                  </div>
+                  {totalPages > maxUsedPage && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        handleCleanEmptyPages();
+                        setToolbarMenuOpen(false);
+                      }}
+                      className="mt-1.5 flex w-full items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium text-amber-500 transition-colors cursor-pointer hover:bg-amber-500/10"
+                    >
+                      <Trash2 size={12} strokeWidth={2.3} />
+                      <span>{t.cleanEmptyDesktopPages}</span>
+                    </button>
+                  )}
+                </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* 右侧添加入口（简洁模式的添加按钮已融入列表末尾） */}
+          <button
+            type="button"
+            onClick={() => handleOpenAdd()}
+            aria-label={t.addShortcut}
+            title={t.addShortcut}
+            className={`group/addbtn flex h-8 items-center gap-1.5 rounded-full border border-dashed px-3 text-xs font-medium shadow-sm backdrop-blur-xl transition-all cursor-pointer active:scale-95 ${
+              isDark
+                ? 'border-white/25 bg-white/[0.06] text-white/75 hover:border-white/50 hover:bg-white/12 hover:text-white'
+                : 'border-black/20 bg-white/50 text-neutral-600 hover:border-black/35 hover:bg-white/80 hover:text-neutral-900'
+            }`}
+          >
+            <Plus size={14} strokeWidth={2.5} className="shrink-0 transition-transform duration-200 group-hover/addbtn:rotate-90" />
+            <span>{t.addShortcut}</span>
+          </button>
+      </div>
       )}
       <div
         ref={gridRef}
@@ -2101,11 +2388,14 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
             ? pointedCell
             : addButtonPosition;
           if (!position) return;
+          // clientX/Y 为设备空间坐标，写入 style.left/top 前需换算到布局空间并夹取。
+          // 菜单高度按实际渲染留足余量（实测约 131px），避免贴底时溢出屏幕。
+          const menuPos = resolveFloatingPosition(event.clientX, event.clientY, 196, 148, 8);
           setContextMenu(null);
           setGridContextMenu({
             position,
-            x: Math.max(8, Math.min(event.clientX, window.innerWidth - 196 - 8)),
-            y: Math.max(8, Math.min(event.clientY, window.innerHeight - 58 - 8)),
+            x: menuPos.x,
+            y: menuPos.y,
           });
         }}
       >
@@ -2180,12 +2470,15 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                 event.preventDefault();
                 event.stopPropagation();
                 const menuWidth = 196;
-                const menuHeight = item.isFolder ? 202 : 150;
+                // 实测高度：普通快捷方式约 163px、文件夹约 214px，均留出余量以避免贴底溢出
+                const menuHeight = item.isFolder ? 226 : 176;
+                // 同上：clientX/Y 为设备空间，需换算到布局空间并夹取
+                const menuPos = resolveFloatingPosition(event.clientX, event.clientY, menuWidth, menuHeight, 8);
                 setGridContextMenu(null);
                 setContextMenu({
                   itemId: item.id,
-                  x: Math.max(8, Math.min(event.clientX, window.innerWidth - menuWidth - 8)),
-                  y: Math.max(8, Math.min(event.clientY, window.innerHeight - menuHeight - 8)),
+                  x: menuPos.x,
+                  y: menuPos.y,
                 });
               }}
               onClick={(e) => handleCardClick(e, item)}
@@ -2266,7 +2559,114 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
           </div>
         )}
 
+        {/* 简洁模式：将「快捷设置」作为最后一个快捷方式磁贴融入列表末尾
+            （与添加磁贴同规格、同玻璃质感，保证网格视觉一致） */}
+        {!isDesktop && (
+          <div
+            ref={compactSettingsRef}
+            role="button"
+            tabIndex={0}
+            aria-haspopup="menu"
+            aria-expanded={toolbarMenuOpen}
+            aria-label={t.shortcutSettingsShort}
+            title={t.shortcutSettingsShort}
+            onClick={(e) => {
+              e.stopPropagation();
+              openCompactSettingsMenu();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                openCompactSettingsMenu();
+              }
+            }}
+            className="group relative flex flex-col items-center cursor-pointer select-none transition-all duration-200 shortcut-grid-item active:scale-95"
+          >
+            <div
+              className={`flex items-center justify-center shadow-lg transition-all duration-200 overflow-hidden border w-13 h-13 sm:w-14 sm:h-14 rounded-2xl ${
+                toolbarMenuOpen
+                  ? isDark
+                    ? 'border-white/60 bg-white/15 text-white'
+                    : 'border-black/25 bg-white/85 text-neutral-900'
+                  : isDark
+                  ? 'border-white/15 group-hover:border-white/50 group-hover:bg-white/10 group-active:bg-white/15 text-white/70 group-hover:text-white'
+                  : 'border-white/80 group-hover:border-white group-hover:bg-white/80 group-active:bg-white/90 text-neutral-600 group-hover:text-neutral-900'
+              }`}
+              style={{
+                backdropFilter: `blur(${Math.max(glassStyle.blur, 16)}px) saturate(180%)`,
+                WebkitBackdropFilter: `blur(${Math.max(glassStyle.blur, 16)}px) saturate(180%)`,
+                backgroundColor: isDark ? 'rgba(18, 22, 30, 0.45)' : 'rgba(255, 255, 255, 0.45)',
+                boxShadow: isDark
+                  ? '0 10px 25px -5px rgba(0, 0, 0, 0.3), inset 0 1px 1px 0 rgba(255, 255, 255, 0.08)'
+                  : '0 10px 25px -5px rgba(0, 0, 0, 0.06), inset 0 1px 1px 0 rgba(255, 255, 255, 0.6)',
+              }}
+            >
+              <Settings2
+                size={22}
+                strokeWidth={2.1}
+                className={`transition-transform duration-300 ${toolbarMenuOpen ? 'rotate-90' : 'group-hover:rotate-45'}`}
+              />
+            </div>
+            <span className="mt-2 text-xs text-white/80 font-medium truncate max-w-full text-center drop-shadow-sm group-hover:text-white transition-colors">
+              {t.shortcutSettingsShort}
+            </span>
+          </div>
+        )}
+
       </div>
+
+      {/* 简洁模式：设置磁贴展开的下拉菜单（fixed 定位，位于网格之外，
+          以磁贴位置为锚点自动上下翻转并夹取在布局视口内） */}
+      {!isDesktop && toolbarMenuOpen && compactMenuPos && (
+        <div
+          role="menu"
+          aria-label={t.shortcutSettings}
+          className={`fixed z-[70] w-[264px] overflow-hidden rounded-2xl border p-1.5 shadow-2xl backdrop-blur-2xl ${
+            isDark
+              ? 'border-white/15 bg-[#16181f]/95 text-white shadow-black/60'
+              : 'border-black/10 bg-white/95 text-neutral-800 shadow-neutral-900/15'
+          }`}
+          style={{ left: compactMenuPos.left, top: compactMenuPos.top }}
+          onClick={(e) => e.stopPropagation()}
+          onContextMenu={(e) => e.preventDefault()}
+        >
+          {/* 显示模式（简洁模式下唯一可选设置） */}
+          <div className="px-2.5 pt-1.5 pb-2">
+            <div className="mb-1.5 text-[11px] font-semibold opacity-55">{t.shortcutDisplayModeLabel}</div>
+            <div className={`flex items-center gap-0.5 rounded-xl p-0.5 ${isDark ? 'bg-white/8' : 'bg-black/6'}`}>
+              {([
+                { value: 'off' as ShortcutDisplayMode, label: t.shortcutModeOff, Icon: EyeOff },
+                { value: 'compact' as ShortcutDisplayMode, label: t.shortcutModeCompact, Icon: Rows3 },
+                { value: 'desktop' as ShortcutDisplayMode, label: t.shortcutModeDesktop, Icon: LayoutGrid },
+              ]).map(({ value, label, Icon }) => {
+                const active = (shortcutMode ?? displayMode) === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    role="menuitemradio"
+                    aria-checked={active}
+                    onClick={() => {
+                      onUpdateShortcutMode?.(value);
+                      setToolbarMenuOpen(false);
+                    }}
+                    className={`flex flex-1 cursor-pointer items-center justify-center gap-1 whitespace-nowrap rounded-[9px] px-1.5 py-1.5 text-[11px] font-medium transition-all ${
+                      active
+                        ? isDark
+                          ? 'bg-white/18 text-white shadow-sm'
+                          : 'bg-white text-blue-600 shadow-sm'
+                        : 'opacity-65 hover:opacity-100'
+                    }`}
+                  >
+                    <Icon size={12} strokeWidth={2.3} className="shrink-0" />
+                    <span className="truncate">{label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 桌面模式底部毛玻璃分页指示器 */}
       {isDesktop && (
@@ -2733,14 +3133,16 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
       {/* iOS 风格文件夹展开毛玻璃气泡（带真正原位连贯形变动画） */}
       {(activeFolder || isClosingFolder) && (activeFolder || cachedFolder) && (() => {
         const displayFolder = (activeFolder || cachedFolder)!;
+        // 形变位移与缩放作用在布局空间的元素上，而 folderOriginRect / innerWidth 都是设备空间，
+        // 因此统一换算到布局空间，否则缩放越大、气泡起始位置偏得越远。
         const fromX = folderOriginRect
-          ? Math.round(folderOriginRect.left + folderOriginRect.width / 2 - window.innerWidth / 2)
+          ? Math.round(deviceToLayoutPx(folderOriginRect.left + folderOriginRect.width / 2) - getLayoutViewport().width / 2)
           : 0;
         const fromY = folderOriginRect
-          ? Math.round(folderOriginRect.top + folderOriginRect.height / 2 - window.innerHeight / 2)
+          ? Math.round(deviceToLayoutPx(folderOriginRect.top + folderOriginRect.height / 2) - getLayoutViewport().height / 2)
           : 0;
-        const scaleX = folderOriginRect ? (Math.max(32, folderOriginRect.width) / 340).toFixed(4) : '0.16';
-        const scaleY = folderOriginRect ? (Math.max(32, folderOriginRect.height) / 240).toFixed(4) : '0.22';
+        const scaleX = folderOriginRect ? (Math.max(32, deviceToLayoutPx(folderOriginRect.width)) / 340).toFixed(4) : '0.16';
+        const scaleY = folderOriginRect ? (Math.max(32, deviceToLayoutPx(folderOriginRect.height)) / 240).toFixed(4) : '0.22';
         return (
           <div
             className={`fixed inset-0 z-50 flex items-center justify-center p-4 transition-opacity duration-200 ${
@@ -2883,7 +3285,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
 
             {/* 文件夹内部快捷方式网格 */}
             {/* 文件夹内部快捷方式网格 */}
-            <div className="folder-items-spread grid grid-cols-3 gap-y-4 gap-x-3 items-center justify-items-center max-h-[55vh] overflow-y-auto custom-scrollbar p-1">
+            <div className="folder-items-spread grid grid-cols-3 gap-y-4 gap-x-3 items-center justify-items-center max-h-[calc(var(--viewport-height)*0.55)] overflow-y-auto custom-scrollbar p-1">
               {(displayFolder.children || []).map((child) => {
                 const isChildDragging = draggedChildId === child.id;
                 return (

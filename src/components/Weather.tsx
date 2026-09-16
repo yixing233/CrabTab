@@ -240,7 +240,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
     <div
       className={`weather-popover-card ${
         isPopoverVisible ? 'weather-popover-card--open' : 'weather-popover-card--closing'
-      } w-[360px] max-h-[82vh] overflow-y-auto custom-scrollbar p-5 select-none rounded-2xl shadow-xl ${
+      } w-[360px] max-h-[calc(var(--viewport-height)*0.82)] overflow-y-auto custom-scrollbar p-5 select-none rounded-2xl shadow-xl ${
         isDark ? 'text-white' : 'text-neutral-800'
       }`}
       style={{
