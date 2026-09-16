@@ -1091,6 +1091,68 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
       )}
 
+      {/* 搜索框垂直位置调节 */}
+      <div className={`p-3 rounded-xl border flex flex-col gap-2.5 transition-colors ${
+        isDark ? 'bg-white/[0.03] border-white/10' : 'bg-gray-50 border-gray-100'
+      }`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-xs font-semibold">{t.searchVerticalOffset}</div>
+            <div className="text-[11px] opacity-60 mt-0.5">{t.searchVerticalOffsetDesc}</div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Segmented
+              size="small"
+              value={
+                (settings.searchVerticalOffset ?? 0) <= -25
+                  ? 'top'
+                  : (settings.searchVerticalOffset ?? 0) >= 25
+                    ? 'bottom'
+                    : 'center'
+              }
+              onChange={(val) => {
+                const offsetMap: Record<string, number> = {
+                  top: -40,
+                  center: 0,
+                  bottom: 40,
+                };
+                onUpdateSettings({ searchVerticalOffset: offsetMap[val as string] ?? 0 });
+              }}
+              options={[
+                { value: 'top', label: t.searchVerticalTop },
+                { value: 'center', label: t.searchVerticalCenter },
+                { value: 'bottom', label: t.searchVerticalBottom },
+              ]}
+            />
+            <Button
+              size="small"
+              type="text"
+              className="text-xs opacity-70 hover:opacity-100"
+              onClick={() => onUpdateSettings({ searchVerticalOffset: 0 })}
+            >
+              {settings.language === 'zh' ? '重置' : 'Reset'}
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 px-1 pt-1">
+          <Slider
+            className="flex-1 my-1"
+            min={-120}
+            max={120}
+            step={2}
+            value={settings.searchVerticalOffset ?? 0}
+            onChange={(value) => onUpdateSettings({ searchVerticalOffset: value })}
+            tooltip={{
+              formatter: (val) => `${val && val > 0 ? `+${val}` : val ?? 0}px`,
+            }}
+          />
+          <span className="text-xs font-mono w-12 text-right opacity-70">
+            {(settings.searchVerticalOffset ?? 0) > 0 ? `+${settings.searchVerticalOffset}` : (settings.searchVerticalOffset ?? 0)}px
+          </span>
+        </div>
+      </div>
+
       {/* 主屏展示内容：快捷方式 vs 最近访问 */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>

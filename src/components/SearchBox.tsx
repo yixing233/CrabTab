@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Dropdown, Tooltip, Popover, Slider } from 'antd';
+import { Dropdown, Tooltip } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   Search,
@@ -11,7 +11,6 @@ import {
   Bookmark,
   Clock,
   Check,
-  MoveVertical,
 } from 'lucide-react';
 import { SearchEngineId, SuggestionEngineId, Language, BrowserHistoryItem } from '../types';
 import { SEARCH_ENGINES } from '../constants';
@@ -36,8 +35,6 @@ interface SearchBoxProps {
     opacity: number;
     borderOpacity: number;
   };
-  verticalOffset?: number;
-  onUpdateVerticalOffset?: (offset: number) => void;
   onSearch: (keyword: string) => void;
   onSelectEngine: (engineId: SearchEngineId) => void;
   onRemoveHistoryItem: (item: string) => void;
@@ -57,8 +54,6 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
   language,
   theme,
   glassStyle,
-  verticalOffset = 0,
-  onUpdateVerticalOffset,
   onSearch,
   onSelectEngine,
   onRemoveHistoryItem,
@@ -593,113 +588,6 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                 </span>
               </button>
             </Tooltip>
-
-            {/* 搜索框垂直位置调节入口 */}
-            {onUpdateVerticalOffset && (
-              <Popover
-                trigger="click"
-                placement="bottomRight"
-                arrow={false}
-                content={
-                  <div className="w-60 p-1 flex flex-col gap-2.5 select-none">
-                    <div className="flex items-center justify-between border-b pb-1.5 dark:border-white/10">
-                      <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-100">
-                        {t.searchVerticalOffset}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => onUpdateVerticalOffset(0)}
-                        className="text-[11px] text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer font-medium"
-                      >
-                        {language === 'zh' ? '恢复默认' : 'Reset'}
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Slider
-                        className="flex-1 my-1"
-                        min={-120}
-                        max={120}
-                        step={2}
-                        value={verticalOffset}
-                        onChange={(v) => {
-                          onUpdateVerticalOffset(v);
-                          window.dispatchEvent(new Event('resize'));
-                        }}
-                        tooltip={{
-                          formatter: (val) => `${val && val > 0 ? `+${val}` : val ?? 0}px`,
-                        }}
-                      />
-                      <span className="text-xs font-mono w-12 text-right opacity-70">
-                        {verticalOffset > 0 ? `+${verticalOffset}` : verticalOffset}px
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-1 pt-0.5">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onUpdateVerticalOffset(-40);
-                          window.dispatchEvent(new Event('resize'));
-                        }}
-                        className={`text-[11px] py-1 px-1.5 rounded-md border transition-all cursor-pointer text-center ${
-                          verticalOffset <= -25
-                            ? 'bg-blue-500 text-white border-blue-500 font-semibold shadow-sm'
-                            : 'border-black/10 dark:border-white/15 text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
-                        }`}
-                      >
-                        {t.searchVerticalTop}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onUpdateVerticalOffset(0);
-                          window.dispatchEvent(new Event('resize'));
-                        }}
-                        className={`text-[11px] py-1 px-1.5 rounded-md border transition-all cursor-pointer text-center ${
-                          verticalOffset > -25 && verticalOffset < 25
-                            ? 'bg-blue-500 text-white border-blue-500 font-semibold shadow-sm'
-                            : 'border-black/10 dark:border-white/15 text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
-                        }`}
-                      >
-                        {t.searchVerticalCenter}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onUpdateVerticalOffset(40);
-                          window.dispatchEvent(new Event('resize'));
-                        }}
-                        className={`text-[11px] py-1 px-1.5 rounded-md border transition-all cursor-pointer text-center ${
-                          verticalOffset >= 25
-                            ? 'bg-blue-500 text-white border-blue-500 font-semibold shadow-sm'
-                            : 'border-black/10 dark:border-white/15 text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
-                        }`}
-                      >
-                        {t.searchVerticalBottom}
-                      </button>
-                    </div>
-                  </div>
-                }
-              >
-                <Tooltip title={t.adjustSearchVertical} placement="top">
-                  <button
-                    type="button"
-                    className={`relative w-7 h-7 rounded-lg flex items-center justify-center transition-all cursor-pointer border ${
-                      verticalOffset !== 0
-                        ? 'bg-blue-500/15 text-blue-600 dark:text-blue-400 border-blue-500/30 hover:bg-blue-500/25 shadow-xs'
-                        : 'bg-black/[0.03] dark:bg-white/[0.04] text-neutral-400 dark:text-neutral-500 border-black/[0.06] dark:border-white/[0.08] hover:text-neutral-600 dark:hover:text-neutral-300 opacity-60 hover:opacity-100'
-                    } active:scale-95`}
-                    aria-label={t.adjustSearchVertical}
-                  >
-                    <MoveVertical className="w-3.5 h-3.5" />
-                    {verticalOffset !== 0 && (
-                      <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-blue-500 ring-1.5 ring-white dark:ring-[#141820]" />
-                    )}
-                  </button>
-                </Tooltip>
-              </Popover>
-            )}
           </div>
 
           {/* Submit Search Button */}

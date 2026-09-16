@@ -646,8 +646,6 @@ export const App: React.FC = () => {
               language={settings.language}
               theme={settings.theme}
               glassStyle={settings.glassStyle}
-              verticalOffset={settings.searchVerticalOffset || 0}
-              onUpdateVerticalOffset={(val) => handleUpdateSettings({ searchVerticalOffset: val })}
               onSearch={handleSearch}
               onSelectEngine={handleSelectEngine}
               onRemoveHistoryItem={handleRemoveHistoryItem}
