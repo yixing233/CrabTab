@@ -580,9 +580,9 @@ export const App: React.FC = () => {
                 title={
                   availableUpdate?.hasUpdate
                     ? (settings.language === 'zh'
-                        ? `主页个性化设置（发现新版本 v${availableUpdate.version}）`
+                        ? `设置（发现新版本 v${availableUpdate.version}）`
                         : `Settings (New version v${availableUpdate.version} available)`)
-                    : (settings.language === 'zh' ? '主页个性化设置' : 'Settings')
+                    : (settings.language === 'zh' ? '设置' : 'Settings')
                 }
                 placement="bottom"
               >
