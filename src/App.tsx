@@ -629,7 +629,13 @@ export const App: React.FC = () => {
           </div>
 
           {/* Frosted Glass Search Bar */}
-          <div className="searchbox-slot-responsive w-full flex justify-center mb-6 sm:mb-8 flex-shrink-0">
+          <div
+            className="searchbox-slot-responsive w-full flex justify-center mb-6 sm:mb-8 flex-shrink-0 relative z-20"
+            style={{
+              transform: `translateY(${settings.searchVerticalOffset || 0}px)`,
+              transition: 'transform 0.25s cubic-bezier(0.2, 0, 0, 1)',
+            }}
+          >
             <SearchBox
               currentEngineId={settings.searchEngine}
               suggestionEngine={settings.suggestionEngine}
@@ -640,6 +646,8 @@ export const App: React.FC = () => {
               language={settings.language}
               theme={settings.theme}
               glassStyle={settings.glassStyle}
+              verticalOffset={settings.searchVerticalOffset || 0}
+              onUpdateVerticalOffset={(val) => handleUpdateSettings({ searchVerticalOffset: val })}
               onSearch={handleSearch}
               onSelectEngine={handleSelectEngine}
               onRemoveHistoryItem={handleRemoveHistoryItem}

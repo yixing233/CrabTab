@@ -127,6 +127,7 @@ function normalizeSettings(raw: unknown): AppSettings {
     showBookmarkBar,
     pinnedRecentUrls,
     recentVerticalOffset: typeof loaded.recentVerticalOffset === 'number' && !Number.isNaN(loaded.recentVerticalOffset) ? loaded.recentVerticalOffset : 0,
+    searchVerticalOffset: typeof loaded.searchVerticalOffset === 'number' && !Number.isNaN(loaded.searchVerticalOffset) ? loaded.searchVerticalOffset : 0,
     shortcutMode,
     showQuickLinks: shortcutMode !== 'off',
     wallpaper: sanitizeWallpaperConfig(loaded.wallpaper),

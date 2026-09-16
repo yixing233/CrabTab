@@ -193,6 +193,7 @@ export interface AppSettings {
   homeContentMode?: HomeContentMode; // 主屏内容展示模式：快捷方式或最近访问
   pinnedRecentUrls?: string[]; // 置顶钉住的最近访问网址
   recentVerticalOffset?: number; // 最近访问组件垂直位置偏移（像素 px，负数偏上，正数偏下，默认 0）
+  searchVerticalOffset?: number; // 搜索框垂直位置偏移（像素 px，负数偏上，正数偏下，默认 0）
   shortcutMode: ShortcutDisplayMode;
   desktopPageCount?: number; // 桌面总分页数（默认 1，最多 9 页）
   /** @deprecated Kept for compatibility with settings saved by older versions. */
