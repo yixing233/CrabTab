@@ -164,7 +164,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
           key: node.id,
           label: (
             <div className="flex items-center gap-2 py-0.5 max-w-[280px] select-none">
-              <Folder size={14} className="text-amber-500 dark:text-amber-400 shrink-0" />
+              <Folder size={14} className="text-amber-500 dark:text-amber-400 shrink-0" fill="currentColor" />
               <span className="truncate text-xs font-medium text-inherit">{node.title}</span>
             </div>
           ),
@@ -491,6 +491,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                           <Folder
                             size={13}
                             className="text-amber-500 dark:text-amber-400 shrink-0"
+                            fill="currentColor"
                           />
                           <span className="truncate max-w-[130px]">{item.title}</span>
                         </button>
@@ -566,6 +567,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                   <Folder
                     size={13}
                     className="text-amber-500 dark:text-amber-400 shrink-0"
+                    fill="currentColor"
                   />
                   <span>{otherFolder.title || t.otherBookmarks}</span>
                 </button>
@@ -684,7 +686,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                         </div>
                         {res.path.length > 0 && (
                           <div className="text-[10px] opacity-50 truncate mt-0.5 flex items-center gap-1">
-                            <Folder size={10} className="shrink-0 text-amber-400" />
+                            <Folder size={10} className="shrink-0 text-amber-400" fill="currentColor" />
                             <span>{res.path.join(' / ')}</span>
                           </div>
                         )}

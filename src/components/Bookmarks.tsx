@@ -406,7 +406,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
                         : 'bg-transparent border-transparent text-gray-500 hover:text-gray-900 hover:bg-black/5'
                     }`}
                   >
-                    <Folder size={14} className={isSelected ? 'text-amber-400' : 'opacity-70'} />
+                    <Folder size={14} className={isSelected ? 'text-amber-400' : 'opacity-70'} fill="currentColor" />
                     <span>{cat.title || t.rootBookmarks}</span>
                   </button>
                 );
@@ -574,7 +574,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
                               isDark ? 'text-white/40 hover:text-white/70' : 'text-gray-400 hover:text-gray-700'
                             }`}
                           >
-                            <Folder size={10} className="shrink-0 text-amber-400" />
+                            <Folder size={10} className="shrink-0 text-amber-400" fill="currentColor" />
                             <span>{result.path.join(' / ')}</span>
                           </div>
                         )}
@@ -610,6 +610,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
                     <Folder
                       size={14}
                       className="shrink-0 text-amber-500 dark:text-amber-400 group-hover:scale-110 transition-transform"
+                      fill="currentColor"
                     />
                     <span className="text-xs sm:text-sm font-medium truncate">
                       {folder.title}
