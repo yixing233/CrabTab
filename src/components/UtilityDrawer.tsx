@@ -258,8 +258,8 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
 
   const nearestStatus = useMemo(() => {
     if (!nearestPinnedCountdown) return null;
-    return calculateCountdownStatus(nearestPinnedCountdown, language);
-  }, [nearestPinnedCountdown, language]);
+    return calculateCountdownStatus(nearestPinnedCountdown, language, undefined, isDark);
+  }, [nearestPinnedCountdown, language, isDark]);
 
   const handleTogglePinCountdown = (item: CountdownItem) => {
     const next = countdowns.map((c) =>
@@ -1265,7 +1265,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                       color: nearestStatus.color,
                     }}
                   >
-                    <CountdownIcon name={nearestPinnedCountdown.icon} size={11} />
+                    <CountdownIcon name={nearestPinnedCountdown.icon} size={11} strokeWidth={2.2} />
                   </div>
                   <span className="truncate max-w-[85px] text-[11px] text-neutral-800 dark:text-neutral-100">
                     {nearestPinnedCountdown.title}
@@ -1323,7 +1323,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
 
             {/* 倒数日胶囊列表 */}
             {pinnedCountdowns.map((item) => {
-              const status = calculateCountdownStatus(item, language);
+              const status = calculateCountdownStatus(item, language, undefined, isDark);
               return (
                 <button
                   key={item.id}
@@ -1352,7 +1352,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                         color: status.color,
                       }}
                     >
-                      <CountdownIcon name={item.icon} size={12} />
+                      <CountdownIcon name={item.icon} size={12} strokeWidth={2.2} />
                     </div>
                     <span className="truncate max-w-[110px] text-neutral-800 dark:text-neutral-100">
                       {item.title}
@@ -1361,7 +1361,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
 
                   {/* 右侧：状态文案与天数 */}
                   <span
-                    className="text-[11px] font-semibold opacity-95 shrink-0 tabular-nums"
+                    className="text-[11px] font-semibold shrink-0 tabular-nums"
                     style={{ color: status.color }}
                   >
                     {status.displayText}
@@ -2217,7 +2217,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                       </div>
                     ) : (
                       filteredCountdowns.map((item) => {
-                        const status = calculateCountdownStatus(item, language);
+                        const status = calculateCountdownStatus(item, language, undefined, isDark);
                         return (
                           <div
                             key={item.id}

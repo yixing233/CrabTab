@@ -52,43 +52,45 @@ interface CountdownIconProps {
   name?: string;
   size?: number;
   className?: string;
+  strokeWidth?: number;
 }
 
 export const CountdownIcon: React.FC<CountdownIconProps> = ({
   name = 'target',
   size = 14,
   className = '',
+  strokeWidth = 2,
 }) => {
   const normalized = (name && EMOJI_TO_LUCIDE[name]) ? EMOJI_TO_LUCIDE[name] : name;
 
   switch (normalized) {
     case 'cake':
-      return <Cake size={size} className={className} />;
+      return <Cake size={size} strokeWidth={strokeWidth} className={className} />;
     case 'sparkles':
-      return <Sparkles size={size} className={className} />;
+      return <Sparkles size={size} strokeWidth={strokeWidth} className={className} />;
     case 'rocket':
-      return <Rocket size={size} className={className} />;
+      return <Rocket size={size} strokeWidth={strokeWidth} className={className} />;
     case 'hourglass':
-      return <Hourglass size={size} className={className} />;
+      return <Hourglass size={size} strokeWidth={strokeWidth} className={className} />;
     case 'heart':
-      return <Heart size={size} className={className} />;
+      return <Heart size={size} strokeWidth={strokeWidth} className={className} />;
     case 'plane':
-      return <Plane size={size} className={className} />;
+      return <Plane size={size} strokeWidth={strokeWidth} className={className} />;
     case 'briefcase':
-      return <Briefcase size={size} className={className} />;
+      return <Briefcase size={size} strokeWidth={strokeWidth} className={className} />;
     case 'laptop':
-      return <Laptop size={size} className={className} />;
+      return <Laptop size={size} strokeWidth={strokeWidth} className={className} />;
     case 'gift':
-      return <Gift size={size} className={className} />;
+      return <Gift size={size} strokeWidth={strokeWidth} className={className} />;
     case 'flag':
-      return <Flag size={size} className={className} />;
+      return <Flag size={size} strokeWidth={strokeWidth} className={className} />;
     case 'flame':
-      return <Flame size={size} className={className} />;
+      return <Flame size={size} strokeWidth={strokeWidth} className={className} />;
     case 'sun':
-      return <Sun size={size} className={className} />;
+      return <Sun size={size} strokeWidth={strokeWidth} className={className} />;
     case 'target':
-      return <Target size={size} className={className} />;
+      return <Target size={size} strokeWidth={strokeWidth} className={className} />;
     default:
-      return <CalendarClock size={size} className={className} />;
+      return <CalendarClock size={size} strokeWidth={strokeWidth} className={className} />;
   }
 };
