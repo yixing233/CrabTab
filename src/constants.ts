@@ -11,23 +11,13 @@ export const SEARCH_ENGINES: SearchEngine[] = [
 
 export const DEFAULT_SHORTCUTS: SiteShortcut[] = [
   { id: '1', title: 'GitHub', url: 'https://github.com', icon: 'https://github.githubassets.com/favicons/favicon.svg' },
-  { id: '2', title: 'YouTube', url: 'https://www.youtube.com', icon: 'https://www.youtube.com/s/desktop/f2905187/img/favicon.ico' },
-  { id: '3', title: 'Bilibili', url: 'https://www.bilibili.com', icon: 'https://www.bilibili.com/favicon.ico' },
-  { id: '4', title: 'V2EX', url: 'https://www.v2ex.com', icon: 'https://www.v2ex.com/static/img/icon_rayps_64.png' },
-  { id: '5', title: 'Reddit', url: 'https://www.reddit.com', icon: 'https://www.redditstatic.com/shreddit/assets/favicon/192x192.png' },
-  { id: '6', title: 'ChatGPT', url: 'https://chatgpt.com', icon: 'https://chatgpt.com/favicon.ico' },
-  { id: '7', title: 'Twitter / X', url: 'https://x.com', icon: 'https://abs.twimg.com/favicons/twitter.3.ico' },
+  { id: '2', title: 'Bilibili', url: 'https://www.bilibili.com', icon: 'https://www.bilibili.com/favicon.ico' },
+  { id: '3', title: 'YouTube', url: 'https://www.youtube.com', icon: 'https://www.youtube.com/s/desktop/f2905187/img/favicon.ico' },
+  { id: '4', title: 'DeepSeek', url: 'https://chat.deepseek.com', icon: 'https://www.deepseek.com/favicon.ico' },
+  { id: '5', title: 'ChatGPT', url: 'https://chatgpt.com', icon: 'https://chatgpt.com/favicon.ico' },
+  { id: '6', title: '知乎', url: 'https://www.zhihu.com', icon: 'https://static.zhihu.com/heifetz/favicon.ico' },
+  { id: '7', title: 'V2EX', url: 'https://www.v2ex.com', icon: 'https://www.v2ex.com/static/img/icon_rayps_64.png' },
   { id: '8', title: 'Notion', url: 'https://www.notion.so', icon: 'https://www.notion.so/images/favicon.ico' },
-  { id: '9', title: 'Google', url: 'https://www.google.com', icon: 'https://www.google.com/favicon.ico' },
-  { id: '10', title: '百度', url: 'https://www.baidu.com', icon: 'https://www.baidu.com/favicon.ico' },
-  { id: '11', title: '知乎', url: 'https://www.zhihu.com', icon: 'https://static.zhihu.com/heifetz/favicon.ico' },
-  { id: '12', title: '掘金', url: 'https://juejin.cn', icon: 'https://lf3-cdn-tos.bytescm.com/obj/static/xitu_juejin_web/static/favicons/favicon-32x32.png' },
-  { id: '13', title: '少数派', url: 'https://sspai.com', icon: 'https://cdn.sspai.com/sspai/assets/img/favicon/icon.ico' },
-  { id: '14', title: 'Stack Overflow', url: 'https://stackoverflow.com', icon: 'https://cdn.sstatic.net/Sites/stackoverflow/Img/favicon.ico' },
-  { id: '15', title: 'Figma', url: 'https://www.figma.com', icon: 'https://static.figma.com/app/icon/1/favicon.svg' },
-  { id: '16', title: 'Steam', url: 'https://store.steampowered.com', icon: 'https://store.steampowered.com/favicon.ico' },
-  { id: '17', title: '网易云音乐', url: 'https://music.163.com', icon: 'https://s1.music.126.net/style/favicon.ico' },
-  { id: '18', title: 'DeepSeek', url: 'https://chat.deepseek.com', icon: 'https://www.deepseek.com/favicon.ico' },
 ];
 
 export const RANDOM_WALLPAPER_POOL = [
