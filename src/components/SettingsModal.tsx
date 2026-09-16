@@ -1034,6 +1034,79 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         />
       </div>
 
+      {/* 全局界面缩放比例 (UI Scale) */}
+      <div className={`p-3.5 rounded-xl border space-y-2.5 ${
+        isDark ? 'border-white/8 bg-white/[0.03]' : 'border-gray-200/80 bg-gray-50/50'
+      }`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="font-medium">
+              <Text strong>{t.uiScale}</Text>
+            </div>
+            <div className="text-xs mt-0.5 max-w-md">
+              <Text type="secondary">{t.uiScaleDesc}</Text>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono font-semibold px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-500">
+              {settings.uiScale ?? 100}%
+            </span>
+            {(settings.uiScale ?? 100) !== 100 && (
+              <Button
+                size="small"
+                type="text"
+                onClick={() => onUpdateSettings({ uiScale: 100 })}
+                className="text-xs !px-1.5 !h-6 opacity-75 hover:opacity-100"
+              >
+                {t.resetDefault}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        <Slider
+          min={80}
+          max={140}
+          step={5}
+          value={settings.uiScale ?? 100}
+          onChange={(val) => onUpdateSettings({ uiScale: val })}
+          className="m-0"
+        />
+
+        <div className="flex justify-between text-[11px] text-neutral-400 px-0.5 select-none">
+          <span
+            className={`cursor-pointer transition-colors hover:text-blue-500 ${(settings.uiScale ?? 100) === 85 ? 'text-blue-500 font-semibold' : ''}`}
+            onClick={() => onUpdateSettings({ uiScale: 85 })}
+          >
+            {t.uiScaleCompact}
+          </span>
+          <span
+            className={`cursor-pointer transition-colors hover:text-blue-500 ${(settings.uiScale ?? 100) === 100 ? 'text-blue-500 font-semibold' : ''}`}
+            onClick={() => onUpdateSettings({ uiScale: 100 })}
+          >
+            {t.uiScaleStandard}
+          </span>
+          <span
+            className={`cursor-pointer transition-colors hover:text-blue-500 ${(settings.uiScale ?? 100) === 110 ? 'text-blue-500 font-semibold' : ''}`}
+            onClick={() => onUpdateSettings({ uiScale: 110 })}
+          >
+            {t.uiScaleComfort}
+          </span>
+          <span
+            className={`cursor-pointer transition-colors hover:text-blue-500 ${(settings.uiScale ?? 100) === 120 ? 'text-blue-500 font-semibold' : ''}`}
+            onClick={() => onUpdateSettings({ uiScale: 120 })}
+          >
+            {t.uiScaleLarge}
+          </span>
+          <span
+            className={`cursor-pointer transition-colors hover:text-blue-500 ${(settings.uiScale ?? 100) === 130 ? 'text-blue-500 font-semibold' : ''}`}
+            onClick={() => onUpdateSettings({ uiScale: 130 })}
+          >
+            {t.uiScaleHuge}
+          </span>
+        </div>
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
           <div className="font-medium">

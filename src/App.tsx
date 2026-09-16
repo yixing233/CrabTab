@@ -112,6 +112,16 @@ export const App: React.FC = () => {
     saveCountdownsToStorage(newCountdowns);
   };
 
+  // 全局界面缩放响应（根据设置中的 uiScale 动态调整，默认 100% 保持原生精致尺寸）
+  useEffect(() => {
+    const scale = settings?.uiScale ?? 100;
+    if (scale && scale !== 100) {
+      document.documentElement.style.zoom = `${scale}%`;
+    } else {
+      document.documentElement.style.zoom = '';
+    }
+  }, [settings?.uiScale]);
+
   // 监听多标签页同步：当用户在其他标签页修改设置、快捷方式或搜索历史时实时同步，避免多标签页陈旧数据互相覆盖
   useEffect(() => {
     if (!initialized) return;

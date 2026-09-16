@@ -184,6 +184,7 @@ export interface AppSettings {
   language: Language;
   theme: ThemeMode;
   wallpaper: WallpaperConfig;
+  uiScale?: number; // 全局界面缩放比例（百分比，默认 100，支持 80 ~ 140）
   searchEngine: SearchEngineId;
   suggestionEngine?: SuggestionEngineId;
   searchBookmarks?: boolean; // 搜索框是否搜索书签（默认 true）

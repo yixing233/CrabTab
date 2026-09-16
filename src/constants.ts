@@ -50,6 +50,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     saturation: 100,
     autoRefresh: 'off',
   },
+  uiScale: 100,
   searchEngine: 'google',
   suggestionEngine: 'auto',
   searchBookmarks: true,
