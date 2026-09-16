@@ -30,6 +30,7 @@ export const SearchEngineIcon: React.FC<SearchEngineIconProps> = ({
 }) => {
   const iconUrl = ENGINE_ICON_URLS[engineId] || googleSvg;
   const isGithub = engineId === 'github';
+  const isBing = engineId === 'bing';
 
   return (
     <span
@@ -41,7 +42,7 @@ export const SearchEngineIcon: React.FC<SearchEngineIconProps> = ({
         alt={engineId}
         className={`w-full h-full object-contain ${
           isGithub ? 'dark:invert dark:brightness-200' : ''
-        }`}
+        } ${isBing ? 'scale-[1.25] origin-center' : ''}`}
         loading="eager"
         decoding="sync"
       />
