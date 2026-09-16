@@ -71,6 +71,7 @@ interface SettingsModalProps {
   settings: AppSettings;
   onUpdateSettings: (newSettings: Partial<AppSettings>) => void;
   onRefreshWallpaper: () => void;
+  initialTab?: string;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -79,8 +80,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onUpdateSettings,
   onRefreshWallpaper,
+  initialTab,
 }) => {
-  const [activeTab, setActiveTab] = useState('wallpaper');
+  const [activeTab, setActiveTab] = useState(initialTab || 'wallpaper');
+
+  useEffect(() => {
+    if (open && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [open, initialTab]);
   const [favorites, setFavorites] = useState<FavoriteWallpaperItem[]>([]);
   const [isFavorited, setIsFavorited] = useState<boolean>(false);
   const [localMedia, setLocalMedia] = useState<{ url: string; isVideo: boolean; name?: string; isCustom?: boolean } | null>(null);

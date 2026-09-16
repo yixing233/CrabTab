@@ -27,7 +27,15 @@ import { getDefaultCountdowns } from './utils/countdown';
 import { getAntdTheme } from './theme';
 import { SEARCH_ENGINES, RANDOM_WALLPAPER_POOL } from './constants';
 import { fetchFromOnlineSource, ONLINE_WALLPAPER_SOURCES } from './utils/wallpaperSources';
-import { checkLatestVersion, AUTO_CHECK_UPDATE_INTERVAL, LAST_AUTO_CHECK_KEY } from './utils/versionCheck';
+import { 
+  checkLatestVersion, 
+  AUTO_CHECK_UPDATE_INTERVAL, 
+  LAST_AUTO_CHECK_KEY,
+  getCachedReleaseInfo,
+  isUpdateDismissed,
+  dismissUpdate,
+  ReleaseInfo
+} from './utils/versionCheck';
 import { Wallpaper } from './components/Wallpaper';
 import { Clock } from './components/Clock';
 import { SearchBox } from './components/SearchBox';
@@ -38,6 +46,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { BrowserHistoryDrawer } from './components/BrowserHistoryDrawer';
 import { UtilityDrawer } from './components/UtilityDrawer';
 import { RecentCards } from './components/RecentCards';
+import { UpdateNotification } from './components/UpdateNotification';
 import { BrowserHistoryItem } from './types';
 
 // 防抖设置持久化：避免滑块滑动高频触发 chrome.storage 写入与跨标签页广播风暴
@@ -58,6 +67,27 @@ export const App: React.FC = () => {
   const [historyDrawerOpen, setHistoryDrawerOpen] = useState(false);
   const [refreshingWallpaper, setRefreshingWallpaper] = useState(false);
   const [initialized, setInitialized] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<string>('wallpaper');
+  const [availableUpdate, setAvailableUpdate] = useState<ReleaseInfo | null>(() => {
+    const cached = getCachedReleaseInfo();
+    return cached?.hasUpdate ? cached : null;
+  });
+  const [isUpdateBannerDismissed, setIsUpdateBannerDismissed] = useState<boolean>(() => {
+    const cached = getCachedReleaseInfo();
+    return cached?.version ? isUpdateDismissed(cached.version) : false;
+  });
+
+  const handleDismissUpdate = () => {
+    if (availableUpdate?.version) {
+      dismissUpdate(availableUpdate.version);
+    }
+    setIsUpdateBannerDismissed(true);
+  };
+
+  const handleOpenUpdateDetails = () => {
+    setSettingsInitialTab('about');
+    setSettingsOpen(true);
+  };
 
   // Initialize data
   useEffect(() => {
@@ -188,13 +218,16 @@ export const App: React.FC = () => {
         if (now - lastCheckTime >= AUTO_CHECK_UPDATE_INTERVAL) {
           localStorage.setItem(LAST_AUTO_CHECK_KEY, now.toString());
           const info = await checkLatestVersion(true);
-          if (info.hasUpdate) {
-            // 当检测到新版本时，轻量提示用户有新版本可用
-            message.info({
-              content: `CrabTab 发现新版本 v${info.version} 可用，请前往“设置 -> 关于”查看`,
-              duration: 5,
-              key: 'crab_new_version_tip',
-            });
+          if (info?.hasUpdate) {
+            setAvailableUpdate(info);
+            setIsUpdateBannerDismissed(isUpdateDismissed(info.version));
+          }
+        } else {
+          // 间隔时间内同步本地缓存状态
+          const cached = getCachedReleaseInfo();
+          if (cached?.hasUpdate) {
+            setAvailableUpdate(cached);
+            setIsUpdateBannerDismissed(isUpdateDismissed(cached.version));
           }
         }
       } catch {
@@ -543,17 +576,36 @@ export const App: React.FC = () => {
               </Tooltip>
 
               {/* Settings Modal Toggle Button */}
-              <Tooltip title={settings.language === 'zh' ? '主页个性化设置' : 'Settings'} placement="bottom">
+              <Tooltip
+                title={
+                  availableUpdate?.hasUpdate
+                    ? (settings.language === 'zh'
+                        ? `主页个性化设置（发现新版本 v${availableUpdate.version}）`
+                        : `Settings (New version v${availableUpdate.version} available)`)
+                    : (settings.language === 'zh' ? '主页个性化设置' : 'Settings')
+                }
+                placement="bottom"
+              >
                 <button
                   type="button"
-                  onClick={() => setSettingsOpen(true)}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                  onClick={() => {
+                    if (availableUpdate?.hasUpdate) {
+                      setSettingsInitialTab('about');
+                    } else {
+                      setSettingsInitialTab('wallpaper');
+                    }
+                    setSettingsOpen(true);
+                  }}
+                  className={`relative w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
                     isDark
                       ? 'hover:bg-white/15 text-white/85 hover:text-white active:bg-white/20'
                       : 'hover:bg-black/8 text-gray-700 hover:text-gray-950 active:bg-black/12'
                   }`}
                 >
                   <SettingOutlined className="text-xs" />
+                  {availableUpdate?.hasUpdate && (
+                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-blue-500 ring-2 ring-white dark:ring-[#181a20] animate-pulse" />
+                  )}
                 </button>
               </Tooltip>
             </div>
@@ -665,7 +717,20 @@ export const App: React.FC = () => {
           settings={settings}
           onUpdateSettings={handleUpdateSettings}
           onRefreshWallpaper={handleRefreshWallpaper}
+          initialTab={settingsInitialTab}
         />
+
+        {/* 顶部常驻新版本提示组件 */}
+        {availableUpdate?.hasUpdate && !isUpdateBannerDismissed && (
+          <UpdateNotification
+            updateInfo={availableUpdate}
+            onOpenDetails={handleOpenUpdateDetails}
+            onDismiss={handleDismissUpdate}
+            language={settings.language}
+            theme={settings.theme}
+            glassStyle={settings.glassStyle}
+          />
+        )}
 
         {/* Ant Design History Drawer */}
         <BrowserHistoryDrawer

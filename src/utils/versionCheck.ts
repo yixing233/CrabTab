@@ -2,11 +2,12 @@
  * 版本检测工具：从项目静态元数据源读取线上版本
  */
 
-export const CURRENT_VERSION = '1.0.5';
+export const CURRENT_VERSION = '1.1.1';
 export const REPO_OWNER = 'yixing233';
 export const REPO_NAME = 'CrabTab';
 export const GITHUB_REPO_URL = `https://github.com/${REPO_OWNER}/${REPO_NAME}`;
 export const GITHUB_RELEASES_URL = `${GITHUB_REPO_URL}/releases`;
+export const DISMISSED_UPDATE_VERSION_KEY = 'crab_dismissed_update_version';
 
 export interface ReleaseInfo {
   version: string;
@@ -148,4 +149,43 @@ export async function checkUpdateIfDue(force = false): Promise<ReleaseInfo | nul
     console.warn('[VersionCheck] Background auto check failed:', err);
     return null;
   }
+}
+
+/**
+ * 读取本地缓存的最新版本信息（用于新标签页 0ms 瞬间挂载常驻通知，免网络等待）
+ */
+export function getCachedReleaseInfo(): ReleaseInfo | null {
+  try {
+    const cachedRaw = localStorage.getItem(VERSION_CACHE_KEY);
+    if (cachedRaw) {
+      const cached = JSON.parse(cachedRaw);
+      if (cached?.data?.version) {
+        return {
+          ...cached.data,
+          hasUpdate: compareSemver(cached.data.version, CURRENT_VERSION) > 0,
+        };
+      }
+    }
+  } catch {}
+  return null;
+}
+
+/**
+ * 判断用户是否已主动关闭该版本的常驻提示
+ */
+export function isUpdateDismissed(version: string): boolean {
+  try {
+    return localStorage.getItem(DISMISSED_UPDATE_VERSION_KEY) === version;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * 记录用户主动关闭该版本的常驻提示
+ */
+export function dismissUpdate(version: string): void {
+  try {
+    localStorage.setItem(DISMISSED_UPDATE_VERSION_KEY, version);
+  } catch {}
 }
