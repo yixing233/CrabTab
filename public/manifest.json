@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "CrabTab - 现代毛玻璃极简起始页",
-  "version": "1.1.2",
+  "version": "1.2.0",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAnI85CeqvpY0CB6AVXgcX35OyyS8iY+1oUJ1JY8o9LGhGWJfwVhXevFFbhftMHVEOKvMhcX8mjkcGkMe4et23uae4L82vMWpITztGEfoFPV/kYFMJxlPSJs+bixyn5T39LCiuoJCg9GkzuAy6Gp1fIQlpBV90oZJm1DaT7TRykPcYQK/yg/C+LDg0JGo5qPxN9EI65QWOsUPUrcwx4Kn8IzZeSUiCezth92ANgjA8y281f86UQgUTPuUM/MWbV4/ANeaKGby0bXt+xDMzjUp534KuXWoYzaWvZir7DcUZHstfsBV0qr/4QPes7fhC1nL0qv/zGEevsqCcuGsDAcgnLwIDAQAB",
   "description": "极简精致、现代毛玻璃美学的智能新标签页与主页扩展",
   "chrome_url_overrides": {
