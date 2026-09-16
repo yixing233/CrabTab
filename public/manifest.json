@@ -17,6 +17,7 @@
   "host_permissions": [
     "https://weatherapi.market.xiaomi.com/*",
     "https://api.open-meteo.com/*",
+    "https://api.bigdatacloud.net/*",
     "https://*.bing.com/*",
     "https://suggestion.baidu.com/*",
     "https://suggestqueries.google.com/*",

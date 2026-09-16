@@ -842,6 +842,46 @@ export function setCachedWeather(data: WeatherData, lang: 'zh' | 'en'): void {
   }
 }
 
+/**
+ * 根据经纬度通过逆地理编码动态解析真实的市/区/县名称（支持全国 2800+ 区县及全球海外城市）
+ */
+export async function reverseGeocodeCity(lat: number, lon: number, lang: 'zh' | 'en' = 'zh'): Promise<string | null> {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2500); // 2.5 秒超时避免阻塞
+    const url = `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat.toFixed(4)}&longitude=${lon.toFixed(4)}&localityLanguage=${lang === 'zh' ? 'zh' : 'en'}`;
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (!data) return null;
+
+    if (lang === 'zh') {
+      const isMunicipality = ['北京市', '上海市', '天津市', '重庆市'].includes(data.principalSubdivision);
+      let raw = '';
+      if (isMunicipality) {
+        raw = data.principalSubdivision;
+      } else if (data.locality && /(?:县|市)$/.test(data.locality)) {
+        // 县级市或县，例如 长汀县、昆山市、义乌市、景洪市
+        raw = data.locality;
+      } else if (data.city) {
+        // 地级市，例如 龙岩市、成都市、苏州市
+        raw = data.city;
+      } else {
+        raw = data.locality || data.principalSubdivision || '';
+      }
+      if (raw) {
+        return raw.replace(/(?:省|自治区|特别行政区|壮族自治区|维吾尔自治区|回族自治区|市|县|区)$/, '');
+      }
+    } else {
+      return data.city || data.locality || data.principalSubdivision || null;
+    }
+  } catch (e) {
+    // 逆地理接口异常时降级
+  }
+  return null;
+}
+
 // 统一天气获取入口（支持 30 分钟缓存与强制刷新）
 export async function fetchCurrentWeather(lang: 'zh' | 'en', forceRefresh = false): Promise<WeatherData> {
   // 0. 未显式强制刷新时，优先命中 30 分钟内的有效本地持久化缓存
@@ -899,14 +939,17 @@ export async function fetchCurrentWeather(lang: 'zh' | 'en', forceRefresh = fals
     }
   }
 
-  // 1. 根据坐标计算最近的城市信息
+  // 1. 根据坐标计算最近的城市信息（用于提供标准市级 cityId）
   const closest = forcedCityId
     ? { cityId: forcedCityId, name: cityName }
     : getClosestCityId(lat, lon);
 
   if (hasUserLocation && !customCityConfig?.city) {
-    cityName = closest.name;
-    if (lang === 'en') {
+    // 优先通过经纬度逆地理反查高精度的真实区县/地级市名（支持全国 2800+ 区县及全球城市）
+    const resolvedName = await reverseGeocodeCity(lat, lon, lang);
+    if (resolvedName) {
+      cityName = resolvedName;
+    } else {
       cityName = closest.name;
     }
   }
