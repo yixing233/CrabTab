@@ -330,7 +330,7 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
   };
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-2 select-none pointer-events-auto">
+    <div className="w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto px-2 select-none pointer-events-auto">
       {/* 顶部标题栏：Recent / 最近访问（精致毛玻璃胶囊，全壁纸高清晰度对比） */}
       <div className="flex items-center justify-between mb-3 px-1">
         <div

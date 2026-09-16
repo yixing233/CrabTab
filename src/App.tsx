@@ -429,9 +429,9 @@ export const App: React.FC = () => {
             )}
           </div>
 
-          {/* 2. Center: Bookmark Bar (同一行居中展示，常驻) */}
+          {/* 2. Center: Bookmark Bar (同一行自适应宽度展示，充分利用大屏空间，与两侧组件保持安全间距) */}
           {(settings.showBookmarkBar ?? true) ? (
-            <div className="flex-1 min-w-0 max-w-5xl mx-auto flex justify-center px-1 sm:px-2">
+            <div className="flex-1 min-w-0 flex justify-center px-1 sm:px-3">
               <TopBookmarkBar
                 language={settings.language}
                 theme={settings.theme}
@@ -561,7 +561,7 @@ export const App: React.FC = () => {
         </header>
 
         {/* Central Core Layout: Clock, Search Box & Shortcuts - 基于页面顶部定位 */}
-        <main className="main-layout-responsive relative z-10 w-full max-w-5xl mx-auto px-4 flex-1 flex flex-col items-center justify-start pointer-events-auto min-h-0 pt-3 sm:pt-4 md:pt-6 pb-6">
+        <main className="main-layout-responsive relative z-10 w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto px-4 flex-1 flex flex-col items-center justify-start pointer-events-auto min-h-0 pt-3 sm:pt-4 md:pt-6 pb-6">
           {/* Digital Clock with Interactive Popover - 固定高度插槽与底部锚定，确保时间参数修改绝不引起下方搜索框位置变动 */}
           <div className="clock-slot-responsive w-full flex items-end justify-center h-[140px] sm:h-[156px] mb-4 sm:mb-6 flex-shrink-0 select-none">
             <Clock
