@@ -1299,11 +1299,11 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
             }`}
           >
             {/* 顶栏微控制条：倒数日标题与「向右收起」操作按钮 */}
-            <div className="flex items-center justify-between w-[240px] xl:w-[270px] px-2 py-0.5 rounded-lg select-none">
-              <div className="flex items-center gap-1.5 text-[11px] xl:text-xs font-medium text-neutral-500 dark:text-neutral-400">
+            <div className="flex items-center justify-between w-[240px] px-2 py-0.5 rounded-lg select-none">
+              <div className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
                 <CalendarClock size={12} className="opacity-75" />
                 <span>{zh ? '倒数日' : 'Countdowns'}</span>
-                <span className="text-[10px] xl:text-[11px] px-1.5 py-0.2 rounded-full bg-black/5 dark:bg-white/10 opacity-70 tabular-nums font-semibold">
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/5 dark:bg-white/10 opacity-70 tabular-nums font-semibold">
                   {pinnedCountdowns.length}
                 </span>
               </div>
@@ -1314,9 +1314,9 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                   toggleCountdownCollapse(true);
                 }}
                 title={zh ? '向右侧收起' : 'Collapse to right'}
-                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] xl:text-xs text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100 hover:bg-black/8 dark:hover:bg-white/12 transition-all cursor-pointer"
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100 hover:bg-black/8 dark:hover:bg-white/12 transition-all cursor-pointer"
               >
-                <span className="text-[10px] xl:text-[11px]">{zh ? '收起' : 'Collapse'}</span>
+                <span className="text-[10px]">{zh ? '收起' : 'Collapse'}</span>
                 <ChevronRight size={13} />
               </button>
             </div>
@@ -1333,7 +1333,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                     setOpen(true);
                   }}
                   title={zh ? `${item.title}（点击管理倒数日）` : `${item.title} (Manage)`}
-                  className={`w-[240px] xl:w-[270px] h-8 xl:h-9 flex items-center justify-between pl-1.5 xl:pl-2 pr-3.5 xl:pr-4 rounded-full text-xs xl:text-[13px] font-medium shadow-md transition-colors border cursor-pointer select-none backdrop-blur-md shrink-0 ${
+                  className={`w-[240px] h-8 flex items-center justify-between pl-1.5 pr-3.5 rounded-full text-xs font-medium shadow-md transition-colors border cursor-pointer select-none backdrop-blur-md shrink-0 ${
                     isDark
                       ? 'bg-[#181a20]/80 hover:bg-[#181a20]/95 text-white/90 border-white/10 hover:border-white/30'
                       : 'bg-white/80 hover:bg-white/95 text-neutral-800 border-black/10 hover:border-black/20'
@@ -1346,22 +1346,22 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                   {/* 左侧：图标与标题 */}
                   <div className="flex items-center gap-2 min-w-0 pr-2">
                     <div
-                      className="w-5 h-5 xl:w-6 xl:h-6 rounded-full flex items-center justify-center shrink-0"
+                      className="w-5 h-5 rounded-full flex items-center justify-center shrink-0"
                       style={{
                         backgroundColor: `${status.color}22`,
                         color: status.color,
                       }}
                     >
-                      <CountdownIcon name={item.icon} size={13} strokeWidth={2.2} />
+                      <CountdownIcon name={item.icon} size={12} strokeWidth={2.2} />
                     </div>
-                    <span className="truncate max-w-[110px] xl:max-w-[130px] text-neutral-800 dark:text-neutral-100">
+                    <span className="truncate max-w-[110px] text-neutral-800 dark:text-neutral-100">
                       {item.title}
                     </span>
                   </div>
 
                   {/* 右侧：状态文案与天数 */}
                   <span
-                    className="text-[11px] xl:text-xs font-semibold shrink-0 tabular-nums"
+                    className="text-[11px] font-semibold shrink-0 tabular-nums"
                     style={{ color: status.color }}
                   >
                     {status.displayText}
@@ -1387,7 +1387,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
             <button
               type="button"
               onClick={() => setOpen(!open)}
-              className={`flex items-center gap-2 px-5 py-2 xl:px-6 xl:py-2.5 rounded-t-2xl font-medium text-xs xl:text-sm shadow-lg transition-all duration-200 border border-b-0 cursor-pointer ${
+              className={`flex items-center gap-2 px-5 py-2 rounded-t-2xl font-medium text-xs shadow-lg transition-all duration-200 border border-b-0 cursor-pointer ${
                 isDark
                   ? 'bg-[#181a20]/80 hover:bg-[#181a20]/95 text-white/90 border-white/10'
                   : 'bg-white/80 hover:bg-white/95 text-neutral-800 border-black/10'

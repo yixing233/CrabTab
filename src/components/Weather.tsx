@@ -659,7 +659,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
         onClick={() => setIsOpen((prev) => !prev)}
         aria-expanded={isOpen}
         aria-label={language === 'zh' ? '查看详细天气' : 'View detailed weather'}
-        className={`group px-3.5 py-1.5 xl:px-4.5 xl:py-2 rounded-full flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-md ${
+        className={`group px-3.5 py-1.5 rounded-full flex items-center gap-2 cursor-pointer transition-all duration-200 shadow-md ${
           isDark
             ? 'text-white/90 hover:text-white border border-white/16 hover:border-white/50 hover:bg-white/10 active:bg-white/15'
             : 'text-neutral-800 hover:text-neutral-950 border border-white/80 hover:border-white hover:bg-white/80 active:bg-white/90'
@@ -677,15 +677,15 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
           <Spin size="small" />
         ) : (
           <>
-            {renderWeatherIcon(data?.conditionText || '晴', data?.conditionCode, 'w-3.5 h-3.5 xl:w-4.5 xl:h-4.5 shrink-0')}
-            <div className="flex items-baseline gap-1.5 text-sm xl:text-base font-medium whitespace-nowrap">
+            {renderWeatherIcon(data?.conditionText || '晴', data?.conditionCode, 'w-3.5 h-3.5 shrink-0')}
+            <div className="flex items-baseline gap-1.5 text-sm font-medium whitespace-nowrap">
               <span className="tabular-nums drop-shadow-sm font-semibold">
                 {data?.temp !== undefined ? `${data.temp}°` : '34°'}
               </span>
-              <span className="text-xs xl:text-sm opacity-90 drop-shadow-sm">
+              <span className="text-xs opacity-90 drop-shadow-sm">
                 {data?.conditionText || '晴'}
               </span>
-              <span className="text-xs xl:text-sm opacity-75 drop-shadow-sm ml-0.5 font-normal">
+              <span className="text-xs opacity-75 drop-shadow-sm ml-0.5 font-normal">
                 {data?.city || '西安'}
               </span>
             </div>

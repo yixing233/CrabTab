@@ -479,7 +479,7 @@ export const App: React.FC = () => {
           {/* 3. Right: Quick Action Buttons (统一胶囊形态与毛玻璃材质) */}
           <div className="shrink-0 flex items-center">
             <div
-              className={`h-9 xl:h-10 px-1.5 xl:px-2 rounded-full border flex items-center gap-1 xl:gap-1.5 shadow-sm transition-all duration-200 select-none ${
+              className={`h-9 px-1.5 rounded-full border flex items-center gap-1 shadow-sm transition-all duration-200 select-none ${
                 isDark
                   ? 'bg-black/35 hover:bg-black/45 border-white/12 text-white/90 shadow-black/20'
                   : 'bg-white/65 hover:bg-white/80 border-black/8 text-gray-800 shadow-black/5'
@@ -493,13 +493,13 @@ export const App: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleRefreshWallpaper(false)}
-                  className={`w-7 h-7 xl:w-8 xl:h-8 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
                     isDark
                       ? 'hover:bg-white/15 text-white/85 hover:text-white active:bg-white/20'
                       : 'hover:bg-black/8 text-gray-700 hover:text-gray-950 active:bg-black/12'
                   }`}
                 >
-                  <ReloadOutlined className={`text-xs xl:text-sm transition-transform duration-700 ${refreshingWallpaper ? "animate-spin text-blue-400" : ""}`} />
+                  <ReloadOutlined className={`text-xs transition-transform duration-700 ${refreshingWallpaper ? "animate-spin text-blue-400" : ""}`} />
                 </button>
               </Tooltip>
 
@@ -508,13 +508,13 @@ export const App: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleToggleTheme}
-                  className={`w-7 h-7 xl:w-8 xl:h-8 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
                     isDark
                       ? 'hover:bg-white/15 text-white/85 hover:text-white active:bg-white/20'
                       : 'hover:bg-black/8 text-gray-700 hover:text-gray-950 active:bg-black/12'
                   }`}
                 >
-                  {settings.theme === 'dark' ? <SunOutlined className="text-xs xl:text-sm" /> : <MoonOutlined className="text-xs xl:text-sm" />}
+                  {settings.theme === 'dark' ? <SunOutlined className="text-xs" /> : <MoonOutlined className="text-xs" />}
                 </button>
               </Tooltip>
 
@@ -523,13 +523,13 @@ export const App: React.FC = () => {
                 <button
                   type="button"
                   onClick={handleToggleLanguage}
-                  className={`w-7 h-7 xl:w-8 xl:h-8 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
                     isDark
                       ? 'hover:bg-white/15 text-white/85 hover:text-white active:bg-white/20'
                       : 'hover:bg-black/8 text-gray-700 hover:text-gray-950 active:bg-black/12'
                   }`}
                 >
-                  <TranslationOutlined className="text-xs xl:text-sm" />
+                  <TranslationOutlined className="text-xs" />
                 </button>
               </Tooltip>
 
@@ -545,7 +545,7 @@ export const App: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => handleUpdateSettings({ showBookmarkBar: !(settings.showBookmarkBar ?? true) })}
-                  className={`w-7 h-7 xl:w-8 xl:h-8 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
                     (settings.showBookmarkBar ?? true)
                       ? isDark
                         ? 'bg-white/15 text-emerald-400 font-semibold shadow-inner'
@@ -556,7 +556,7 @@ export const App: React.FC = () => {
                   }`}
                   aria-label="切换浏览器书签栏"
                 >
-                  <BookOutlined className="text-xs xl:text-sm" />
+                  <BookOutlined className="text-xs" />
                 </button>
               </Tooltip>
 
@@ -565,13 +565,13 @@ export const App: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setHistoryDrawerOpen(true)}
-                  className={`w-7 h-7 xl:w-8 xl:h-8 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
                     isDark
                       ? 'hover:bg-white/15 text-white/85 hover:text-white active:bg-white/20'
                       : 'hover:bg-black/8 text-gray-700 hover:text-gray-950 active:bg-black/12'
                   }`}
                 >
-                  <HistoryOutlined className="text-xs xl:text-sm" />
+                  <HistoryOutlined className="text-xs" />
                 </button>
               </Tooltip>
 
@@ -596,13 +596,13 @@ export const App: React.FC = () => {
                     }
                     setSettingsOpen(true);
                   }}
-                  className={`relative w-7 h-7 xl:w-8 xl:h-8 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
+                  className={`relative w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
                     isDark
                       ? 'hover:bg-white/15 text-white/85 hover:text-white active:bg-white/20'
                       : 'hover:bg-black/8 text-gray-700 hover:text-gray-950 active:bg-black/12'
                   }`}
                 >
-                  <SettingOutlined className="text-xs xl:text-sm" />
+                  <SettingOutlined className="text-xs" />
                   {availableUpdate?.hasUpdate && (
                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-blue-500 ring-2 ring-white dark:ring-[#181a20] animate-pulse" />
                   )}
@@ -613,9 +613,9 @@ export const App: React.FC = () => {
         </header>
 
         {/* Central Core Layout: Clock, Search Box & Shortcuts - 基于页面顶部定位 */}
-        <main className="main-layout-responsive relative z-10 w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto px-4 flex-1 flex flex-col items-center justify-start pointer-events-auto min-h-0 pt-3 sm:pt-4 md:pt-6 xl:pt-10 2xl:pt-14 pb-6">
+        <main className="main-layout-responsive relative z-10 w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto px-4 flex-1 flex flex-col items-center justify-start pointer-events-auto min-h-0 pt-3 sm:pt-4 md:pt-6 pb-6">
           {/* Digital Clock with Interactive Popover - 固定高度插槽与底部锚定，确保时间参数修改绝不引起下方搜索框位置变动 */}
-          <div className="clock-slot-responsive w-full flex items-end justify-center h-[140px] sm:h-[156px] xl:h-[180px] 2xl:h-[210px] mb-4 sm:mb-6 xl:mb-8 2xl:mb-10 flex-shrink-0 select-none">
+          <div className="clock-slot-responsive w-full flex items-end justify-center h-[140px] sm:h-[156px] mb-4 sm:mb-6 flex-shrink-0 select-none">
             <Clock
               language={settings.language}
               theme={settings.theme}
@@ -630,7 +630,7 @@ export const App: React.FC = () => {
 
           {/* Frosted Glass Search Bar */}
           <div
-            className="searchbox-slot-responsive w-full flex justify-center mb-6 sm:mb-8 xl:mb-10 2xl:mb-12 flex-shrink-0 relative z-20"
+            className="searchbox-slot-responsive w-full flex justify-center mb-6 sm:mb-8 flex-shrink-0 relative z-20"
             style={{
               transform: `translateY(${settings.searchVerticalOffset || 0}px)`,
               transition: 'transform 0.25s cubic-bezier(0.2, 0, 0, 1)',

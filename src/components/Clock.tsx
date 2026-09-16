@@ -372,7 +372,7 @@ export const Clock: React.FC<ClockProps> = ({
       </Popover>
 
       {/* Date Display */}
-      <div className="clock-date-display mt-2 xl:mt-3 text-sm sm:text-base xl:text-lg 2xl:text-xl font-normal tracking-wide text-white/85 drop-shadow-sm select-none">
+      <div className="clock-date-display mt-2 text-sm sm:text-base font-normal tracking-wide text-white/85 drop-shadow-sm select-none">
         <span 
           className="cursor-pointer hover:text-white transition-colors"
           onClick={() => setPopoverOpen(true)}
@@ -384,24 +384,24 @@ export const Clock: React.FC<ClockProps> = ({
       {/* Hitokoto (一言) 金句展示区 - 独立于时间弹窗，支持点击刷新与查看出处 */}
       {showGreeting && (
         <div 
-          className="hitokoto-container mt-1.5 xl:mt-2.5 flex items-center justify-center gap-1.5 xl:gap-2 text-xs sm:text-sm xl:text-base 2xl:text-lg font-light tracking-wide text-white/80 max-w-xl xl:max-w-2xl 2xl:max-w-3xl px-4 py-1 xl:px-6 xl:py-1.5 rounded-full cursor-pointer hover:bg-white/10 active:scale-[0.99] transition-all group duration-200 select-none"
+          className="hitokoto-container mt-1.5 flex items-center justify-center gap-1.5 text-xs sm:text-sm font-light tracking-wide text-white/80 max-w-xl px-4 py-1 rounded-full cursor-pointer hover:bg-white/10 active:scale-[0.99] transition-all group duration-200 select-none"
           onClick={(e) => {
             e.stopPropagation();
             loadSentence(true);
           }}
           title={t.hitokotoRefresh}
         >
-          <Quote className="w-3 h-3 xl:w-4 xl:h-4 text-white/50 group-hover:text-white/80 shrink-0 rotate-180 transition-colors" />
+          <Quote className="w-3 h-3 text-white/50 group-hover:text-white/80 shrink-0 rotate-180 transition-colors" />
           <span className="truncate drop-shadow-sm text-white/90">
             {hitokoto?.hitokoto || '保持热爱，奔赴山海。'}
           </span>
           {authorAndSource && (
-            <span className="text-[11px] sm:text-xs xl:text-sm 2xl:text-base text-white/60 shrink-0 font-normal">
+            <span className="text-[11px] sm:text-xs text-white/60 shrink-0 font-normal">
               —— {authorAndSource}
             </span>
           )}
           <RotateCw 
-            className={`w-3 h-3 xl:w-4 xl:h-4 ml-0.5 text-white/40 group-hover:text-white/80 shrink-0 transition-transform duration-500 ${
+            className={`w-3 h-3 ml-0.5 text-white/40 group-hover:text-white/80 shrink-0 transition-transform duration-500 ${
               isRefreshingSentence ? 'animate-spin text-white/90' : 'opacity-0 group-hover:opacity-100'
             }`} 
           />

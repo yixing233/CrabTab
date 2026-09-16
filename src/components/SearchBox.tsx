@@ -553,11 +553,11 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
   );
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-2xl xl:max-w-3xl 2xl:max-w-4xl mx-auto flex flex-col items-center">
+    <div ref={containerRef} className="relative w-full max-w-2xl mx-auto flex flex-col items-center">
       {/* Search Input Bar */}
       <form
         onSubmit={handleSubmit}
-        className={`w-full relative transition-all duration-300 rounded-2xl xl:rounded-3xl flex items-center shadow-lg ${
+        className={`w-full relative transition-all duration-300 rounded-2xl flex items-center shadow-lg ${
           isFocused ? 'ring-2 ring-blue-500/80 shadow-2xl' : 'hover:shadow-xl'
         }`}
         style={{
@@ -571,17 +571,17 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
         <Dropdown menu={{ items: engineMenuItems }} trigger={['click']} placement="bottomLeft">
           <button
             type="button"
-            className="flex items-center gap-1.5 px-3.5 py-3 xl:px-4.5 xl:py-3.5 rounded-l-2xl xl:rounded-l-3xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-sm xl:text-base font-medium border-r border-black/5 dark:border-white/10 flex-shrink-0"
+            className="flex items-center gap-1.5 px-3.5 py-3 rounded-l-2xl hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer text-sm font-medium border-r border-black/5 dark:border-white/10 flex-shrink-0"
             aria-label="切换搜索引擎"
             title={`当前搜索引擎：${currentEngine.name}`}
           >
-            <SearchEngineIcon engineId={currentEngine.id} size={18} className="w-[18px] h-[18px] xl:w-[22px] xl:h-[22px]" />
-            <ChevronDown className="w-3.5 h-3.5 xl:w-4 xl:h-4 text-gray-400 group-hover:text-gray-600 transition-transform ml-0.5" />
+            <SearchEngineIcon engineId={currentEngine.id} size={18} />
+            <ChevronDown className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 transition-transform ml-0.5" />
           </button>
         </Dropdown>
 
         {/* Input Form */}
-        <div className="flex-1 flex items-center px-3 py-1.5 xl:px-4 xl:py-2.5 min-w-0">
+        <div className="flex-1 flex items-center px-3 py-1.5 min-w-0">
           <input
             ref={inputRef}
             type="text"
@@ -590,14 +590,14 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
             onFocus={() => setIsFocused(true)}
             onKeyDown={handleInputKeyDown}
             placeholder={t.searchPlaceholder}
-            className={`w-full bg-transparent border-0 outline-none text-base xl:text-lg 2xl:text-xl font-normal px-2 py-1 xl:py-1.5 placeholder:text-gray-400/90 ${
+            className={`w-full bg-transparent border-0 outline-none text-base font-normal px-2 py-1 placeholder:text-gray-400/90 ${
               isDark ? 'text-white' : 'text-neutral-900'
             }`}
           />
 
           {/* Keyboard shortcut badge when idle */}
           {!keyword && !isFocused && (
-            <div className="hidden sm:flex items-center gap-1 text-[11px] xl:text-xs font-mono opacity-40 px-1.5 py-0.5 xl:px-2 xl:py-1 rounded border border-current/20 pointer-events-none select-none mr-1.5">
+            <div className="hidden sm:flex items-center gap-1 text-[11px] font-mono opacity-40 px-1.5 py-0.5 rounded border border-current/20 pointer-events-none select-none mr-1.5">
               <span>/</span>
             </div>
           )}
@@ -610,10 +610,10 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                 setKeyword('');
                 inputRef.current?.focus();
               }}
-              className="p-1 xl:p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer transition-colors mr-0.5"
+              className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer transition-colors mr-0.5"
               aria-label="清空输入"
             >
-              <X className="w-4 h-4 xl:w-5 xl:h-5" />
+              <X className="w-4 h-4" />
             </button>
           )}
 
@@ -633,7 +633,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                   e.stopPropagation();
                   setIsFocused(false);
                 }}
-                className={`p-1 xl:p-1.5 rounded-md flex items-center justify-center transition-all cursor-pointer mr-0.5 xl:mr-1 shrink-0 ${
+                className={`p-1 rounded-md flex items-center justify-center transition-all cursor-pointer mr-0.5 shrink-0 ${
                   settingsPopoverOpen
                     ? 'text-blue-500 bg-blue-500/10'
                     : 'text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
@@ -641,7 +641,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                 aria-label={t.searchPreferences}
               >
                 <ChevronDown
-                  className={`w-4 h-4 xl:w-5 xl:h-5 transition-transform duration-200 ${
+                  className={`w-4 h-4 transition-transform duration-200 ${
                     settingsPopoverOpen ? 'rotate-180 text-blue-500' : ''
                   }`}
                 />
@@ -652,10 +652,10 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
           {/* Submit Search Button */}
           <button
             type="submit"
-            className="w-8 h-8 xl:w-10 xl:h-10 rounded-xl xl:rounded-2xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white flex items-center justify-center transition-all shadow-md cursor-pointer flex-shrink-0 ml-1 xl:ml-2"
+            className="w-8 h-8 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white flex items-center justify-center transition-all shadow-md cursor-pointer flex-shrink-0 ml-1"
             aria-label="执行搜索"
           >
-            <Search className="w-4 h-4 xl:w-5 xl:h-5 stroke-[2.2]" />
+            <Search className="w-4 h-4 stroke-[2.2]" />
           </button>
         </div>
       </form>
@@ -663,7 +663,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
       {/* Floating Dropdown: 聚合搜索卡片（书签、历史记录、联想词与搜索历史） */}
       {showDropdown && (
         <div
-          className="absolute top-[calc(100%+8px)] left-0 w-full z-50 rounded-2xl xl:rounded-3xl shadow-xl overflow-hidden history-dropdown-enter"
+          className="absolute top-[calc(100%+8px)] left-0 w-full z-50 rounded-2xl shadow-xl overflow-hidden history-dropdown-enter"
           style={{
             height: dropdownHeight !== undefined ? `${dropdownHeight}px` : 'auto',
             maxHeight: '480px',
