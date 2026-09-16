@@ -72,8 +72,6 @@ interface SettingsModalProps {
   onUpdateSettings: (newSettings: Partial<AppSettings>) => void;
   onRefreshWallpaper: () => void;
   initialTab?: string;
-  onToggleUpdatePreview?: (active: boolean) => void;
-  isUpdatePreviewActive?: boolean;
 }
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({
@@ -83,8 +81,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onUpdateSettings,
   onRefreshWallpaper,
   initialTab,
-  onToggleUpdatePreview,
-  isUpdatePreviewActive,
 }) => {
   const [activeTab, setActiveTab] = useState(initialTab || 'wallpaper');
 
@@ -1501,23 +1497,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             >
               {t.viewOnGitHub}
             </Button>
-            {onToggleUpdatePreview && (
-              <Button
-                type="dashed"
-                size="small"
-                onClick={() => {
-                  onToggleUpdatePreview(!isUpdatePreviewActive);
-                  if (!isUpdatePreviewActive) {
-                    onClose();
-                  }
-                }}
-                className="!text-xs !h-6 !px-2 !rounded-lg !border-blue-400/40 text-blue-500 dark:text-blue-400"
-              >
-                {isUpdatePreviewActive
-                  ? (settings.language === 'zh' ? '关闭提示预览' : 'Hide Preview')
-                  : (settings.language === 'zh' ? '预览更新提示样式' : 'Preview Update Alert')}
-              </Button>
-            )}
           </div>
         </div>
         <p className="max-w-md mx-auto leading-relaxed text-xs opacity-75">

@@ -89,36 +89,6 @@ export const App: React.FC = () => {
     setSettingsOpen(true);
   };
 
-  const [isPreviewUpdateActive, setIsPreviewUpdateActive] = useState<boolean>(false);
-
-  const handleToggleUpdatePreview = (active: boolean) => {
-    setIsPreviewUpdateActive(active);
-    if (active) {
-      setAvailableUpdate({
-        version: '1.2.0',
-        hasUpdate: true,
-        releaseUrl: 'https://github.com/yixing233/CrabTab/releases',
-        notes: settings?.language === 'zh'
-          ? '全新的全站图标秒级缓存系统、倒数日向右收起功能与常驻更新组件上线！'
-          : 'Brand new multi-level favicon cache, collapse countdown & persistent notification!',
-      });
-      setIsUpdateBannerDismissed(false);
-      message.success(settings?.language === 'zh' ? '已开启新版本常驻提示组件预览' : 'Update notification preview enabled');
-    } else {
-      setAvailableUpdate(getCachedReleaseInfo());
-      setIsUpdateBannerDismissed(false);
-      message.info(settings?.language === 'zh' ? '已关闭更新提示预览' : 'Preview disabled');
-    }
-  };
-
-  // 挂载全局调试方法，方便在浏览器开发者控制台一键测试：__CRAB_PREVIEW_UPDATE__(true / false)
-  useEffect(() => {
-    (window as any).__CRAB_PREVIEW_UPDATE__ = handleToggleUpdatePreview;
-    return () => {
-      delete (window as any).__CRAB_PREVIEW_UPDATE__;
-    };
-  }, [settings?.language]);
-
   // Initialize data
   useEffect(() => {
     async function initData() {
@@ -748,8 +718,6 @@ export const App: React.FC = () => {
           onUpdateSettings={handleUpdateSettings}
           onRefreshWallpaper={handleRefreshWallpaper}
           initialTab={settingsInitialTab}
-          onToggleUpdatePreview={handleToggleUpdatePreview}
-          isUpdatePreviewActive={isPreviewUpdateActive}
         />
 
         {/* 顶部常驻新版本提示组件 */}
