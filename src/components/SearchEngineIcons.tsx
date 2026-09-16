@@ -35,7 +35,7 @@ export const SearchEngineIcon: React.FC<SearchEngineIconProps> = ({
   return (
     <span
       className={`inline-flex items-center justify-center shrink-0 select-none ${className}`}
-      style={{ width: size, height: size }}
+      style={className && className.includes('w-[') ? undefined : { width: size, height: size }}
     >
       <img
         src={iconUrl}

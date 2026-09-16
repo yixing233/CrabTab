@@ -334,7 +334,7 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
       {/* 顶部标题栏：Recent / 最近访问（精致毛玻璃胶囊，全壁纸高清晰度对比） */}
       <div className="flex items-center justify-between mb-3 px-1">
         <div
-          className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border shadow-sm select-none transition-all"
+          className="inline-flex items-center gap-2 px-2.5 py-1 xl:px-3.5 xl:py-1.5 rounded-full border shadow-sm select-none transition-all"
           style={{
             backgroundColor: isDark ? 'rgba(0, 0, 0, 0.42)' : 'rgba(255, 255, 255, 0.68)',
             borderColor: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.55)',
@@ -342,11 +342,11 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
             WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
           }}
         >
-          <span className="text-xs font-semibold tracking-wide text-neutral-800 dark:text-neutral-100">
+          <span className="text-xs xl:text-sm font-semibold tracking-wide text-neutral-800 dark:text-neutral-100">
             {t.recentTitle}
           </span>
           {displayItems.length > 0 && (
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-black/8 dark:bg-white/15 text-neutral-700 dark:text-neutral-200 font-semibold leading-none">
+            <span className="text-[10px] xl:text-xs font-mono px-1.5 py-0.5 rounded-full bg-black/8 dark:bg-white/15 text-neutral-700 dark:text-neutral-200 font-semibold leading-none">
               {displayItems.length}
             </span>
           )}
@@ -431,7 +431,7 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
               <Tooltip title={zh ? '调节垂直位置' : 'Adjust vertical position'} placement="top">
                 <button
                   type="button"
-                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer border shadow-sm ${
+                  className={`w-7 h-7 xl:w-8 xl:h-8 rounded-full flex items-center justify-center transition-all cursor-pointer border shadow-sm ${
                     verticalOffset !== 0
                       ? 'text-blue-500 dark:text-blue-400 font-bold'
                       : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white'
@@ -445,7 +445,7 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
                     WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
                   }}
                 >
-                  <MoveVertical size={12} />
+                  <MoveVertical size={13} />
                 </button>
               </Tooltip>
             </Popover>
@@ -455,7 +455,7 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
             <button
               type="button"
               onClick={loadHistory}
-              className="w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer border shadow-sm text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white active:scale-95"
+              className="w-7 h-7 xl:w-8 xl:h-8 rounded-full flex items-center justify-center transition-all cursor-pointer border shadow-sm text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white active:scale-95"
               style={{
                 backgroundColor: isDark ? 'rgba(0, 0, 0, 0.42)' : 'rgba(255, 255, 255, 0.68)',
                 borderColor: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.55)',
@@ -463,7 +463,7 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
                 WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
               }}
             >
-              <RefreshCw size={12} className={loading ? 'animate-spin text-blue-500' : ''} />
+              <RefreshCw size={13} className={loading ? 'animate-spin text-blue-500' : ''} />
             </button>
           </Tooltip>
         </div>
@@ -486,15 +486,15 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
         <div
           ref={scrollContainerRef}
           onScroll={checkScroll}
-          className="flex items-center gap-3 overflow-x-auto scrollbar-none px-1.5 py-1.5 overscroll-contain select-none"
+          className="flex items-center gap-3 xl:gap-4 2xl:gap-5 overflow-x-auto scrollbar-none px-1.5 py-1.5 overscroll-contain select-none"
         >
           {loading && displayItems.length === 0 ? (
-            <div className="w-full flex items-center justify-center py-6 text-xs text-neutral-400 gap-2">
+            <div className="w-full flex items-center justify-center py-6 text-xs xl:text-sm text-neutral-400 gap-2">
               <RefreshCw size={13} className="animate-spin text-blue-400" />
               <span>{zh ? '正在读取最近访问...' : 'Loading recent visits...'}</span>
             </div>
           ) : displayItems.length === 0 ? (
-            <div className="w-full flex flex-col items-center justify-center py-8 text-xs text-neutral-400 gap-1.5 opacity-60">
+            <div className="w-full flex flex-col items-center justify-center py-8 text-xs xl:text-sm text-neutral-400 gap-1.5 opacity-60">
               <History size={18} />
               <span>{t.recentEmpty}</span>
             </div>
@@ -510,7 +510,7 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
                   key={item.id || item.url}
                   onClick={() => handleCardClick(item.url)}
                   title={`${item.title}\n${item.url}`}
-                  className={`w-[205px] h-[104px] shrink-0 rounded-[18px] p-1.5 flex flex-col justify-between border transition-all duration-200 shadow-sm select-none cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+                  className={`w-[205px] h-[104px] xl:w-[245px] xl:h-[120px] 2xl:w-[275px] 2xl:h-[135px] shrink-0 rounded-[18px] xl:rounded-[22px] 2xl:rounded-[24px] p-1.5 xl:p-2 flex flex-col justify-between border transition-all duration-200 shadow-sm select-none cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
                     isDark ? themeStyle.dark : themeStyle.light
                   }`}
                   style={{
@@ -519,30 +519,30 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
                   }}
                 >
                   {/* 上半部：内嵌实体小盒（纯白/纯暗高对比度），承载 Favicon 与完整标题 */}
-                  <div className="rounded-[13px] bg-white/95 dark:bg-[#181a20]/95 p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)] border border-black/[0.04] dark:border-white/[0.06] flex flex-col justify-between h-[66px] overflow-hidden">
+                  <div className="rounded-[13px] xl:rounded-[16px] bg-white/95 dark:bg-[#181a20]/95 p-2 xl:p-2.5 shadow-[0_1px_3px_rgba(0,0,0,0.04)] border border-black/[0.04] dark:border-white/[0.06] flex flex-col justify-between h-[66px] xl:h-[78px] 2xl:h-[88px] overflow-hidden">
                     {/* 头部：Favicon 图标 + 站点大名 */}
                     <div className="flex items-center gap-1.5 min-w-0">
-                      <div className="w-4 h-4 rounded flex items-center justify-center shrink-0">
+                      <div className="w-4 h-4 xl:w-5 xl:h-5 rounded flex items-center justify-center shrink-0">
                         <ShortcutIconView
                           url={item.url}
                           title={item.title}
-                          sizeClass="w-3.5 h-3.5 shrink-0"
+                          sizeClass="w-3.5 h-3.5 xl:w-4.5 xl:h-4.5 shrink-0"
                         />
                       </div>
-                      <span className="text-xs font-bold text-neutral-900 dark:text-white truncate">
+                      <span className="text-xs xl:text-sm font-bold text-neutral-900 dark:text-white truncate">
                         {brand}
                       </span>
                     </div>
 
                     {/* 下部：网页实际标题（双行优雅截断，高对比度可读性） */}
-                    <p className="text-[11px] leading-tight text-neutral-700 dark:text-neutral-300 line-clamp-2 mt-0.5 select-none font-normal">
+                    <p className="text-[11px] xl:text-xs 2xl:text-[13px] leading-tight xl:leading-snug text-neutral-700 dark:text-neutral-300 line-clamp-2 mt-0.5 select-none font-normal">
                       {item.title || displayUrl}
                     </p>
                   </div>
 
                   {/* 下半部：精简 URL 路径 + 置顶 Pin 钉（优化清晰度） */}
-                  <div className="px-2 pt-1 pb-0.5 flex items-center justify-between text-[11px]">
-                    <span className="truncate max-w-[145px] font-mono text-[10.5px] font-medium text-neutral-600 dark:text-neutral-300">
+                  <div className="px-2 pt-1 pb-0.5 flex items-center justify-between text-[11px] xl:text-xs">
+                    <span className="truncate max-w-[145px] xl:max-w-[185px] 2xl:max-w-[210px] font-mono text-[10.5px] xl:text-[11.5px] font-medium text-neutral-600 dark:text-neutral-300">
                       {displayUrl}
                     </span>
 
