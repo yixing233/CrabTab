@@ -25,7 +25,7 @@ interface ClockProps {
 
 export const Clock: React.FC<ClockProps> = ({
   language,
-  theme: _theme,
+  theme,
   showSeconds,
   timeFormat24,
   showGreeting,
@@ -44,6 +44,20 @@ export const Clock: React.FC<ClockProps> = ({
   const [isRefreshingSentence, setIsRefreshingSentence] = useState(false);
 
   const t = i18n[language];
+
+  // 设置面板（Popover）在浅色模式下底色为白色，其中若沿用只适合深色的
+  // 半透明白字（text-white/xx）会几乎看不见，因此这里按主题切换文字色。
+  // 时钟本身显示在壁纸上，仍保持白色，不受此影响。
+  const isDark =
+    theme === 'dark' ||
+    (theme === 'auto' && typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-color-scheme: dark)').matches);
+  const panelTitle = isDark ? 'text-white/95' : 'text-neutral-800';
+  const panelSubtle = isDark ? 'text-white/50' : 'text-neutral-500';
+  const panelLabel = isDark ? 'text-gray-400' : 'text-neutral-500';
+  const panelValue = isDark ? 'text-gray-300' : 'text-neutral-600';
+  const panelDivider = isDark ? 'border-white/10' : 'border-black/10';
+  const panelHintHover = isDark ? 'hover:text-white' : 'hover:text-neutral-900';
 
   // 定时更新时钟时间
   useEffect(() => {
@@ -189,23 +203,23 @@ export const Clock: React.FC<ClockProps> = ({
   };
 
   const settingCardContent = (
-    <div className="w-80 p-2 space-y-4 text-white/90">
-      <div className="flex items-center justify-between pb-2 border-b border-white/10">
-        <span className="font-semibold text-sm flex items-center gap-1.5 text-white/95">
+    <div className={`w-80 p-2 space-y-4 ${isDark ? 'text-white/90' : 'text-neutral-700'}`}>
+      <div className={`flex items-center justify-between pb-2 border-b ${panelDivider}`}>
+        <span className={`font-semibold text-sm flex items-center gap-1.5 ${panelTitle}`}>
           <SettingOutlined />
           {t.clockCustomization}
         </span>
-        <span className="text-xs text-white/50">{fontFamilyLabels[clockStyle.fontFamily] || clockStyle.fontFamily}</span>
+        <span className={`text-xs ${panelSubtle}`}>{fontFamilyLabels[clockStyle.fontFamily] || clockStyle.fontFamily}</span>
       </div>
 
       {/* 1. Size Slider & Exact Input */}
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-xs text-gray-400">
+        <div className={`flex items-center justify-between text-xs ${panelLabel}`}>
           <span className="flex items-center gap-1.5">
             <FontSizeOutlined />
             {t.clockSize}
           </span>
-          <span className="text-xs font-mono text-gray-300">{currentSizePx}px</span>
+          <span className={`text-xs font-mono ${panelValue}`}>{currentSizePx}px</span>
         </div>
         <div className="flex items-center gap-3">
           <Slider
@@ -233,22 +247,22 @@ export const Clock: React.FC<ClockProps> = ({
             className="w-16 text-xs"
           />
         </div>
-        <div className="flex justify-between text-[10px] text-gray-400 px-1 pt-0.5">
-          <span className="cursor-pointer hover:text-white" onClick={() => onUpdateClockStyle?.({ size: 48 })}>{t.clockSizeSmall} (48)</span>
-          <span className="cursor-pointer hover:text-white" onClick={() => onUpdateClockStyle?.({ size: 64 })}>{t.clockSizeMedium} (64)</span>
-          <span className="cursor-pointer hover:text-white" onClick={() => onUpdateClockStyle?.({ size: 80 })}>{t.clockSizeLarge} (80)</span>
-          <span className="cursor-pointer hover:text-white" onClick={() => onUpdateClockStyle?.({ size: 104 })}>{t.clockSizeHuge} (104)</span>
+        <div className={`flex justify-between text-[10px] px-1 pt-0.5 ${panelLabel}`}>
+          <span className={`cursor-pointer ${panelHintHover}`} onClick={() => onUpdateClockStyle?.({ size: 48 })}>{t.clockSizeSmall} (48)</span>
+          <span className={`cursor-pointer ${panelHintHover}`} onClick={() => onUpdateClockStyle?.({ size: 64 })}>{t.clockSizeMedium} (64)</span>
+          <span className={`cursor-pointer ${panelHintHover}`} onClick={() => onUpdateClockStyle?.({ size: 80 })}>{t.clockSizeLarge} (80)</span>
+          <span className={`cursor-pointer ${panelHintHover}`} onClick={() => onUpdateClockStyle?.({ size: 104 })}>{t.clockSizeHuge} (104)</span>
         </div>
       </div>
 
       {/* 2. Vertical Position Offset (Fine Pixels Slider) */}
       <div className="space-y-1.5">
-        <div className="flex items-center justify-between text-xs text-gray-400">
+        <div className={`flex items-center justify-between text-xs ${panelLabel}`}>
           <span className="flex items-center gap-1.5">
             <VerticalAlignMiddleOutlined />
             {t.clockVerticalOffset}
           </span>
-          <span className="text-xs font-mono text-gray-300">
+          <span className={`text-xs font-mono ${panelValue}`}>
             {currentOffsetPx > 0 ? `+${currentOffsetPx}px` : `${currentOffsetPx}px`}
           </span>
         </div>
@@ -278,16 +292,16 @@ export const Clock: React.FC<ClockProps> = ({
             className="w-16 text-xs"
           />
         </div>
-        <div className="flex justify-between text-[10px] text-gray-400 px-1 pt-0.5">
-          <span className="cursor-pointer hover:text-white" onClick={() => onUpdateClockStyle?.({ verticalOffset: -36 })}>{t.clockVerticalTop} (-36)</span>
-          <span className="cursor-pointer hover:text-white" onClick={() => onUpdateClockStyle?.({ verticalOffset: 0 })}>{t.clockVerticalCenter} (0)</span>
-          <span className="cursor-pointer hover:text-white" onClick={() => onUpdateClockStyle?.({ verticalOffset: 24 })}>{t.clockVerticalBottom} (+24)</span>
+        <div className={`flex justify-between text-[10px] px-1 pt-0.5 ${panelLabel}`}>
+          <span className={`cursor-pointer ${panelHintHover}`} onClick={() => onUpdateClockStyle?.({ verticalOffset: -36 })}>{t.clockVerticalTop} (-36)</span>
+          <span className={`cursor-pointer ${panelHintHover}`} onClick={() => onUpdateClockStyle?.({ verticalOffset: 0 })}>{t.clockVerticalCenter} (0)</span>
+          <span className={`cursor-pointer ${panelHintHover}`} onClick={() => onUpdateClockStyle?.({ verticalOffset: 24 })}>{t.clockVerticalBottom} (+24)</span>
         </div>
       </div>
 
       {/* 3. Font Family Selection */}
       <div className="space-y-1.5">
-        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+        <div className={`flex items-center gap-1.5 text-xs ${panelLabel}`}>
           <FontColorsOutlined />
           <span>{t.clockFontFamily}</span>
         </div>
@@ -308,7 +322,7 @@ export const Clock: React.FC<ClockProps> = ({
 
       {/* 4. Font Weight Selection */}
       <div className="space-y-1.5">
-        <div className="flex items-center gap-1.5 text-xs text-gray-400">
+        <div className={`flex items-center gap-1.5 text-xs ${panelLabel}`}>
           <BoldOutlined />
           <span>{t.clockWeight}</span>
         </div>
