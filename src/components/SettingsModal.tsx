@@ -42,7 +42,7 @@ import {
   AlertCircle,
   RefreshCw,
 } from 'lucide-react';
-import { AppSettings, Language, WallpaperProviderId, HitokotoType, ShortcutDisplayMode, HomeContentMode } from '../types';
+import { AppSettings, Language, WallpaperProviderId, HitokotoType, HomeContentMode } from '../types';
 import { SEARCH_ENGINES, DEFAULT_LOCAL_WALLPAPER, DEFAULT_SETTINGS } from '../constants';
 import { ALL_HITOKOTO_TYPES, HitokotoTypeOption } from '../utils/hitokoto';
 import { 
@@ -1228,7 +1228,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
       </div>
 
-      {/* 主屏展示内容：快捷方式 vs 最近访问 */}
+      {/* 主屏展示内容：关闭 / 快捷方式 / 最近访问（三态合一） */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="font-medium">
@@ -1240,57 +1240,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
         <Segmented<HomeContentMode>
           value={settings.homeContentMode ?? 'shortcuts'}
-          onChange={(homeContentMode) => onUpdateSettings({ homeContentMode })}
+          onChange={(homeContentMode) => onUpdateSettings({
+            homeContentMode,
+            showQuickLinks: homeContentMode !== 'off',
+          })}
           options={[
+            { value: 'off', label: t.shortcutModeOff },
             { value: 'shortcuts', label: t.homeContentShortcuts },
             { value: 'recent', label: t.homeContentRecent },
           ]}
         />
       </div>
 
-      {/* 快捷方式 vs 最近访问 专有设置 */}
-      {(settings.homeContentMode ?? 'shortcuts') === 'shortcuts' ? (
-        <>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <div className="font-medium">
-                <Text strong>{t.quickLinks}</Text>
-              </div>
-              <div className="text-xs mt-0.5">
-                <Text type="secondary">{t.showQuickLinks}</Text>
-              </div>
-            </div>
-            <Segmented<ShortcutDisplayMode>
-              value={settings.shortcutMode}
-              onChange={(shortcutMode) => onUpdateSettings({
-                shortcutMode,
-                showQuickLinks: shortcutMode !== 'off',
-              })}
-              options={[
-                { value: 'off', label: t.shortcutModeOff },
-                { value: 'compact', label: t.shortcutModeCompact },
-                { value: 'desktop', label: t.shortcutModeDesktop },
-              ]}
-            />
+      {/* 快捷方式专有设置 */}
+      {(settings.homeContentMode ?? 'shortcuts') === 'shortcuts' && (
+        <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 -mt-2 mb-2 transition-colors ${
+          isDark ? 'bg-white/[0.03] border-white/10' : 'bg-gray-50 border-gray-100'
+        }`}>
+          <div>
+            <div className="text-xs font-semibold">{t.shortcutAutoFill}</div>
+            <div className="text-[11px] opacity-60 mt-0.5">{t.shortcutAutoFillDesc}</div>
           </div>
+          <Switch
+            checked={settings.shortcutAutoFill === true}
+            onChange={(checked) => onUpdateSettings({ shortcutAutoFill: checked })}
+          />
+        </div>
+      )}
 
-          {/* 桌面模式下自动补位开关 */}
-          {settings.shortcutMode === 'desktop' && (
-            <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 -mt-2 mb-2 transition-colors ${
-              isDark ? 'bg-white/[0.03] border-white/10' : 'bg-gray-50 border-gray-100'
-            }`}>
-              <div>
-                <div className="text-xs font-semibold">{t.shortcutAutoFill}</div>
-                <div className="text-[11px] opacity-60 mt-0.5">{t.shortcutAutoFillDesc}</div>
-              </div>
-              <Switch
-                checked={settings.shortcutAutoFill === true}
-                onChange={(checked) => onUpdateSettings({ shortcutAutoFill: checked })}
-              />
-            </div>
-          )}
-        </>
-      ) : (
+      {/* 最近访问专有设置 */}
+      {(settings.homeContentMode ?? 'shortcuts') === 'recent' && (
         <div className="flex flex-col gap-3">
           <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 transition-colors ${
             isDark ? 'bg-white/[0.03] border-white/10' : 'bg-gray-50 border-gray-100'

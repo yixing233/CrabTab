@@ -1,5 +1,5 @@
 import { get, set, del } from 'idb-keyval';
-import { AppSettings, SiteShortcut } from '../types';
+import { AppSettings, SiteShortcut, HomeContentMode } from '../types';
 import { DEFAULT_SETTINGS, DEFAULT_SHORTCUTS, DEFAULT_LOCAL_WALLPAPER } from '../constants';
 import { ONLINE_WALLPAPER_SOURCES } from './wallpaperSources';
 
@@ -186,16 +186,37 @@ function sanitizeWallpaperConfig(raw: Partial<AppSettings['wallpaper']> | undefi
 
 function normalizeSettings(raw: unknown): AppSettings {
   const loaded = (raw && typeof raw === 'object' ? raw : {}) as Partial<AppSettings>;
-  const homeContentMode = (loaded.homeContentMode === 'recent' || (loaded as any).homeContentMode === 'bookmarks')
-    ? 'recent'
-    : 'shortcuts';
   const showBookmarkBar = loaded.showBookmarkBar ?? true;
   const pinnedRecentUrls = Array.isArray(loaded.pinnedRecentUrls) ? loaded.pinnedRecentUrls : [];
-  const shortcutMode = loaded.shortcutMode === 'off'
-    || loaded.shortcutMode === 'compact'
-    || loaded.shortcutMode === 'desktop'
-    ? loaded.shortcutMode
-    : loaded.showQuickLinks === false ? 'off' : 'desktop';
+
+  /**
+   * 主屏内容三态：关闭 / 快捷方式 / 最近访问。
+   *
+   * 旧版本把它拆成两个设置（homeContentMode: shortcuts|recent，以及
+   * shortcutMode: off|compact|desktop），这里做一次迁移：
+   *   - 旧 shortcutMode === 'off'            -> 'off'（快捷方式被关掉）
+   *   - 旧 homeContentMode === 'recent'      -> 'recent'
+   *   - 其余（desktop / compact / 未设置）    -> 'shortcuts'
+   * 其中已废弃的 'compact'（简洁模式）并入快捷方式，因为其布局已并入桌面网格。
+   * 兼容更早的 'bookmarks' 取值。
+   */
+  const legacyShortcutMode = loaded.shortcutMode;
+  const legacyRecent =
+    loaded.homeContentMode === 'recent' || (loaded as any).homeContentMode === 'bookmarks';
+  let homeContentMode: HomeContentMode;
+  if (loaded.homeContentMode === 'off') {
+    homeContentMode = 'off';
+  } else if (legacyShortcutMode === 'off') {
+    homeContentMode = 'off';
+  } else if (legacyRecent) {
+    homeContentMode = 'recent';
+  } else if (loaded.showQuickLinks === false && legacyShortcutMode === undefined) {
+    // 更早版本用 showQuickLinks 表示快捷方式的开关
+    homeContentMode = 'off';
+  } else {
+    homeContentMode = 'shortcuts';
+  }
+
   return {
     ...DEFAULT_SETTINGS,
     ...loaded,
@@ -206,8 +227,9 @@ function normalizeSettings(raw: unknown): AppSettings {
     pinnedRecentUrls,
     recentVerticalOffset: typeof loaded.recentVerticalOffset === 'number' && !Number.isNaN(loaded.recentVerticalOffset) ? loaded.recentVerticalOffset : 0,
     searchVerticalOffset: typeof loaded.searchVerticalOffset === 'number' && !Number.isNaN(loaded.searchVerticalOffset) ? loaded.searchVerticalOffset : 0,
-    shortcutMode,
-    showQuickLinks: shortcutMode !== 'off',
+    // 继续写回旧字段，保证降级到旧版本时行为不突变
+    shortcutMode: homeContentMode === 'off' ? 'off' : 'desktop',
+    showQuickLinks: homeContentMode !== 'off',
     wallpaper: sanitizeWallpaperConfig(loaded.wallpaper),
     clockStyle: { ...DEFAULT_SETTINGS.clockStyle, ...(loaded.clockStyle || {}) },
     glassStyle: { ...DEFAULT_SETTINGS.glassStyle, ...(loaded.glassStyle || {}) },

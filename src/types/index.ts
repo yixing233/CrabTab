@@ -165,9 +165,12 @@ export interface CountdownItem {
   createdAt: number;
 }
 
-export type ShortcutDisplayMode = 'off' | 'compact' | 'desktop';
-
-export type HomeContentMode = 'shortcuts' | 'recent';
+/**
+ * 主屏中央展示的内容。
+ * 「简洁模式」已移除，其布局并入桌面网格（窄屏自动降为 4 列），
+ * 因此原先「快捷方式显示模式」与「主屏展示内容」两个开关合并为这一个三态开关。
+ */
+export type HomeContentMode = 'off' | 'shortcuts' | 'recent';
 
 export interface BookmarkNode {
   id: string;
@@ -191,11 +194,12 @@ export interface AppSettings {
   searchHistory?: boolean; // 搜索框是否搜索历史记录（默认 true）
   showWeather: boolean;
   showBookmarkBar?: boolean; // 顶部常驻书签栏开关（默认 true）
-  homeContentMode?: HomeContentMode; // 主屏内容展示模式：快捷方式或最近访问
+  homeContentMode?: HomeContentMode; // 主屏内容展示模式：关闭 / 快捷方式 / 最近访问
   pinnedRecentUrls?: string[]; // 置顶钉住的最近访问网址
   recentVerticalOffset?: number; // 最近访问组件垂直位置偏移（像素 px，负数偏上，正数偏下，默认 0）
   searchVerticalOffset?: number; // 搜索框垂直位置偏移（像素 px，负数偏上，正数偏下，默认 0）
-  shortcutMode: ShortcutDisplayMode;
+  /** @deprecated 已由 homeContentMode 取代，仅为兼容旧版本写入的设置而保留。 */
+  shortcutMode?: 'off' | 'compact' | 'desktop';
   desktopPageCount?: number; // 桌面总分页数（默认 1，最多 9 页）
   /** @deprecated Kept for compatibility with settings saved by older versions. */
   showQuickLinks: boolean;

@@ -492,14 +492,6 @@ export const App: React.FC = () => {
     });
   };
 
-  const handleDeleteShortcut = (id: string) => {
-    setShortcuts((prev) => {
-      const next = prev.filter((s) => s.id !== id);
-      saveShortcuts(next);
-      return next;
-    });
-  };
-
   const handleReorderShortcuts = (reordered: SiteShortcut[]) => {
     setShortcuts(reordered);
     saveShortcuts(reordered);
@@ -767,29 +759,25 @@ export const App: React.FC = () => {
           </div>
 
           {/* Main Content Area - 快捷方式 vs 最近访问卡片式流 */}
-          {(settings.homeContentMode ?? 'shortcuts') === 'shortcuts' && settings.shortcutMode !== 'off' && (
-            <div className={`w-full flex justify-center flex-shrink-0 ${
-              settings.shortcutMode === 'desktop' ? 'min-h-[96px]' : 'min-h-0'
-            }`}>
+          {(settings.homeContentMode ?? 'shortcuts') === 'shortcuts' && (
+            <div className="w-full flex justify-center flex-shrink-0 min-h-[96px]">
               <Shortcuts
                 shortcuts={shortcuts}
-                displayMode={settings.shortcutMode}
                 language={settings.language}
                 openInNewTab={settings.openInNewTab}
                 theme={settings.theme}
                 glassStyle={settings.glassStyle}
                 onAddShortcut={handleAddShortcut}
                 onEditShortcut={handleEditShortcut}
-                onDeleteShortcut={handleDeleteShortcut}
                 onReorderShortcuts={handleReorderShortcuts}
                 autoFill={settings.shortcutAutoFill === true}
                 onToggleAutoFill={(autoFill) => handleUpdateSettings({ shortcutAutoFill: autoFill })}
                 desktopPageCount={settings.desktopPageCount || 1}
                 onUpdatePageCount={(count) => handleUpdateSettings({ desktopPageCount: count })}
-                shortcutMode={settings.shortcutMode}
-                onUpdateShortcutMode={(shortcutMode) => handleUpdateSettings({
-                  shortcutMode,
-                  showQuickLinks: shortcutMode !== 'off',
+                homeContentMode={settings.homeContentMode}
+                onUpdateHomeContentMode={(homeContentMode) => handleUpdateSettings({
+                  homeContentMode,
+                  showQuickLinks: homeContentMode !== 'off',
                 })}
               />
             </div>

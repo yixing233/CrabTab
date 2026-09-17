@@ -641,9 +641,8 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
 
 /* 区域宽度 = 搜索框宽度（由 JS 注入 --shortcut-area-width），
    因此工具栏的「快捷方式设置 / 添加快捷站点」两端始终与搜索框左右对齐；
-   网格自身按 cols*cell+(cols-1)*gap 定宽并居中，图标少时不会散得过开。
-   简洁模式由 .shortcut-grid-compact 自行定宽，不套用该上限。 */
-.shortcut-area:not(.shortcut-area-compact) {
+   网格自身按 cols*cell+(cols-1)*gap 定宽并居中，图标少时不会散得过开。 */
+.shortcut-area {
   max-width: var(--shortcut-area-width, 100%);
   margin-inline: auto;
 }
@@ -1007,55 +1006,6 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
 
 @media (prefers-reduced-motion: reduce) {
   .shortcut-merge-target { animation: none; }
-}
-
-/* Compact shortcuts use document order and natural wrapping without desktop grid semantics. */
-.shortcut-area-compact {
-  min-height: 0;
-}
-
-.shortcut-grid-compact {
-  width: 100%;
-  max-width: 680px;
-  height: auto;
-  /* 使用 --viewport-height 而非 vh：zoom 缩放下 vh 仍按未缩放视口计算，会撑破单屏 */
-  max-height: min(calc(var(--viewport-height) * 0.32), 276px);
-  margin-inline: auto;
-  padding: 0 2px 4px;
-  box-sizing: border-box;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  align-content: flex-start;
-  gap: 8px clamp(4px, calc(var(--viewport-width) * 0.02), 20px);
-  overflow-x: hidden;
-  overflow-y: auto;
-  scrollbar-width: none;
-}
-
-.shortcut-grid-compact::-webkit-scrollbar {
-  display: none;
-}
-
-.shortcut-grid-compact .shortcut-grid-item,
-.shortcut-grid-compact .shortcut-grid-item-large {
-  width: clamp(52px, calc((var(--viewport-width) - 68px) / 4), 80px);
-  height: 92px;
-  flex: 0 0 clamp(52px, calc((var(--viewport-width) - 68px) / 4), 80px);
-  grid-column: auto;
-  grid-row: auto;
-  transform: none;
-}
-
-.shortcut-grid-compact .shortcut-grid-item:hover,
-.shortcut-grid-compact .shortcut-grid-item-large:hover {
-  transform: none;
-}
-
-@media (min-width: 768px) {
-  .shortcut-grid-compact {
-    gap: 12px 20px;
-  }
 }
 
 /* 顶部书签栏下拉菜单与级联子菜单（纯色卡片，无需毛玻璃） */
