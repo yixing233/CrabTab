@@ -1298,12 +1298,25 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                 : 'translate-x-[calc(100%+32px)] opacity-0 pointer-events-none'
             }`}
           >
-            {/* 顶栏微控制条：倒数日标题与「向右收起」操作按钮 */}
-            <div className="flex items-center justify-between w-[240px] px-2 py-0.5 rounded-lg select-none">
-              <div className="flex items-center gap-1.5 text-[11px] font-medium text-neutral-500 dark:text-neutral-400">
-                <CalendarClock size={12} className="opacity-75" />
-                <span>{zh ? '倒数日' : 'Countdowns'}</span>
-                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/5 dark:bg-white/10 opacity-70 tabular-nums font-semibold">
+            {/* 顶栏微控制条：倒数日标题与「向右收起」操作按钮
+                与胶囊同宽并自带毛玻璃底衬，避免浅色壁纸上文字发虚看不清 */}
+            <div
+              className={`pinned-countdown-header flex items-center justify-between px-2 py-1 rounded-full border shadow-sm backdrop-blur-md select-none ${
+                isDark
+                  ? 'bg-[#181a20]/70 border-white/10'
+                  : 'bg-white/70 border-black/10'
+              }`}
+              style={{
+                backdropFilter: `blur(${glassStyle.blur}px)`,
+                WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
+              }}
+            >
+              <div className={`flex items-center gap-1.5 text-[11px] font-medium ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
+                <CalendarClock size={12} className="opacity-80 shrink-0" />
+                <span className="whitespace-nowrap">{zh ? '倒数日' : 'Countdowns'}</span>
+                <span className={`text-[10px] px-1.5 rounded-full tabular-nums font-semibold shrink-0 ${
+                  isDark ? 'bg-white/12 text-neutral-200' : 'bg-black/8 text-neutral-600'
+                }`}>
                   {pinnedCountdowns.length}
                 </span>
               </div>
@@ -1314,10 +1327,14 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                   toggleCountdownCollapse(true);
                 }}
                 title={zh ? '向右侧收起' : 'Collapse to right'}
-                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] text-neutral-500 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100 hover:bg-black/8 dark:hover:bg-white/12 transition-all cursor-pointer"
+                className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] whitespace-nowrap shrink-0 transition-all cursor-pointer ${
+                  isDark
+                    ? 'text-neutral-300 hover:text-white hover:bg-white/12'
+                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-black/8'
+                }`}
               >
                 <span className="text-[10px]">{zh ? '收起' : 'Collapse'}</span>
-                <ChevronRight size={13} />
+                <ChevronRight size={13} className="shrink-0" />
               </button>
             </div>
 
@@ -1333,7 +1350,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                     setOpen(true);
                   }}
                   title={zh ? `${item.title}（点击管理倒数日）` : `${item.title} (Manage)`}
-                  className={`w-[240px] h-8 flex items-center justify-between pl-1.5 pr-3.5 rounded-full text-xs font-medium shadow-md transition-colors border cursor-pointer select-none backdrop-blur-md shrink-0 ${
+                  className={`pinned-countdown-pill h-8 flex items-center justify-between pl-1.5 pr-3.5 rounded-full text-xs font-medium shadow-md transition-colors border cursor-pointer select-none backdrop-blur-md shrink-0 ${
                     isDark
                       ? 'bg-[#181a20]/80 hover:bg-[#181a20]/95 text-white/90 border-white/10 hover:border-white/30'
                       : 'bg-white/80 hover:bg-white/95 text-neutral-800 border-black/10 hover:border-black/20'

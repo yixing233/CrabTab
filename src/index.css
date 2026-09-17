@@ -760,12 +760,26 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
   margin-top: 8px !important;
 }
 
+/* 倒数日胶囊与顶栏统一宽度：矮屏/缩放下同步收窄，避免两者左右错位。
+   注意：必须限定到胶囊与顶栏自身，切勿写成 `.pinned-countdown-container button`
+   这类宽泛选择器 —— 那会把顶栏内的「收起」按钮一起撑宽，
+   把「倒数日」标题挤成逐字竖排。 */
+.pinned-countdown-container {
+  --countdown-pill-width: 240px;
+}
+
+.pinned-countdown-container .pinned-countdown-pill,
+.pinned-countdown-container .pinned-countdown-header {
+  width: var(--countdown-pill-width) !important;
+}
+
 .vh-compact .pinned-countdown-container {
+  --countdown-pill-width: 210px;
   bottom: 12px !important;
   gap: 6px !important;
 }
-.vh-compact .pinned-countdown-container button {
-  width: 210px !important;
+
+.vh-compact .pinned-countdown-container .pinned-countdown-pill {
   padding-top: 4px !important;
   padding-bottom: 4px !important;
 }
