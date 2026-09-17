@@ -17,6 +17,7 @@ import {
 import {
   deviceToLayoutPx,
   getLayoutViewport,
+  getUiScale,
   resolveFloatingPosition,
 } from '../utils/viewport';
 import {
@@ -181,6 +182,64 @@ const FolderThumbnailView: React.FC<{
 
 const getShortcutSpan = (shortcut: SiteShortcut) =>
   shortcut.isFolder && shortcut.folderSize === '2x2' ? 2 : 1;
+
+/** 桌面网格列数上限（超宽屏也避免出现极长单行） */
+const MAX_DESKTOP_COLUMNS = 12;
+/** 移动端固定列数（与 CSS 基础值一致） */
+const MOBILE_COLUMNS = 4;
+/** 桌面断点：与 CSS @media (min-width: 768px) 保持一致 */
+const DESKTOP_MIN_WIDTH = 768;
+/** 单元格宽度下限：为多排一个图标可以略微收紧，但不能小到标题被截断 */
+const MIN_CELL_WIDTH = 72;
+/** 列间距下限：图标之间必须留出可辨识的间隔，过窄会糊成一片 */
+const MIN_GRID_GAP = 10;
+
+/**
+ * 依据「宽度上限 + 当前页图标数」推导桌面网格的列数、单元格宽度与列间距。
+ *
+ * 宽度上限由调用方传入「搜索框宽度」，因此快捷方式区域（含工具栏与翻页按钮）
+ * 永远不会比搜索框更宽，两者左右边界对齐 —— 此前网格会宽出 136px，
+ * 明显外扩于搜索框，观感突兀。
+ *
+ * 同时尽量让所有图标排进一行：先按单元格下限算出上限内最多能塞几列，
+ * 再把这几个列宽连同间距均摊到上限宽度上。这样「一行能多放」与「不超出搜索框」
+ * 同时成立；只有当图标确实多到一行放不下时才老实换行。
+ *
+ * 注意：放大的是「列」间距。行间距由 --shortcut-row-gap 单独控制，两者若共用同一
+ * 变量，网格高度会被一起撑高，矮屏下会把翻页按钮挤出视口（实测 140% 下溢出 79px）。
+ *
+ * 列数与单元格宽度必须与 resolveGridPositions() 完全一致，否则拖拽/换页坐标会与
+ * 视觉网格错位，因此结果同时写回 CSS 变量与 React state。
+ */
+function computeGridLayout(
+  capWidth: number,
+  itemCount: number,
+  baseCell: number,
+  baseGap: number
+): { columns: number; cell: number; gap: number } {
+  const cell = Number.isFinite(baseCell) && baseCell > 0 ? baseCell : 80;
+  const gap = Number.isFinite(baseGap) && baseGap > 0 ? baseGap : 20;
+  const cap = Math.max(0, capWidth);
+
+  if (cap <= 0) {
+    return { columns: MOBILE_COLUMNS, cell, gap };
+  }
+
+  // 1. 目标列数：所有图标排一行；但不超过列数上限与「上限宽度能容纳的列数」
+  const wanted = Math.max(MOBILE_COLUMNS, Math.min(MAX_DESKTOP_COLUMNS, itemCount));
+  const maxFit = Math.floor((cap + MIN_GRID_GAP) / (MIN_CELL_WIDTH + MIN_GRID_GAP));
+  const columns = Math.max(MOBILE_COLUMNS, Math.min(wanted, Math.max(MOBILE_COLUMNS, maxFit)));
+
+  // 2. 图标是主体，尽量保留基础单元格尺寸；宽度不够时先压间距，再小幅收单元格
+  const idealCell = columns > 1 ? (cap - (columns - 1) * MIN_GRID_GAP) / columns : cell;
+  const resolvedCell = Math.max(MIN_CELL_WIDTH, Math.min(cell, idealCell));
+  const resolvedGap =
+    columns > 1
+      ? Math.max(MIN_GRID_GAP, Math.min(gap, (cap - columns * resolvedCell) / (columns - 1)))
+      : gap;
+
+  return { columns, cell: resolvedCell, gap: resolvedGap };
+}
 
 const resolveGridPositions = (
   shortcuts: SiteShortcut[],
@@ -456,8 +515,17 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
   const [dragOverId, setDragOverId] = useState<string | null>(null);
   const [insertSide, setInsertSide] = useState<'left' | 'right' | null>(null);
   const isDraggingRef = React.useRef(false);
-  const [desktopColumns, setDesktopColumns] = useState(() => window.innerWidth >= 768 ? 7 : 4);
+  // 初始列数先按窗口宽度与图标数粗估，避免首帧按旧写死的 7 列落位后被误固化；
+  // useLayoutEffect 会在首次绘制前用真实容器宽度精确校正，用户看不到中间态。
+  const [desktopColumns, setDesktopColumns] = useState(() => {
+    if (typeof window === 'undefined' || window.innerWidth < DESKTOP_MIN_WIDTH) return MOBILE_COLUMNS;
+    return computeGridLayout(window.innerWidth, Math.max(1, shortcuts.length), 80, 20).columns;
+  });
+  // 布局测量是否已稳定：未稳定前不得固化网格坐标，否则会把错误列数写进用户数据
+  const [layoutMeasured, setLayoutMeasured] = useState(false);
   const gridRef = React.useRef<HTMLDivElement | null>(null);
+  // 快捷方式区域容器：用于把推导出的网格尺寸写回 CSS 变量
+  const areaRef = React.useRef<HTMLDivElement | null>(null);
   const dragAnchorRef = React.useRef<{ xRatio: number; yRatio: number } | null>(null);
 
   // 桌面多分页状态管理 (最多支持 9 页)
@@ -527,6 +595,25 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
     }
     return pageItems;
   }, [isDesktop, orderedShortcuts, currentPage, draggedId]);
+
+  /**
+   * 网格列数所依据的图标数量：取**所有分页中最多的那一页**，而不是当前页。
+   *
+   * 若按当前页计数，切页时列数会随之变化（实测 8 项页 672px、2 项页 380px），
+   * 整个网格宽度跟着跳动，翻页时观感非常不稳。按「最宽的一页」计算后，
+   * 列数与网格宽度在整个会话中保持恒定，切页只换内容不动布局。
+   */
+  const gridItemCountForLayout = React.useMemo(() => {
+    if (!isDesktop) return Math.max(1, orderedShortcuts.length);
+    const perPage = new Map<number, number>();
+    for (const s of orderedShortcuts) {
+      const p = s.gridPosition?.page || 1;
+      perPage.set(p, (perPage.get(p) || 0) + 1);
+    }
+    let max = 1;
+    for (const n of perPage.values()) if (n > max) max = n;
+    return max;
+  }, [isDesktop, orderedShortcuts]);
 
   const gridPositions = React.useMemo(() => {
     const pageItems = isDesktop
@@ -639,11 +726,78 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
     };
   }, [isDesktop, draggedId]);
 
-  React.useEffect(() => {
-    const handleResize = () => setDesktopColumns(window.innerWidth >= 768 ? 7 : 4);
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  /**
+   * 依据容器真实可用宽度推导列数 / 单元格宽度 / 间距，并写回 CSS 变量。
+   *
+   * 用 ResizeObserver 而不是只监听 window.resize：uiScale 变化、书签栏显隐、
+   * 抽屉开合都会改变可用宽度，这些都不必然触发 window.resize。
+   *
+   * 图标数量取「所有分页中最多的一页」（gridItemCountForLayout），而非当前页或
+   * DOM 查询结果：前者保证切页时列数与网格宽度恒定，后者会把「添加快捷站点」
+   * 等磁贴也算进去。
+   */
+  React.useLayoutEffect(() => {
+    const area = areaRef.current;
+    if (!area) return;
+
+    const apply = () => {
+      const scale = getUiScale();
+      // 宽度上限取「搜索框宽度」：快捷方式区域与搜索框左右对齐，不会比它更宽。
+      // 找不到搜索框时退回父容器宽度，保证仍有合理上限。
+      const searchForm = document.querySelector('.searchbox-slot-responsive form');
+      const parent = area.parentElement;
+      const hostWidth = searchForm
+        ? searchForm.getBoundingClientRect().width / scale
+        : parent
+          ? parent.getBoundingClientRect().width / scale
+          : window.innerWidth / scale;
+
+      if (window.innerWidth < DESKTOP_MIN_WIDTH) {
+        // 移动端：沿用 CSS 里的基础变量（4 列），JS 不干预
+        area.style.removeProperty('--shortcut-columns');
+        area.style.removeProperty('--shortcut-cell-width');
+        area.style.removeProperty('--shortcut-grid-gap');
+        area.style.removeProperty('--shortcut-area-width');
+        setDesktopColumns(MOBILE_COLUMNS);
+        setLayoutMeasured(true);
+        return;
+      }
+
+      // 读取 CSS 中未被 JS 覆盖的基础值（--shortcut-cell-base / --shortcut-grid-gap-base
+      // 只在样式表里定义）。绝不能读 JS 自己写回的 --shortcut-columns /
+      // --shortcut-cell-width / --shortcut-grid-gap，否则每轮测量都会在上一次的
+      // 结果上继续累加（棘轮效应）。
+      const cs = getComputedStyle(area);
+      const baseCell = parseFloat(cs.getPropertyValue('--shortcut-cell-base'));
+      const baseGap = parseFloat(cs.getPropertyValue('--shortcut-grid-gap-base'));
+
+      const layout = computeGridLayout(
+        hostWidth,
+        Math.max(1, gridItemCountForLayout),
+        baseCell,
+        baseGap
+      );
+      area.style.setProperty('--shortcut-columns', String(layout.columns));
+      area.style.setProperty('--shortcut-cell-width', `${layout.cell}px`);
+      area.style.setProperty('--shortcut-grid-gap', `${layout.gap}px`);
+      // 区域整体宽度锁定为搜索框宽度，使工具栏两端与搜索框对齐
+      area.style.setProperty('--shortcut-area-width', `${hostWidth}px`);
+      setDesktopColumns(layout.columns);
+      setLayoutMeasured(true);
+    };
+
+    apply();
+    const ro = new ResizeObserver(apply);
+    // 观察搜索框与父容器：两者任一变化（含 uiScale 变化）都要重新推导
+    const searchForm = document.querySelector('.searchbox-slot-responsive form');
+    if (searchForm) ro.observe(searchForm);
+    if (area.parentElement) ro.observe(area.parentElement);
+    window.addEventListener('resize', apply);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', apply);
+    };
+  }, [isDesktop, gridItemCountForLayout]);
   const clickUnlockTimerRef = React.useRef<number | null>(null);
   const [contextMenu, setContextMenu] = useState<ShortcutContextMenu | null>(null);
   const [gridContextMenu, setGridContextMenu] = useState<GridContextMenu | null>(null);
@@ -755,6 +909,8 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
   const prevAutoFillRef = React.useRef(autoFill);
   React.useEffect(() => {
     if (!isDesktop) return;
+    // 布局尚未测量完成时列数仍是粗估，此时固化坐标会把错误列数写进用户数据
+    if (!layoutMeasured) return;
     const wasAutoFill = prevAutoFillRef.current;
     prevAutoFillRef.current = autoFill;
 
@@ -871,6 +1027,83 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
       }
     }
   }, [autoFill, isDesktop, desktopColumns, gridPositions, orderedShortcuts, onReorderShortcuts, currentPage]);
+
+  /**
+   * 列数变化 / 首次测量完成后的自适应重排。
+   *
+   * 网格坐标会持久化到用户数据里，而列数现在随窗口宽度变化。若不重排，
+   * 用户把窗口拉宽后会看到「一行明明放得下 8 个却只排了 7 个、最后 1 个孤零零
+   * 掉到第二行」—— 因为旧坐标是按更少的列算出来的。
+   *
+   * 保守策略：**只在重排能实际减少占用行数时才动手**（即消除"明明放得下却换行"
+   * 的空隙）。当用户刻意留白、重排并不会更省行时，完全保持其手工摆放不动。
+   */
+  const reflow = React.useCallback(() => {
+    if (!isDesktop || isDraggingRef.current) return;
+
+    const items = orderedShortcutsRef.current;
+    const pageItems = items.filter((s) => (s.gridPosition?.page || 1) === currentPage);
+    if (pageItems.length === 0) return;
+    const otherItems = items.filter((s) => (s.gridPosition?.page || 1) !== currentPage);
+
+    // 当前占用的最大行号（无坐标的项按未定位处理，不参与比较）
+    const currentMaxRow = pageItems.reduce(
+      (max, s) => Math.max(max, s.gridPosition?.row || 1),
+      0
+    );
+
+    // 保持既有视觉顺序：先按行、再按列排序（无坐标的排在最后）
+    const ordered = [...pageItems].sort((a, b) => {
+      const pa = a.gridPosition;
+      const pb = b.gridPosition;
+      if (pa && pb) {
+        if (pa.row !== pb.row) return pa.row - pb.row;
+        return pa.column - pb.column;
+      }
+      if (pa) return -1;
+      if (pb) return 1;
+      return 0;
+    });
+
+    const nextPositions = resolveGridPositions(ordered, desktopColumns, true);
+    const packedMaxRow = ordered.reduce((max, item) => {
+      const pos = nextPositions.get(item.id);
+      return Math.max(max, pos ? pos.row : 0);
+    }, 0);
+
+    // 只有在确实能减少行数时才重排，避免打乱用户刻意保留的布局
+    if (packedMaxRow === 0 || packedMaxRow >= currentMaxRow) return;
+
+    let changed = false;
+    const reflowed = ordered.map((item) => {
+      const pos = nextPositions.get(item.id);
+      if (!pos) return item;
+      const cur = item.gridPosition;
+      if (cur && cur.column === pos.column && cur.row === pos.row && cur.page === currentPage) return item;
+      changed = true;
+      return { ...item, gridPosition: { ...pos, page: currentPage } };
+    });
+    if (!changed) return;
+
+    const next = [...reflowed, ...otherItems];
+    orderedShortcutsRef.current = next;
+    setOrderedShortcuts(next);
+    onReorderShortcuts?.(next);
+  }, [currentPage, desktopColumns, isDesktop, onReorderShortcuts]);
+
+  // 列数变化时重排（窗口缩放 / 拉宽）
+  React.useEffect(() => {
+    if (!layoutMeasured) return;
+    reflow();
+  }, [desktopColumns, layoutMeasured, reflow]);
+
+  // 首次测量完成后补一次：修正历史数据里按旧列数固化的坐标（如升级前写死的 7 列）
+  const firstMeasureRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!isDesktop || !layoutMeasured || firstMeasureRef.current) return;
+    firstMeasureRef.current = true;
+    reflow();
+  }, [isDesktop, layoutMeasured, reflow]);
 
   const [form] = Form.useForm();
   const formUrl = Form.useWatch('url', form);
@@ -1951,7 +2184,8 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
 
   return (
     <div
-      className={`group/shortcut-area relative w-full max-w-[680px] mx-auto ${
+      ref={areaRef}
+      className={`group/shortcut-area shortcut-area relative w-full mx-auto ${
         isDesktop ? 'min-h-[276px] sm:min-h-[316px]' : 'shortcut-area-compact'
       }`}
       onWheel={isDesktop ? handleWheel : undefined}

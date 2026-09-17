@@ -613,18 +613,49 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
 
 /* 快捷方式拖拽意图反馈：边缘表示排序插入，中心呼吸光环表示文件夹吸附。 */
 
-/* 固定快捷方式网格：窄屏 4 列 × 3 行，桌面 7 列 × 3 行。
-   注意：这里用 --viewport-width（已除以缩放倍数）而非 100vw：
+/* 快捷方式区域的尺寸变量。
+   宽度上限为「搜索框宽度」（见下方 .shortcut-area 规则），因此快捷方式区域
+   永远不会比搜索框更宽，两者的左右边界对齐。
+   此前桌面网格被 max-w-[680px] + 固定 7 列写死：1600px 窗口两侧各空出约
+   460px，1874px 更是各空 597px，明明能一行放下的图标被迫换行。
+   注意这里用 --viewport-width（已除以缩放倍数）而非 100vw：
    zoom 生效后 100vw 仍返回未缩放的物理视口宽度，会算偏单元格与间距。 */
-.shortcut-grid {
-  --shortcut-cell-width: clamp(52px, calc((var(--viewport-width) - 68px) / 4), 72px);
+.shortcut-area {
+  --shortcut-cell-base: clamp(52px, calc((var(--viewport-width) - 68px) / 4), 72px);
+  --shortcut-cell-width: var(--shortcut-cell-base);
   --shortcut-cell-height: 80px;
-  --shortcut-grid-gap: clamp(4px, calc((var(--viewport-width) - 288px) / 3), 12px);
+  /* -base 变量只由样式表定义，JS 读取它做推导后再写入实际值，
+     避免把 JS 写回的值当成基准反复放大（棘轮效应）。 */
+  --shortcut-grid-gap-base: clamp(4px, calc((var(--viewport-width) - 288px) / 3), 12px);
+  --shortcut-grid-gap: var(--shortcut-grid-gap-base);
+  /* 行间距必须与列间距分开：JS 会用富余宽度放大「列间距」来收窄两侧留白，
+     若两者共用同一变量，网格高度也会被一起撑高，矮屏下把翻页按钮挤出视口
+     （实测 140% 缩放下溢出 79px）。行间距只由高度分档控制。 */
+  --shortcut-row-gap: var(--shortcut-grid-gap-base);
   --shortcut-columns: 4;
   --shortcut-rows: 3;
   --shortcut-row-height: 80px;
+  /* 桌面下由 JS 写入真实搜索框宽度，使区域/工具栏与搜索框两端对齐 */
+  --shortcut-area-width: 100%;
+}
+
+/* 区域宽度 = 搜索框宽度（由 JS 注入 --shortcut-area-width），
+   因此工具栏的「快捷方式设置 / 添加快捷站点」两端始终与搜索框左右对齐；
+   网格自身按 cols*cell+(cols-1)*gap 定宽并居中，图标少时不会散得过开。
+   简洁模式由 .shortcut-grid-compact 自行定宽，不套用该上限。 */
+.shortcut-area:not(.shortcut-area-compact) {
+  max-width: var(--shortcut-area-width, 100%);
+  margin-inline: auto;
+}
+
+/* 固定快捷方式网格：移动端 4 列；桌面列数与「列」间距由 JS 按「不超过搜索框宽度」
+   推导后以 --shortcut-columns / --shortcut-grid-gap 注入（见 Shortcuts.tsx）。
+   单元格宽度只在必要时小幅收紧（下限保护），以免破坏缩放的比例关系。
+   注意这里用 --viewport-width（已除以缩放倍数）而非 100vw：
+   zoom 生效后 100vw 仍返回未缩放的物理视口宽度，会算偏单元格与间距。 */
+.shortcut-grid {
   width: calc(var(--shortcut-columns) * var(--shortcut-cell-width) + (var(--shortcut-columns) - 1) * var(--shortcut-grid-gap));
-  height: calc(var(--shortcut-rows) * var(--shortcut-row-height) + (var(--shortcut-rows) - 1) * var(--shortcut-grid-gap));
+  height: calc(var(--shortcut-rows) * var(--shortcut-row-height) + (var(--shortcut-rows) - 1) * var(--shortcut-row-gap));
   margin-inline: auto;
   box-sizing: border-box;
   display: grid;
@@ -635,7 +666,8 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
   justify-content: center;
   align-content: start;
   align-items: start;
-  gap: var(--shortcut-grid-gap);
+  column-gap: var(--shortcut-grid-gap);
+  row-gap: var(--shortcut-row-gap);
   overflow: visible;
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -691,7 +723,7 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
 
 .shortcut-grid-item-large {
   width: calc(2 * var(--shortcut-cell-width) + var(--shortcut-grid-gap));
-  height: calc(2 * var(--shortcut-row-height) + var(--shortcut-grid-gap));
+  height: calc(2 * var(--shortcut-row-height) + var(--shortcut-row-gap));
   grid-column: span 2;
   grid-row: span 2;
   align-self: start;
@@ -705,12 +737,13 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
 }
 
 @media (min-width: 768px) {
-  .shortcut-grid {
-    --shortcut-cell-width: 80px;
+  .shortcut-area {
+    --shortcut-cell-base: 80px;
     --shortcut-cell-height: 92px;
-    --shortcut-grid-gap: 20px;
-    --shortcut-columns: 7;
+    --shortcut-grid-gap-base: 20px;
     --shortcut-row-height: 92px;
+    /* --shortcut-columns 由 JS 按可用宽度注入（见 Shortcuts.tsx），
+       此处不再写死 7 列；单元格宽度仍由基础值决定，保证缩放单调。 */
   }
 }
 
@@ -791,11 +824,11 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
      反而命中收缩档，把放大效果抵消掉（实测 115%→92px、120%→84px 倒退）。
      宽度属于水平维度，对「垂直放不下」毫无帮助，因此保持基础值，
      让网格尺寸完全跟随缩放倍数。 */
-  .vh-compact .shortcut-grid {
+  .vh-compact .shortcut-area {
     --shortcut-cell-height: 76px;
     --shortcut-row-height: 76px;
-    --shortcut-grid-gap: 12px;
-    --shortcut-columns: 7;
+    --shortcut-grid-gap-base: 12px;
+    --shortcut-row-gap: 12px;
     /* 图标盒由行高推导，保证紧凑后图标不会挤占标题文字的空间 */
     --shortcut-icon-size: calc(var(--shortcut-cell-height) - 26px);
   }
@@ -880,11 +913,11 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
 
 @media (min-width: 768px) {
   /* 同 .vh-compact：只压缩垂直节奏，宽度继续跟随缩放倍数 */
-  .vh-tight .shortcut-grid {
+  .vh-tight .shortcut-area {
     --shortcut-cell-height: 70px;
     --shortcut-row-height: 70px;
-    --shortcut-grid-gap: 8px;
-    --shortcut-columns: 7;
+    --shortcut-grid-gap-base: 8px;
+    --shortcut-row-gap: 8px;
     --shortcut-icon-size: calc(var(--shortcut-cell-height) - 24px);
   }
 
