@@ -785,24 +785,31 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
 }
 
 @media (min-width: 768px) {
+  /* 矮屏只压缩「垂直节奏」（行高 / 行间距），绝不改动单元格宽度。
+     原因：高度分级由「真实布局高度 = innerHeight / uiScale」触发，
+     若在此处把 --shortcut-cell-width 改成固定布局像素，用户放大缩放时会
+     反而命中收缩档，把放大效果抵消掉（实测 115%→92px、120%→84px 倒退）。
+     宽度属于水平维度，对「垂直放不下」毫无帮助，因此保持基础值，
+     让网格尺寸完全跟随缩放倍数。 */
   .vh-compact .shortcut-grid {
-    --shortcut-cell-width: 70px;
     --shortcut-cell-height: 76px;
+    --shortcut-row-height: 76px;
     --shortcut-grid-gap: 12px;
     --shortcut-columns: 7;
-    --shortcut-row-height: 76px;
+    /* 图标盒由行高推导，保证紧凑后图标不会挤占标题文字的空间 */
+    --shortcut-icon-size: calc(var(--shortcut-cell-height) - 26px);
   }
 
   .vh-compact .shortcut-grid .shortcut-grid-item:not(.shortcut-grid-item-large) .folder-icon-box {
-    width: 44px !important;
-    height: 44px !important;
+    width: var(--shortcut-icon-size) !important;
+    height: var(--shortcut-icon-size) !important;
     border-radius: 14px !important;
   }
 
   .vh-compact .shortcut-grid .shortcut-grid-item:not(.shortcut-grid-item-large) .folder-icon-box img,
   .vh-compact .shortcut-grid .shortcut-grid-item:not(.shortcut-grid-item-large) .folder-icon-box > div {
-    width: 26px !important;
-    height: 26px !important;
+    width: calc(var(--shortcut-icon-size) * 0.6) !important;
+    height: calc(var(--shortcut-icon-size) * 0.6) !important;
   }
 
   .vh-compact .shortcut-grid .shortcut-grid-item > span {
@@ -872,24 +879,25 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
 }
 
 @media (min-width: 768px) {
+  /* 同 .vh-compact：只压缩垂直节奏，宽度继续跟随缩放倍数 */
   .vh-tight .shortcut-grid {
-    --shortcut-cell-width: 64px;
     --shortcut-cell-height: 70px;
+    --shortcut-row-height: 70px;
     --shortcut-grid-gap: 8px;
     --shortcut-columns: 7;
-    --shortcut-row-height: 70px;
+    --shortcut-icon-size: calc(var(--shortcut-cell-height) - 24px);
   }
 
   .vh-tight .shortcut-grid .shortcut-grid-item:not(.shortcut-grid-item-large) .folder-icon-box {
-    width: 38px !important;
-    height: 38px !important;
+    width: var(--shortcut-icon-size) !important;
+    height: var(--shortcut-icon-size) !important;
     border-radius: 12px !important;
   }
 
   .vh-tight .shortcut-grid .shortcut-grid-item:not(.shortcut-grid-item-large) .folder-icon-box img,
   .vh-tight .shortcut-grid .shortcut-grid-item:not(.shortcut-grid-item-large) .folder-icon-box > div {
-    width: 22px !important;
-    height: 22px !important;
+    width: calc(var(--shortcut-icon-size) * 0.6) !important;
+    height: calc(var(--shortcut-icon-size) * 0.6) !important;
   }
 
   .vh-tight .shortcut-grid .shortcut-grid-item > span {
