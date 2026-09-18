@@ -12,6 +12,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "package": "node scripts/package-extension.mjs",
+    "package:store": "node scripts/package-extension.mjs --target store",
     "preview": "vite preview"
   },
   "dependencies": {

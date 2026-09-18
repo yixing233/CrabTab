@@ -314,11 +314,26 @@ CrabTab（下称「本扩展」）尊重并保护用户隐私。本政策说明�
 4. 实用工具抽屉：待办 / 倒数日 / 翻译
 5. 顶部书签栏展开多级文件夹
 
+### 提交哪个包
+
+```bash
+npm run build          # 生成 dist/
+npm run package:store  # 产出 CrabTab-v<版本>-store.zip（商店提交用）
+```
+
+| 包名 | 用途 | 是否含 `key` |
+| :--- | :--- | :--- |
+| `CrabTab-v<版本>-store.zip` | **提交到 Chrome Web Store / Edge Add-ons** | 否（已剥离） |
+| `CrabTab-v<版本>-chrome-extension.zip` | 本地「加载已解压的扩展程序」、GitHub Release 分发 | 是 |
+
+`key` 字段用于在本地加载时固定扩展 ID（ID 变化会让浏览器按新 ID 重新分配存储，用户数据看起来"丢失"）。但商店用自己的密钥签名并分配 ID，提交包中含 `key` 会被直接拒绝并报「清单不应包含 key 字段」。两个包不可混用。
+
 ---
 
 ## 七、上架前检查清单
 
 - [ ] `manifest.json` 的 `description` 与商店简短描述口径一致
+- [ ] **上传的是 `*-store.zip`（已剥离 `key`）**，而非 `*-chrome-extension.zip`
 - [ ] 隐私政策已创建并部署为公开链接
 - [ ] 商店后台隐私标签页按第 4.3 节如实勾选
 - [ ] 截图与推广图已制作（1280×800）
