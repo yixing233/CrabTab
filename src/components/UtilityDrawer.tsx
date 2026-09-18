@@ -1299,23 +1299,23 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
             }`}
           >
             {/* 顶栏微控制条：倒数日标题与「向右收起」操作按钮
-                与胶囊同宽并自带毛玻璃底衬，避免浅色壁纸上文字发虚看不清 */}
-            <div
-              className={`pinned-countdown-header flex items-center justify-between px-2 py-1 rounded-full border shadow-sm backdrop-blur-md select-none ${
-                isDark
-                  ? 'bg-[#181a20]/70 border-white/10'
-                  : 'bg-white/70 border-black/10'
-              }`}
-              style={{
-                backdropFilter: `blur(${glassStyle.blur}px)`,
-                WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
-              }}
-            >
-              <div className={`flex items-center gap-1.5 text-[11px] font-medium ${isDark ? 'text-neutral-200' : 'text-neutral-700'}`}>
+                无底衬，直接压在壁纸上 —— 它是一条控制条而非内容卡片，加背景会
+                读作与下方胶囊并列的第五个条目，把「标题 + 列表」的层级关系抹平。
+                可读性改由文字投影承担（与时钟/快捷方式标题同一手法）：投影用
+                与文字相反的明度，浅色壁纸配浅投影、深色壁纸配深投影，两种底
+                都能看清，且不引入任何会喧宾夺主的方块。 */}
+            <div className="pinned-countdown-header flex items-center justify-between px-2 py-1 select-none">
+              <div
+                className={`flex items-center gap-1.5 text-[11px] font-medium ${
+                  isDark
+                    ? 'text-neutral-100 drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)]'
+                    : 'text-neutral-800 drop-shadow-[0_1px_3px_rgba(255,255,255,0.85)]'
+                }`}
+              >
                 <CalendarClock size={12} className="opacity-80 shrink-0" />
                 <span className="whitespace-nowrap">{zh ? '倒数日' : 'Countdowns'}</span>
                 <span className={`text-[10px] px-1.5 rounded-full tabular-nums font-semibold shrink-0 ${
-                  isDark ? 'bg-white/12 text-neutral-200' : 'bg-black/8 text-neutral-600'
+                  isDark ? 'bg-white/20 text-white' : 'bg-black/12 text-neutral-800'
                 }`}>
                   {pinnedCountdowns.length}
                 </span>
@@ -1329,8 +1329,8 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                 title={zh ? '向右侧收起' : 'Collapse to right'}
                 className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[11px] whitespace-nowrap shrink-0 transition-all cursor-pointer ${
                   isDark
-                    ? 'text-neutral-300 hover:text-white hover:bg-white/12'
-                    : 'text-neutral-600 hover:text-neutral-900 hover:bg-black/8'
+                    ? 'text-neutral-200 drop-shadow-[0_1px_3px_rgba(0,0,0,0.7)] hover:text-white hover:bg-white/15'
+                    : 'text-neutral-700 drop-shadow-[0_1px_3px_rgba(255,255,255,0.85)] hover:text-neutral-900 hover:bg-black/10'
                 }`}
               >
                 <span className="text-[10px]">{zh ? '收起' : 'Collapse'}</span>
