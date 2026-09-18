@@ -83,7 +83,7 @@ CrabTab 用现代毛玻璃质感重新设计了浏览器起始页：干净的时
 
 ✨ 实用小工具（右下角抽屉）
 
-· 翻译：多语言互译，一键复制结果（依赖第三方翻译接口，发版前请确认见第八节）
+· 翻译：多语言互译，一键复制结果
 · 文本处理：常用文本转换与统计
 · 网络测速：快速了解当前网络状况
 · 待办事项：随手记录，专注当下
@@ -347,17 +347,21 @@ npm run package:store  # 产出 CrabTab-v<版本>-store.zip（商店提交用）
 
 > 撰写文案时核对代码发现，以下两项可能影响上架或用户实际体验，建议发版前确认。
 
-### 8.1 翻译接口的域名未在 manifest 中声明
+### 8.1 翻译服务已移除 LibreTranslate（原问题已解决）
 
-「实用工具 → 翻译」会请求 `translate.googleapis.com` 与 `api.mymemory.translated.net`，但这两个域名都不在 `manifest.json` 的 `host_permissions` 中。
+原「翻译」提供四个服务商，其中 LibreTranslate 始终不可用：其域名未在 `manifest` 声明，且服务改为需申请密钥后已不接受匿名调用，实测必然失败。该选项已连同其请求实现一并移除，现仅保留三个可用服务：
 
-在扩展环境中，跨域请求是否成功取决于目标服务是否返回 `Access-Control-Allow-Origin: *`（实测 MyMemory 返回通配 CORS，可用；Google 接口因限流未能验证）。若某条链路在扩展环境下被拦截，翻译会静默失败——这会直接影响上面文案里对「翻译」功能的宣传。
+| 服务 | 说明 |
+| :--- | :--- |
+| Google 翻译（免费） | 默认项，`translate.googleapis.com` |
+| MyMemory（免费） | `api.mymemory.translated.net`，返回通配 CORS 头，已实测可用；需明确指定源语言，不支持「自动检测」 |
+| 浏览器本地翻译 | 依赖 Chrome 内置 Translator API，需浏览器支持 |
 
-建议：发版前在真实扩展环境（非 `npm run dev`）中实测一次翻译，确认可用后再保留该条描述；若不可用，需补声明域名或从文案中移除该功能。
+**仍待确认**：`translate.googleapis.com` 与 `api.mymemory.translated.net` 目前都不在 `manifest.json` 的 `host_permissions` 中。二者靠目标服务自身的 CORS 响应头放行（MyMemory 已确认返回 `Access-Control-Allow-Origin: *`），但建议在真实扩展环境（非 `npm run dev`）中实测一次，确认后再保留文案中对翻译功能的宣传。
 
 ### 8.2 文本处理工具的具体能力
 
-文案中「文本处理」写得较概括。核对实现后实际包含：大小写转换、去除空行、逐行去空格、字数/词数统计（中英混合分词）等。如需在商店页更具体地介绍，可据此展开。
+文案中「文本处理」写得较概括。核对实现后实际包含：大小写转换、去除空行、逐行去空格、重复行去重、字数/词数统计（中英混合分词）等。如需在商店页更具体地介绍，可据此展开。
 
 ### 8.3 README 中两处宣传与实现不符
 

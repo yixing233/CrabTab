@@ -97,7 +97,7 @@ export interface SpeedTestResult {
 }
 
 type SpeedTestPhase = 'idle' | 'ping' | 'download' | 'upload' | 'completed' | 'error';
-type TranslationProvider = 'browser' | 'google' | 'mymemory' | 'libretranslate';
+type TranslationProvider = 'browser' | 'google' | 'mymemory';
 
 const STORAGE_TODO = 'crab_utility_todos';
 const STORAGE_TAB = 'crab_utility_tab';
@@ -382,7 +382,6 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
     () => [
       { value: 'google', label: zh ? 'Google 翻译（免费）' : 'Google Translate (Free)' },
       { value: 'mymemory', label: zh ? 'MyMemory（免费）' : 'MyMemory (Free)' },
-      { value: 'libretranslate', label: zh ? 'LibreTranslate（免费）' : 'LibreTranslate (Free)' },
       { value: 'browser', label: zh ? '浏览器本地翻译' : 'Browser Local Translation' },
     ],
     [zh]
@@ -1064,22 +1063,11 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
         return;
       }
 
-      // 使用标准表单编码请求，扩展环境不会触发 JSON Content-Type 的 CORS 预检；.com 为直接 API 地址，避免 .de 的重定向。
-      const requestBody = new URLSearchParams({
-        q: sourceText,
-        source,
-        target: targetLang,
-        format: 'text',
-      });
-      const response = await fetch('https://libretranslate.com/translate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-        body: requestBody,
-      });
-      if (!response.ok) throw new Error('LIBRETRANSLATE_REQUEST_FAILED');
-      const data = await response.json() as { translatedText?: string };
-      if (!data.translatedText) throw new Error('LIBRETRANSLATE_EMPTY_RESPONSE');
-      setTranslatedText(data.translatedText);
+      // 走到这里说明遇到了未知的服务商（正常情况下不可能发生）。
+      // 此前这里是 LibreTranslate 的兜底分支，其域名未在 manifest 声明、
+      // 申请密钥后也已不可匿名调用，实测始终返回失败，故连同选项一并移除。
+      // 保留一个显式错误而非让函数静默返回空结果，便于日后新增服务时暴露遗漏。
+      throw new Error('UNKNOWN_TRANSLATION_PROVIDER');
     } catch (error) {
       const code = error instanceof Error ? error.message : '';
       if (code === 'MYMEMORY_NEEDS_SOURCE_LANGUAGE') {
@@ -1489,8 +1477,6 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                           ? `https://translate.google.com/?sl=${sourceLang}&tl=${targetLang}&text=${encodeURIComponent(sourceText)}`
                           : translationProvider === 'mymemory'
                           ? 'https://mymemory.translated.net/'
-                          : translationProvider === 'libretranslate'
-                          ? 'https://libretranslate.com/'
                           : 'https://developer.chrome.com/docs/ai/translator-api'}
                         target="_blank"
                         rel="noreferrer"
