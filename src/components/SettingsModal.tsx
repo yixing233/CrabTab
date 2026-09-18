@@ -42,6 +42,7 @@ import {
   AlertCircle,
   RefreshCw,
 } from 'lucide-react';
+import { VerticalOffsetControl } from './VerticalOffsetControl';
 import { AppSettings, Language, WallpaperProviderId, HitokotoType, HomeContentMode } from '../types';
 import { SEARCH_ENGINES, DEFAULT_LOCAL_WALLPAPER, DEFAULT_SETTINGS } from '../constants';
 import { ALL_HITOKOTO_TYPES, HitokotoTypeOption } from '../utils/hitokoto';
@@ -51,7 +52,7 @@ import {
   fetchFromOnlineSource,
 } from '../utils/wallpaperSources';
 import { checkBookmarkPermission, requestBookmarkPermission } from '../utils/bookmarks';
-import { saveLocalMedia, clearLocalMedia, getLocalMediaInfo } from '../utils/storage';
+import { saveLocalMedia, clearLocalMedia, getLocalMediaInfo, deprecatedHomeContentMirror } from '../utils/storage';
 import {
   loadFavoriteWallpapers,
   addFavoriteWallpaper,
@@ -1166,67 +1167,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
       )}
 
-      {/* 搜索框垂直位置调节 */}
-      <div className={`p-3 rounded-xl border flex flex-col gap-2.5 transition-colors ${
-        isDark ? 'bg-white/[0.03] border-white/10' : 'bg-gray-50 border-gray-100'
-      }`}>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-xs font-semibold">{t.searchVerticalOffset}</div>
-            <div className="text-[11px] opacity-60 mt-0.5">{t.searchVerticalOffsetDesc}</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Segmented
-              size="small"
-              value={
-                (settings.searchVerticalOffset ?? 0) <= -25
-                  ? 'top'
-                  : (settings.searchVerticalOffset ?? 0) >= 25
-                    ? 'bottom'
-                    : 'center'
-              }
-              onChange={(val) => {
-                const offsetMap: Record<string, number> = {
-                  top: -40,
-                  center: 0,
-                  bottom: 40,
-                };
-                onUpdateSettings({ searchVerticalOffset: offsetMap[val as string] ?? 0 });
-              }}
-              options={[
-                { value: 'top', label: t.searchVerticalTop },
-                { value: 'center', label: t.searchVerticalCenter },
-                { value: 'bottom', label: t.searchVerticalBottom },
-              ]}
-            />
-            <Button
-              size="small"
-              type="text"
-              className="text-xs opacity-70 hover:opacity-100"
-              onClick={() => onUpdateSettings({ searchVerticalOffset: 0 })}
-            >
-              {settings.language === 'zh' ? '重置' : 'Reset'}
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 px-1 pt-1">
-          <Slider
-            className="flex-1 my-1"
-            min={-120}
-            max={120}
-            step={2}
-            value={settings.searchVerticalOffset ?? 0}
-            onChange={(value) => onUpdateSettings({ searchVerticalOffset: value })}
-            tooltip={{
-              formatter: (val) => `${val && val > 0 ? `+${val}` : val ?? 0}px`,
-            }}
-          />
-          <span className="text-xs font-mono w-12 text-right opacity-70">
-            {(settings.searchVerticalOffset ?? 0) > 0 ? `+${settings.searchVerticalOffset}` : (settings.searchVerticalOffset ?? 0)}px
-          </span>
-        </div>
-      </div>
+      {/* 搜索框垂直位置调节（归入通用 tab 的搜索分组，此处不再重复一份） */}
 
       {/* 主屏展示内容：关闭 / 快捷方式 / 最近访问（三态合一） */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -1240,10 +1181,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
         <Segmented<HomeContentMode>
           value={settings.homeContentMode ?? 'shortcuts'}
-          onChange={(homeContentMode) => onUpdateSettings({
-            homeContentMode,
-            showQuickLinks: homeContentMode !== 'off',
-          })}
+          onChange={(homeContentMode) => onUpdateSettings(deprecatedHomeContentMirror(homeContentMode))}
           options={[
             { value: 'off', label: t.shortcutModeOff },
             { value: 'shortcuts', label: t.homeContentShortcuts },
@@ -1300,65 +1238,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           </div>
 
           {/* 最近访问垂直位置微调 */}
-          <div className={`p-3 rounded-xl border flex flex-col gap-2.5 transition-colors ${
+          <div className={`p-3 rounded-xl border transition-colors ${
             isDark ? 'bg-white/[0.03] border-white/10' : 'bg-gray-50 border-gray-100'
           }`}>
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs font-semibold">{t.recentVerticalOffset}</div>
-                <div className="text-[11px] opacity-60 mt-0.5">{t.recentVerticalOffsetDesc}</div>
-              </div>
-              <div className="flex items-center gap-2">
-                <Segmented
-                  size="small"
-                  value={
-                    (settings.recentVerticalOffset ?? 0) <= -25
-                      ? 'top'
-                      : (settings.recentVerticalOffset ?? 0) >= 25
-                        ? 'bottom'
-                        : 'center'
-                  }
-                  onChange={(val) => {
-                    const offsetMap: Record<string, number> = {
-                      top: -40,
-                      center: 0,
-                      bottom: 40,
-                    };
-                    onUpdateSettings({ recentVerticalOffset: offsetMap[val as string] ?? 0 });
-                  }}
-                  options={[
-                    { value: 'top', label: t.recentVerticalTop },
-                    { value: 'center', label: t.recentVerticalCenter },
-                    { value: 'bottom', label: t.recentVerticalBottom },
-                  ]}
-                />
-                <Button
-                  size="small"
-                  type="text"
-                  className="text-xs opacity-70 hover:opacity-100"
-                  onClick={() => onUpdateSettings({ recentVerticalOffset: 0 })}
-                >
-                  {settings.language === 'zh' ? '重置' : 'Reset'}
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 px-1 pt-1">
-              <Slider
-                className="flex-1 my-1"
-                min={-120}
-                max={120}
-                step={2}
-                value={settings.recentVerticalOffset ?? 0}
-                onChange={(value) => onUpdateSettings({ recentVerticalOffset: value })}
-                tooltip={{
-                  formatter: (val) => `${val && val > 0 ? `+${val}` : val ?? 0}px`,
-                }}
-              />
-              <span className="text-xs font-mono w-12 text-right opacity-70">
-                {(settings.recentVerticalOffset ?? 0) > 0 ? `+${settings.recentVerticalOffset}` : (settings.recentVerticalOffset ?? 0)}px
-              </span>
-            </div>
+            <VerticalOffsetControl
+              label={t.recentVerticalOffset}
+              description={t.recentVerticalOffsetDesc}
+              value={settings.recentVerticalOffset ?? 0}
+              onChange={(value) => onUpdateSettings({ recentVerticalOffset: value })}
+              resetTitle={settings.language === 'zh' ? '重置' : 'Reset'}
+              presetLabels={{
+                top: t.recentVerticalTop,
+                center: t.recentVerticalCenter,
+                bottom: t.recentVerticalBottom,
+              }}
+            />
           </div>
         </div>
       )}
@@ -1528,65 +1422,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       </div>
 
       {/* 搜索框垂直位置调节 */}
-      <div className={`p-3 rounded-xl border flex flex-col gap-2.5 transition-colors ${
+      <div className={`p-3 rounded-xl border transition-colors ${
         isDark ? 'bg-white/[0.03] border-white/10' : 'bg-gray-50 border-gray-100'
       }`}>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="text-xs font-semibold">{t.searchVerticalOffset}</div>
-            <div className="text-[11px] opacity-60 mt-0.5">{t.searchVerticalOffsetDesc}</div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Segmented
-              size="small"
-              value={
-                (settings.searchVerticalOffset ?? 0) <= -25
-                  ? 'top'
-                  : (settings.searchVerticalOffset ?? 0) >= 25
-                    ? 'bottom'
-                    : 'center'
-              }
-              onChange={(val) => {
-                const offsetMap: Record<string, number> = {
-                  top: -40,
-                  center: 0,
-                  bottom: 40,
-                };
-                onUpdateSettings({ searchVerticalOffset: offsetMap[val as string] ?? 0 });
-              }}
-              options={[
-                { value: 'top', label: t.searchVerticalTop },
-                { value: 'center', label: t.searchVerticalCenter },
-                { value: 'bottom', label: t.searchVerticalBottom },
-              ]}
-            />
-            <Button
-              size="small"
-              type="text"
-              className="text-xs opacity-70 hover:opacity-100"
-              onClick={() => onUpdateSettings({ searchVerticalOffset: 0 })}
-            >
-              {settings.language === 'zh' ? '重置' : 'Reset'}
-            </Button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-3 px-1 pt-1">
-          <Slider
-            className="flex-1 my-1"
-            min={-120}
-            max={120}
-            step={2}
-            value={settings.searchVerticalOffset ?? 0}
-            onChange={(value) => onUpdateSettings({ searchVerticalOffset: value })}
-            tooltip={{
-              formatter: (val) => `${val && val > 0 ? `+${val}` : val ?? 0}px`,
-            }}
-          />
-          <span className="text-xs font-mono w-12 text-right opacity-70">
-            {(settings.searchVerticalOffset ?? 0) > 0 ? `+${settings.searchVerticalOffset}` : (settings.searchVerticalOffset ?? 0)}px
-          </span>
-        </div>
+        <VerticalOffsetControl
+          label={t.searchVerticalOffset}
+          description={t.searchVerticalOffsetDesc}
+          value={settings.searchVerticalOffset ?? 0}
+          onChange={(value) => onUpdateSettings({ searchVerticalOffset: value })}
+          resetTitle={settings.language === 'zh' ? '重置' : 'Reset'}
+          presetLabels={{
+            top: t.searchVerticalTop,
+            center: t.searchVerticalCenter,
+            bottom: t.searchVerticalBottom,
+          }}
+        />
       </div>
 
       {/* 搜索书签 */}

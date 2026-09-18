@@ -8,6 +8,7 @@ import {
   BoldOutlined
 } from '@ant-design/icons';
 import { RotateCw, Quote } from 'lucide-react';
+import { CLOCK_VERTICAL_OFFSET_RANGE, clampVerticalOffset } from './VerticalOffsetControl';
 import { i18n } from '../i18n';
 import { Language, ClockStyleConfig, ThemeMode, HitokotoType } from '../types';
 import { fetchHitokoto, getCachedHitokoto, HitokotoData, DEFAULT_SELECTED_HITOKOTO_TYPES } from '../utils/hitokoto';
@@ -114,10 +115,15 @@ export const Clock: React.FC<ClockProps> = ({
     ? clockStyle.size 
     : clockStyle.size === 'small' ? 48 : clockStyle.size === 'medium' ? 64 : clockStyle.size === 'huge' ? 104 : 80;
 
-  // 解析垂直位置偏移为精确数值 (像素 px, 负数偏上, 正数偏下)
-  const currentOffsetPx = typeof clockStyle.verticalOffset === 'number' && !Number.isNaN(clockStyle.verticalOffset)
-    ? clockStyle.verticalOffset
-    : clockStyle.verticalOffset === 'top' ? -36 : clockStyle.verticalOffset === 'bottom' ? 24 : 0;
+  // 解析垂直位置偏移为精确数值 (像素 px, 负数偏上, 正数偏下)。
+  // 夹取到共用量程内：旧版本曾允许 ±100，存过的越界值会让滑块/输入框显示与
+  // 实际位移不一致（输入框显示 100 而滑块只能到 60）。
+  const currentOffsetPx = clampVerticalOffset(
+    typeof clockStyle.verticalOffset === 'number' && !Number.isNaN(clockStyle.verticalOffset)
+      ? clockStyle.verticalOffset
+      : clockStyle.verticalOffset === 'top' ? -36 : clockStyle.verticalOffset === 'bottom' ? 24 : 0,
+    CLOCK_VERTICAL_OFFSET_RANGE
+  );
 
   // Vertical Offset Spacing (使用相对定位 top 属性精确位移，负数偏上，正数偏下，完全避免 flex items-end 约束失效问题，且不影响外部布局流与 GPU 复合层)
   const getVerticalOffsetStyle = (): React.CSSProperties => {
@@ -268,9 +274,9 @@ export const Clock: React.FC<ClockProps> = ({
         </div>
         <div className="flex items-center gap-3">
           <Slider
-            min={-60}
-            max={60}
-            step={2}
+            min={CLOCK_VERTICAL_OFFSET_RANGE.min}
+            max={CLOCK_VERTICAL_OFFSET_RANGE.max}
+            step={CLOCK_VERTICAL_OFFSET_RANGE.step}
             value={currentOffsetPx}
             onChange={(val) => {
               if (typeof val === 'number' && !Number.isNaN(val)) {
@@ -279,10 +285,12 @@ export const Clock: React.FC<ClockProps> = ({
             }}
             className="flex-1 m-0"
           />
+          {/* 数字输入框与滑块共用同一量程：此前滑块是 ±60、输入框是 ±100，
+              同一行内能取到的极值不一致，滑到端点与手输大值互相打架 */}
           <InputNumber
             size="small"
-            min={-100}
-            max={100}
+            min={CLOCK_VERTICAL_OFFSET_RANGE.min}
+            max={CLOCK_VERTICAL_OFFSET_RANGE.max}
             value={currentOffsetPx}
             onChange={(val) => {
               if (typeof val === 'number' && !Number.isNaN(val)) {

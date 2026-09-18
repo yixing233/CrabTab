@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Dropdown, Tooltip, Popover, Switch, Slider } from 'antd';
+import { Dropdown, Tooltip, Popover, Switch } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   Search,
@@ -10,10 +10,6 @@ import {
   ArrowUpRight,
   Bookmark,
   Clock,
-  Check,
-  SlidersHorizontal,
-  MoveVertical,
-  RotateCcw,
 } from 'lucide-react';
 import { SearchEngineId, SuggestionEngineId, Language, BrowserHistoryItem } from '../types';
 import { SEARCH_ENGINES } from '../constants';
@@ -23,6 +19,7 @@ import { searchBookmarks, BookmarkSearchResult } from '../utils/bookmarks';
 import { searchBrowserHistory } from '../utils/history';
 import { SearchEngineIcon } from './SearchEngineIcons';
 import { ShortcutIconView } from './Shortcuts';
+import { VerticalOffsetControl } from './VerticalOffsetControl';
 
 interface SearchBoxProps {
   currentEngineId: SearchEngineId;
@@ -479,74 +476,18 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
         <>
           <div className="border-t border-black/8 dark:border-white/10" />
 
-          <div className="flex flex-col gap-1 px-1">
-            <div className="flex items-center justify-between text-xs text-neutral-600 dark:text-neutral-300">
-              <span className="flex items-center gap-1.5">
-                <MoveVertical className="w-3.5 h-3.5 text-blue-500" />
-                <span>{t.searchVerticalOffset}</span>
-              </span>
-              <div className="flex items-center gap-1 font-mono text-[11px]">
-                <span className={verticalOffset !== 0 ? 'text-blue-500 font-medium' : 'opacity-40'}>
-                  {(verticalOffset ?? 0) > 0 ? `+${verticalOffset}` : (verticalOffset ?? 0)}px
-                </span>
-                {verticalOffset !== 0 && (
-                  <button
-                    type="button"
-                    onClick={() => onUpdateVerticalOffset(0)}
-                    className="p-0.5 text-neutral-400 hover:text-blue-500 dark:hover:text-blue-400 cursor-pointer transition-colors"
-                    title={t.resetDefault}
-                  >
-                    <RotateCcw className="w-3 h-3" />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="pt-0.5 px-0.5">
-              <Slider
-                className="my-1"
-                min={-100}
-                max={100}
-                step={2}
-                value={verticalOffset ?? 0}
-                onChange={(v) => onUpdateVerticalOffset(v)}
-                tooltip={{
-                  formatter: (val) => `${val && val > 0 ? `+${val}` : val ?? 0}px`,
-                }}
-              />
-            </div>
-
-            {/* 极简快捷档位 */}
-            <div className="flex items-center justify-between text-[11px] text-neutral-400 dark:text-neutral-500 px-0.5 pt-0.5">
-              <button
-                type="button"
-                onClick={() => onUpdateVerticalOffset(-40)}
-                className={`transition-colors cursor-pointer hover:text-neutral-700 dark:hover:text-neutral-200 ${
-                  (verticalOffset ?? 0) <= -25 ? 'text-blue-500 font-medium' : ''
-                }`}
-              >
-                {t.searchVerticalTop}
-              </button>
-              <button
-                type="button"
-                onClick={() => onUpdateVerticalOffset(0)}
-                className={`transition-colors cursor-pointer hover:text-neutral-700 dark:hover:text-neutral-200 ${
-                  (verticalOffset ?? 0) > -25 && (verticalOffset ?? 0) < 25 ? 'text-blue-500 font-medium' : ''
-                }`}
-              >
-                {t.searchVerticalCenter}
-              </button>
-              <button
-                type="button"
-                onClick={() => onUpdateVerticalOffset(40)}
-                className={`transition-colors cursor-pointer hover:text-neutral-700 dark:hover:text-neutral-200 ${
-                  (verticalOffset ?? 0) >= 25 ? 'text-blue-500 font-medium' : ''
-                }`}
-              >
-                {t.searchVerticalBottom}
-              </button>
-            </div>
-          </div>
+          <VerticalOffsetControl
+            variant="popover"
+            label={t.searchVerticalOffset}
+            value={verticalOffset ?? 0}
+            onChange={onUpdateVerticalOffset}
+            resetTitle={t.resetDefault}
+            presetLabels={{
+              top: t.searchVerticalTop,
+              center: t.searchVerticalCenter,
+              bottom: t.searchVerticalBottom,
+            }}
+          />
         </>
       )}
     </div>
