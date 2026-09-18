@@ -17,9 +17,10 @@ import {
 import {
   deviceToLayoutPx,
   getLayoutViewport,
-  getUiScale,
   resolveFloatingPosition,
 } from '../utils/viewport';
+import { HomeStageBar } from './HomeStageBar';
+import { useResolvedIsDark } from '../theme';
 import {
   Folder,
   Edit2,
@@ -36,10 +37,6 @@ import {
   LayoutGrid,
   ChevronLeft,
   ChevronRight,
-  Settings2,
-  ChevronDown,
-  EyeOff,
-  History as HistoryIcon,
 } from 'lucide-react';
 
 type ShortcutContextMenu = {
@@ -479,8 +476,12 @@ interface ShortcutsProps {
   desktopPageCount?: number;
   onUpdatePageCount?: (count: number) => void;
   /** 主屏内容三态；组件内只需区分「快捷方式 / 最近访问」，'off' 时本组件不会被渲染 */
-  homeContentMode?: HomeContentMode;
-  onUpdateHomeContentMode?: (mode: HomeContentMode) => void;
+  homeContentMode: HomeContentMode;
+  onUpdateHomeContentMode: (mode: HomeContentMode) => void;
+  /** 舞台宽度（布局空间 px，= 搜索框宽度），与最近访问共用同一数值 */
+  stageWidth: number;
+  /** 舞台宽度是否已测量完成；未完成前不得固化网格坐标 */
+  stageMeasured: boolean;
 }
 
 export const Shortcuts: React.FC<ShortcutsProps> = ({
@@ -498,9 +499,14 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
   onUpdatePageCount,
   homeContentMode,
   onUpdateHomeContentMode,
+  stageWidth,
+  stageMeasured,
 }) => {
   const t = i18n[language];
-  const isDark = theme === 'dark';
+  // 用真实生效值而非字面值：auto + 系统暗色时根节点已是 dark 主题，
+  // 若此处按 'auto' 走浅色分支，工具条（按生效值取暗色）与其正下方的图标网格
+  // 会分属两套配色，同一块舞台内忽明忽暗。
+  const isDark = useResolvedIsDark(theme);
   const [modalOpen, setModalOpen] = useState(false);
   const [editingShortcut, setEditingShortcut] = useState<SiteShortcut | null>(null);
   const [orderedShortcuts, setOrderedShortcuts] = useState<SiteShortcut[]>(shortcuts);
@@ -716,10 +722,11 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
   }, [draggedId]);
 
   /**
-   * 依据容器真实可用宽度推导列数 / 单元格宽度 / 间距，并写回 CSS 变量。
+   * 依据「舞台宽度」推导列数 / 单元格宽度 / 间距，并写回 CSS 变量。
    *
-   * 用 ResizeObserver 而不是只监听 window.resize：uiScale 变化、书签栏显隐、
-   * 抽屉开合都会改变可用宽度，这些都不必然触发 window.resize。
+   * 舞台宽度由 App 统一测量（= 搜索框宽度）后下发，最近访问共用同一数值，
+   * 因此两个状态的中央区域左右边界始终重合。组件内不再自行测量宽度：此前
+   * 快捷方式测搜索框、最近访问用响应式 max-width，切换时边界会跳变。
    *
    * 图标数量取「所有分页中最多的一页」（gridItemCountForLayout），而非当前页或
    * DOM 查询结果：前者保证切页时列数与网格宽度恒定，后者会把「添加快捷站点」
@@ -729,71 +736,43 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
     const area = areaRef.current;
     if (!area) return;
 
-    const apply = () => {
-      const scale = getUiScale();
-      // 宽度上限取「搜索框宽度」：快捷方式区域与搜索框左右对齐，不会比它更宽。
-      // 找不到搜索框时退回父容器宽度，保证仍有合理上限。
-      const searchForm = document.querySelector('.searchbox-slot-responsive form');
-      const parent = area.parentElement;
-      const hostWidth = searchForm
-        ? searchForm.getBoundingClientRect().width / scale
-        : parent
-          ? parent.getBoundingClientRect().width / scale
-          : window.innerWidth / scale;
-
-      if (window.innerWidth < DESKTOP_MIN_WIDTH) {
-        // 移动端：沿用 CSS 里的基础变量（4 列），JS 不干预
-        area.style.removeProperty('--shortcut-columns');
-        area.style.removeProperty('--shortcut-cell-width');
-        area.style.removeProperty('--shortcut-grid-gap');
-        area.style.removeProperty('--shortcut-area-width');
-        setDesktopColumns(MOBILE_COLUMNS);
-        setLayoutMeasured(true);
-        return;
-      }
-
-      // 读取 CSS 中未被 JS 覆盖的基础值（--shortcut-cell-base / --shortcut-grid-gap-base
-      // 只在样式表里定义）。绝不能读 JS 自己写回的 --shortcut-columns /
-      // --shortcut-cell-width / --shortcut-grid-gap，否则每轮测量都会在上一次的
-      // 结果上继续累加（棘轮效应）。
-      const cs = getComputedStyle(area);
-      const baseCell = parseFloat(cs.getPropertyValue('--shortcut-cell-base'));
-      const baseGap = parseFloat(cs.getPropertyValue('--shortcut-grid-gap-base'));
-
-      const layout = computeGridLayout(
-        hostWidth,
-        Math.max(1, gridItemCountForLayout),
-        baseCell,
-        baseGap
-      );
-      area.style.setProperty('--shortcut-columns', String(layout.columns));
-      area.style.setProperty('--shortcut-cell-width', `${layout.cell}px`);
-      area.style.setProperty('--shortcut-grid-gap', `${layout.gap}px`);
-      // 区域整体宽度锁定为搜索框宽度，使工具栏两端与搜索框对齐
-      area.style.setProperty('--shortcut-area-width', `${hostWidth}px`);
-      setDesktopColumns(layout.columns);
+    if (window.innerWidth < DESKTOP_MIN_WIDTH) {
+      // 移动端：沿用 CSS 里的基础变量（4 列），JS 不干预
+      area.style.removeProperty('--shortcut-columns');
+      area.style.removeProperty('--shortcut-cell-width');
+      area.style.removeProperty('--shortcut-grid-gap');
+      setDesktopColumns(MOBILE_COLUMNS);
       setLayoutMeasured(true);
-    };
+      return;
+    }
 
-    apply();
-    const ro = new ResizeObserver(apply);
-    // 观察搜索框与父容器：两者任一变化（含 uiScale 变化）都要重新推导
-    const searchForm = document.querySelector('.searchbox-slot-responsive form');
-    if (searchForm) ro.observe(searchForm);
-    if (area.parentElement) ro.observe(area.parentElement);
-    window.addEventListener('resize', apply);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener('resize', apply);
-    };
-  }, [gridItemCountForLayout]);
+    // 宽度未就绪时不推导：此时的列数是粗估，固化坐标会把错误列数写进用户数据
+    if (!stageMeasured || stageWidth <= 0) return;
+
+    // 读取 CSS 中未被 JS 覆盖的基础值（--shortcut-cell-base / --shortcut-grid-gap-base
+    // 只在样式表里定义）。绝不能读 JS 自己写回的 --shortcut-columns /
+    // --shortcut-cell-width / --shortcut-grid-gap，否则每轮测量都会在上一次的
+    // 结果上继续累加（棘轮效应）。
+    const cs = getComputedStyle(area);
+    const baseCell = parseFloat(cs.getPropertyValue('--shortcut-cell-base'));
+    const baseGap = parseFloat(cs.getPropertyValue('--shortcut-grid-gap-base'));
+
+    const layout = computeGridLayout(
+      stageWidth,
+      Math.max(1, gridItemCountForLayout),
+      baseCell,
+      baseGap
+    );
+    area.style.setProperty('--shortcut-columns', String(layout.columns));
+    area.style.setProperty('--shortcut-cell-width', `${layout.cell}px`);
+    area.style.setProperty('--shortcut-grid-gap', `${layout.gap}px`);
+    setDesktopColumns(layout.columns);
+    setLayoutMeasured(true);
+  }, [stageWidth, stageMeasured, gridItemCountForLayout]);
   const clickUnlockTimerRef = React.useRef<number | null>(null);
   const [contextMenu, setContextMenu] = useState<ShortcutContextMenu | null>(null);
   const [gridContextMenu, setGridContextMenu] = useState<GridContextMenu | null>(null);
   const [pendingAddPosition, setPendingAddPosition] = useState<{ column: number; row: number } | null>(null);
-  // 「快捷方式设置」下拉菜单开关（锚定工具栏左侧按钮）
-  const [toolbarMenuOpen, setToolbarMenuOpen] = useState<boolean>(false);
-
   // 文件夹展开气泡状态
   const [activeFolderId, setActiveFolderId] = useState<string | null>(null);
   const [isRenamingFolder, setIsRenamingFolder] = useState<boolean>(false);
@@ -828,12 +807,11 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
   }, []);
 
   React.useEffect(() => {
-    if (!contextMenu && !gridContextMenu && !pageDotContextMenu && !toolbarMenuOpen) return;
+    if (!contextMenu && !gridContextMenu && !pageDotContextMenu) return;
     const closeMenu = () => {
       setContextMenu(null);
       setGridContextMenu(null);
       setPageDotContextMenu(null);
-      setToolbarMenuOpen(false);
     };
     window.addEventListener('click', closeMenu);
     window.addEventListener('blur', closeMenu);
@@ -845,7 +823,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
       window.removeEventListener('resize', closeMenu);
       window.removeEventListener('scroll', closeMenu, true);
     };
-  }, [contextMenu, gridContextMenu, pageDotContextMenu, toolbarMenuOpen]);
+  }, [contextMenu, gridContextMenu, pageDotContextMenu]);
 
   React.useEffect(() => {
     orderedShortcutsRef.current = orderedShortcuts;
@@ -987,11 +965,20 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
    * 用户把窗口拉宽后会看到「一行明明放得下 8 个却只排了 7 个、最后 1 个孤零零
    * 掉到第二行」—— 因为旧坐标是按更少的列算出来的。
    *
-   * 保守策略：**只在重排能实际减少占用行数时才动手**（即消除"明明放得下却换行"
-   * 的空隙）。当用户刻意留白、重排并不会更省行时，完全保持其手工摆放不动。
+   * **必须在自动补位关闭时直接退出。** 这里的紧凑化（把图标尽量往左上角压）
+   * 与自动补位是同一件事，只是触发时机不同：自动补位由用户开关驱动，这里由
+   * 测量/列数变化驱动。正因为它挂在「首次测量完成」上，此前每次刷新页面都会
+   * 执行一次，把用户刻意留白的位置（如第 1 行只摆 6 个、后 2 个另起一行）
+   * 强行压成一行并写回存储 —— 用户看到的现象就是「没开自动补位却仍在自动补位」，
+   * 且刷新即触发，手工摆回去下次刷新又被打乱。
+   *
+   * 关闭自动补位意味着用户要求**严格保留自己摆放的坐标**，任何改写都是越权。
+   * 列数缩小时若有坐标越界（如原本 8 列、缩到 4 列），显示层由
+   * resolveGridPositions 以 autoFill=false 分支兜底重新安排空位，无需写回数据。
    */
   const reflow = React.useCallback(() => {
     if (isDraggingRef.current) return;
+    if (!autoFill) return;
 
     const items = orderedShortcutsRef.current;
     const pageItems = items.filter((s) => (s.gridPosition?.page || 1) === currentPage);
@@ -1041,7 +1028,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
     orderedShortcutsRef.current = next;
     setOrderedShortcuts(next);
     onReorderShortcuts?.(next);
-  }, [currentPage, desktopColumns, onReorderShortcuts]);
+  }, [currentPage, desktopColumns, onReorderShortcuts, autoFill]);
 
   // 列数变化时重排（窗口缩放 / 拉宽）
   React.useEffect(() => {
@@ -2268,231 +2255,14 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
         </>
       ) : null}
 
-      {/* 快捷方式工具栏：左侧「快捷方式设置」、右侧「添加快捷站点」 */}
-      <div className="shortcut-toolbar mb-3 flex items-center justify-between gap-3 select-none">
-        {/* 快捷方式设置菜单 */}
-        <div className="relative">
-          <button
-            type="button"
-            aria-haspopup="menu"
-            aria-expanded={toolbarMenuOpen}
-            aria-label={t.shortcutSettings}
-            title={t.shortcutSettings}
-            onClick={(e) => {
-              e.stopPropagation();
-              setToolbarMenuOpen((prev) => !prev);
-            }}
-            className={`flex h-8 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-medium shadow-sm backdrop-blur-xl transition-all cursor-pointer active:scale-95 ${
-              toolbarMenuOpen
-                ? isDark
-                  ? 'border-white/35 bg-white/15 text-white'
-                  : 'border-black/25 bg-white/85 text-neutral-900'
-                : isDark
-                ? 'border-white/15 bg-white/[0.06] text-white/75 hover:border-white/35 hover:bg-white/12 hover:text-white'
-                : 'border-black/12 bg-white/50 text-neutral-600 hover:border-black/25 hover:bg-white/80 hover:text-neutral-900'
-            }`}
-          >
-            <Settings2 size={14} strokeWidth={2.2} className="shrink-0" />
-            <span>{t.shortcutSettings}</span>
-            <ChevronDown
-              size={13}
-              strokeWidth={2.4}
-              className={`shrink-0 transition-transform duration-200 ${toolbarMenuOpen ? 'rotate-180' : ''}`}
-            />
-          </button>
-
-            {toolbarMenuOpen && (
-              <div
-                role="menu"
-                aria-label={t.shortcutSettings}
-                className={`absolute left-0 top-[calc(100%+8px)] z-[70] w-[264px] overflow-hidden rounded-2xl border p-1.5 shadow-2xl backdrop-blur-2xl ${
-                  isDark
-                    ? 'border-white/15 bg-[#16181f]/95 text-white shadow-black/60'
-                    : 'border-black/10 bg-white/95 text-neutral-800 shadow-neutral-900/15'
-                }`}
-                onClick={(e) => e.stopPropagation()}
-                onContextMenu={(e) => e.preventDefault()}
-              >
-                {/* 1. 主屏展示内容：关闭 / 快捷方式 / 最近访问 */}
-                <div className="px-2.5 pt-1.5 pb-2">
-                  <div className="text-[11px] font-semibold opacity-55 mb-1.5">{t.homeContentMode}</div>
-                  <div className={`flex items-center gap-0.5 rounded-xl p-0.5 ${isDark ? 'bg-white/8' : 'bg-black/6'}`}>
-                    {([
-                      { value: 'off' as HomeContentMode, label: t.shortcutModeOff, Icon: EyeOff },
-                      { value: 'shortcuts' as HomeContentMode, label: t.homeContentShortcuts, Icon: LayoutGrid },
-                      { value: 'recent' as HomeContentMode, label: t.homeContentRecent, Icon: HistoryIcon },
-                    ]).map(({ value, label, Icon }) => {
-                      const active = (homeContentMode ?? 'shortcuts') === value;
-                      return (
-                        <button
-                          key={value}
-                          type="button"
-                          role="menuitemradio"
-                          aria-checked={active}
-                          onClick={() => {
-                            onUpdateHomeContentMode?.(value);
-                            setToolbarMenuOpen(false);
-                          }}
-                          className={`flex flex-1 items-center justify-center gap-1 rounded-[9px] px-1.5 py-1.5 text-[11px] font-medium transition-all cursor-pointer ${
-                            active
-                              ? isDark
-                                ? 'bg-white/18 text-white shadow-sm'
-                                : 'bg-white text-blue-600 shadow-sm'
-                              : 'opacity-65 hover:opacity-100'
-                          }`}
-                        >
-                          <Icon size={12} strokeWidth={2.3} className="shrink-0" />
-                          <span className="truncate">{label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                <div className="my-1 h-px bg-black/5 dark:bg-white/10" />
-
-                {/* 2. 自动补位开关 */}
-                {onToggleAutoFill && (
-                  <button
-                    type="button"
-                    role="menuitemcheckbox"
-                    aria-checked={autoFill}
-                    className="flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/10"
-                    onClick={() => {
-                      if (autoFill) {
-                        // 关闭自动补位前，确保当前页补位坐标固化锁定
-                        const locked = orderedShortcuts.map((item) => {
-                          if ((item.gridPosition?.page || 1) !== currentPage) return item;
-                          const pos = gridPositions.get(item.id);
-                          return {
-                            ...item,
-                            gridPosition: pos ? { ...pos, page: currentPage } : item.gridPosition || null,
-                          };
-                        });
-                        orderedShortcutsRef.current = locked;
-                        setOrderedShortcuts(locked);
-                        onReorderShortcuts?.(locked);
-                      } else {
-                        const currentItems = orderedShortcuts.filter((s) => (s.gridPosition?.page || 1) === currentPage);
-                        const otherItems = orderedShortcuts.filter((s) => (s.gridPosition?.page || 1) !== currentPage);
-                        const sorted = [...currentItems].sort((a, b) => {
-                          const posA = a.gridPosition || { column: 1, row: 1 };
-                          const posB = b.gridPosition || { column: 1, row: 1 };
-                          if (posA.row !== posB.row) return posA.row - posB.row;
-                          return posA.column - posB.column;
-                        });
-                        const compactedPositions = resolveGridPositions(sorted, desktopColumns, true);
-                        const nextCurrent = sorted.map((item) => ({
-                          ...item,
-                          gridPosition: compactedPositions.get(item.id)
-                            ? { ...compactedPositions.get(item.id)!, page: currentPage }
-                            : null,
-                        }));
-                        const next = [...nextCurrent, ...otherItems];
-                        orderedShortcutsRef.current = next;
-                        setOrderedShortcuts(next);
-                        onReorderShortcuts?.(next);
-                      }
-                      onToggleAutoFill(!autoFill);
-                      setToolbarMenuOpen(false);
-                    }}
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <LayoutGrid size={15} className="shrink-0 text-neutral-500 dark:text-neutral-400" />
-                      <span className="truncate font-medium">{t.shortcutAutoFillMenu || '自动补位'}</span>
-                    </div>
-                    {autoFill ? (
-                      <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] bg-blue-500 text-white shadow-xs">
-                        <Check size={12} strokeWidth={3} />
-                      </div>
-                    ) : (
-                      <div className="h-4 w-4 shrink-0 rounded-[5px] border border-neutral-400/60 dark:border-neutral-500/60 bg-transparent" />
-                    )}
-                  </button>
-                )}
-
-                {/* 3. 紧凑重整图标 */}
-                <button
-                  type="button"
-                  role="menuitem"
-                  className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/10"
-                  onClick={() => {
-                    handleCompactGrid();
-                    setToolbarMenuOpen(false);
-                  }}
-                >
-                  <Maximize2 size={15} className="shrink-0" />
-                  <span>{t.compactGridNow}</span>
-                </button>
-
-                <div className="my-1 h-px bg-black/5 dark:bg-white/10" />
-
-                {/* 4. 桌面分页管理 */}
-                <div className="px-2.5 pb-1 pt-0.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="text-[11px] font-semibold opacity-55">{t.desktopPagesLabel}</div>
-                    <div className="text-[11px] tabular-nums opacity-55">
-                      {t.desktopPagesSummary
-                        .replace('{total}', String(totalPages))
-                        .replace('{used}', String(maxUsedPage))}
-                    </div>
-                  </div>
-                  <div className="mt-1.5 flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={totalPages >= 9}
-                      onClick={() => {
-                        handleAddPage();
-                        setToolbarMenuOpen(false);
-                      }}
-                      className={`flex flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-lg border px-1.5 py-1.5 text-[10.5px] font-medium transition-all ${
-                        totalPages >= 9
-                          ? 'cursor-not-allowed opacity-40'
-                          : 'cursor-pointer hover:bg-black/5 dark:hover:bg-white/10'
-                      } ${isDark ? 'border-white/12' : 'border-black/10'}`}
-                    >
-                      <Plus size={12} strokeWidth={2.5} />
-                      <span>{t.addDesktopPage}</span>
-                    </button>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={totalPages <= 1}
-                      onClick={() => {
-                        handleDeletePage(currentPage);
-                        setToolbarMenuOpen(false);
-                      }}
-                      className={`flex flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-lg border px-1.5 py-1.5 text-[10.5px] font-medium transition-all ${
-                        totalPages <= 1
-                          ? 'cursor-not-allowed opacity-40'
-                          : 'cursor-pointer text-red-500 hover:bg-red-500/10'
-                      } ${isDark ? 'border-white/12' : 'border-black/10'}`}
-                    >
-                      <Trash2 size={12} strokeWidth={2.3} />
-                      <span>{t.deleteDesktopPage}</span>
-                    </button>
-                  </div>
-                  {totalPages > maxUsedPage && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      onClick={() => {
-                        handleCleanEmptyPages();
-                        setToolbarMenuOpen(false);
-                      }}
-                      className="mt-1.5 flex w-full items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium text-amber-500 transition-colors cursor-pointer hover:bg-amber-500/10"
-                    >
-                      <Trash2 size={12} strokeWidth={2.3} />
-                      <span>{t.cleanEmptyDesktopPages}</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* 右侧添加入口 */}
+      {/* 舞台工具条：三态开关 + 快捷方式专属设置（与最近访问共用同一组件） */}
+      <HomeStageBar
+        language={language}
+        theme={theme}
+        blur={glassStyle.blur}
+        homeContentMode={homeContentMode}
+        onUpdateHomeContentMode={onUpdateHomeContentMode}
+        actions={
           <button
             type="button"
             onClick={() => handleOpenAdd()}
@@ -2507,10 +2277,153 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
             <Plus size={14} strokeWidth={2.5} className="shrink-0 transition-transform duration-200 group-hover/addbtn:rotate-90" />
             <span>{t.addShortcut}</span>
           </button>
-      </div>
+        }
+      >
+        {(close) => (
+          <>
+            {/* 自动补位开关 */}
+            {onToggleAutoFill && (
+              <button
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={autoFill}
+                className="flex w-full cursor-pointer items-center justify-between gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+                onClick={() => {
+                  if (autoFill) {
+                    // 关闭自动补位前，确保当前页补位坐标固化锁定
+                    const locked = orderedShortcuts.map((item) => {
+                      if ((item.gridPosition?.page || 1) !== currentPage) return item;
+                      const pos = gridPositions.get(item.id);
+                      return {
+                        ...item,
+                        gridPosition: pos ? { ...pos, page: currentPage } : item.gridPosition || null,
+                      };
+                    });
+                    orderedShortcutsRef.current = locked;
+                    setOrderedShortcuts(locked);
+                    onReorderShortcuts?.(locked);
+                  } else {
+                    const currentItems = orderedShortcuts.filter((s) => (s.gridPosition?.page || 1) === currentPage);
+                    const otherItems = orderedShortcuts.filter((s) => (s.gridPosition?.page || 1) !== currentPage);
+                    const sorted = [...currentItems].sort((a, b) => {
+                      const posA = a.gridPosition || { column: 1, row: 1 };
+                      const posB = b.gridPosition || { column: 1, row: 1 };
+                      if (posA.row !== posB.row) return posA.row - posB.row;
+                      return posA.column - posB.column;
+                    });
+                    const compactedPositions = resolveGridPositions(sorted, desktopColumns, true);
+                    const nextCurrent = sorted.map((item) => ({
+                      ...item,
+                      gridPosition: compactedPositions.get(item.id)
+                        ? { ...compactedPositions.get(item.id)!, page: currentPage }
+                        : null,
+                    }));
+                    const next = [...nextCurrent, ...otherItems];
+                    orderedShortcutsRef.current = next;
+                    setOrderedShortcuts(next);
+                    onReorderShortcuts?.(next);
+                  }
+                  onToggleAutoFill(!autoFill);
+                  close();
+                }}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <LayoutGrid size={15} className="shrink-0 text-neutral-500 dark:text-neutral-400" />
+                  <span className="truncate font-medium">{t.shortcutAutoFillMenu || '自动补位'}</span>
+                </div>
+                {autoFill ? (
+                  <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] bg-blue-500 text-white shadow-xs">
+                    <Check size={12} strokeWidth={3} />
+                  </div>
+                ) : (
+                  <div className="h-4 w-4 shrink-0 rounded-[5px] border border-neutral-400/60 dark:border-neutral-500/60 bg-transparent" />
+                )}
+              </button>
+            )}
+
+            {/* 紧凑重整图标 */}
+            <button
+              type="button"
+              role="menuitem"
+              className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/10"
+              onClick={() => {
+                handleCompactGrid();
+                close();
+              }}
+            >
+              <Maximize2 size={15} className="shrink-0" />
+              <span>{t.compactGridNow}</span>
+            </button>
+
+            <div className="my-1 h-px bg-black/5 dark:bg-white/10" />
+
+            {/* 桌面分页管理 */}
+            <div className="px-2.5 pb-1 pt-0.5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="text-[11px] font-semibold opacity-55">{t.desktopPagesLabel}</div>
+                <div className="text-[11px] tabular-nums opacity-55">
+                  {t.desktopPagesSummary
+                    .replace('{total}', String(totalPages))
+                    .replace('{used}', String(maxUsedPage))}
+                </div>
+              </div>
+              <div className="mt-1.5 flex items-center gap-1.5">
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={totalPages >= 9}
+                  onClick={() => {
+                    handleAddPage();
+                    close();
+                  }}
+                  className={`flex flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-lg border px-1.5 py-1.5 text-[10.5px] font-medium transition-all ${
+                    totalPages >= 9
+                      ? 'cursor-not-allowed opacity-40'
+                      : 'cursor-pointer hover:bg-black/5 dark:hover:bg-white/10'
+                  } ${isDark ? 'border-white/12' : 'border-black/10'}`}
+                >
+                  <Plus size={12} strokeWidth={2.5} />
+                  <span>{t.addDesktopPage}</span>
+                </button>
+                <button
+                  type="button"
+                  role="menuitem"
+                  disabled={totalPages <= 1}
+                  onClick={() => {
+                    handleDeletePage(currentPage);
+                    close();
+                  }}
+                  className={`flex flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-lg border px-1.5 py-1.5 text-[10.5px] font-medium transition-all ${
+                    totalPages <= 1
+                      ? 'cursor-not-allowed opacity-40'
+                      : 'cursor-pointer text-red-500 hover:bg-red-500/10'
+                  } ${isDark ? 'border-white/12' : 'border-black/10'}`}
+                >
+                  <Trash2 size={12} strokeWidth={2.3} />
+                  <span>{t.deleteDesktopPage}</span>
+                </button>
+              </div>
+              {totalPages > maxUsedPage && (
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    handleCleanEmptyPages();
+                    close();
+                  }}
+                  className="mt-1.5 flex w-full items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium text-amber-500 transition-colors cursor-pointer hover:bg-amber-500/10"
+                >
+                  <Trash2 size={12} strokeWidth={2.3} />
+                  <span>{t.cleanEmptyDesktopPages}</span>
+                </button>
+              )}
+            </div>
+          </>
+        )}
+      </HomeStageBar>
       <div
         ref={gridRef}
-        className={`shortcut-grid ${
+        className={`shortcut-grid home-stage-content ${
           !draggedId && slideDirection === 'left' ? 'desktop-page-slide-left' : ''
         } ${
           !draggedId && slideDirection === 'right' ? 'desktop-page-slide-right' : ''

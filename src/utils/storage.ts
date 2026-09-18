@@ -193,24 +193,38 @@ function normalizeSettings(raw: unknown): AppSettings {
    * 主屏内容三态：关闭 / 快捷方式 / 最近访问。
    *
    * 旧版本把它拆成两个设置（homeContentMode: shortcuts|recent，以及
-   * shortcutMode: off|compact|desktop），这里做一次迁移：
-   *   - 旧 shortcutMode === 'off'            -> 'off'（快捷方式被关掉）
-   *   - 旧 homeContentMode === 'recent'      -> 'recent'
-   *   - 其余（desktop / compact / 未设置）    -> 'shortcuts'
-   * 其中已废弃的 'compact'（简洁模式）并入快捷方式，因为其布局已并入桌面网格。
-   * 兼容更早的 'bookmarks' 取值。
+   * shortcutMode: off|compact|desktop），这里做一次迁移。难点在于**区分「旧数据」
+   * 与「已被新版归一化过的数据」**：新版会把废弃字段一并写回（见下方 return），
+   * 好让降级到旧版本时行为不突变；但若迁移逻辑无条件采信旧字段，就会读到自己
+   * 上一轮写出的 shortcutMode: 'off'，把用户刚选的「最近访问」又压回「关闭」——
+   * 一次写成 off 之后就再也切不出去。
+   *
+   * 因此以「三个字段是否自洽」作为判据：新版写入时 homeContentMode 完全决定另外
+   * 两个字段，自洽即说明这份配置来自新版，直接用 homeContentMode；不自洽才是尚未
+   * 迁移的旧数据，才轮到旧字段参与推断。
    */
+  const NEW_HOME_CONTENT_MODES: readonly string[] = ['off', 'shortcuts', 'recent'];
+  const rawHomeContentMode = (loaded as { homeContentMode?: unknown }).homeContentMode;
+  const isNewHomeContentMode =
+    typeof rawHomeContentMode === 'string' && NEW_HOME_CONTENT_MODES.includes(rawHomeContentMode);
+  const isNormalizedByCurrentVersion =
+    isNewHomeContentMode &&
+    loaded.shortcutMode !== undefined &&
+    loaded.shortcutMode === (rawHomeContentMode === 'off' ? 'off' : 'desktop') &&
+    loaded.showQuickLinks === (rawHomeContentMode !== 'off');
+
   const legacyShortcutMode = loaded.shortcutMode;
-  const legacyRecent =
-    loaded.homeContentMode === 'recent' || (loaded as any).homeContentMode === 'bookmarks';
   let homeContentMode: HomeContentMode;
-  if (loaded.homeContentMode === 'off') {
-    homeContentMode = 'off';
-  } else if (legacyShortcutMode === 'off') {
-    homeContentMode = 'off';
-  } else if (legacyRecent) {
+  if (isNormalizedByCurrentVersion) {
+    homeContentMode = rawHomeContentMode as HomeContentMode;
+  } else if (rawHomeContentMode === 'bookmarks') {
     homeContentMode = 'recent';
-  } else if (loaded.showQuickLinks === false && legacyShortcutMode === undefined) {
+  } else if (legacyShortcutMode === 'off') {
+    // 旧版把快捷方式关掉时，主屏中央实际什么都没有
+    homeContentMode = 'off';
+  } else if (rawHomeContentMode === 'recent') {
+    homeContentMode = 'recent';
+  } else if (loaded.showQuickLinks === false) {
     // 更早版本用 showQuickLinks 表示快捷方式的开关
     homeContentMode = 'off';
   } else {
@@ -228,11 +242,26 @@ function normalizeSettings(raw: unknown): AppSettings {
     recentVerticalOffset: typeof loaded.recentVerticalOffset === 'number' && !Number.isNaN(loaded.recentVerticalOffset) ? loaded.recentVerticalOffset : 0,
     searchVerticalOffset: typeof loaded.searchVerticalOffset === 'number' && !Number.isNaN(loaded.searchVerticalOffset) ? loaded.searchVerticalOffset : 0,
     // 继续写回旧字段，保证降级到旧版本时行为不突变
-    shortcutMode: homeContentMode === 'off' ? 'off' : 'desktop',
-    showQuickLinks: homeContentMode !== 'off',
+    ...deprecatedHomeContentMirror(homeContentMode),
     wallpaper: sanitizeWallpaperConfig(loaded.wallpaper),
     clockStyle: { ...DEFAULT_SETTINGS.clockStyle, ...(loaded.clockStyle || {}) },
     glassStyle: { ...DEFAULT_SETTINGS.glassStyle, ...(loaded.glassStyle || {}) },
+  };
+}
+
+/**
+ * 三态与两个废弃字段的镜像关系（唯一来源）。
+ *
+ * 写入与归一化必须共用此函数：只要有一处漏写或写歪，归一化就会认不出「这份配置
+ * 已由新版写就」，转而采信上一轮的旧字段，把用户的选择压回旧值。
+ */
+export function deprecatedHomeContentMirror(
+  mode: HomeContentMode
+): Pick<AppSettings, 'homeContentMode' | 'showQuickLinks' | 'shortcutMode'> {
+  return {
+    homeContentMode: mode,
+    showQuickLinks: mode !== 'off',
+    shortcutMode: mode === 'off' ? 'off' : 'desktop',
   };
 }
 

@@ -9,7 +9,7 @@ import {
   ReloadOutlined,
   BookOutlined
 } from '@ant-design/icons';
-import { AppSettings, SiteShortcut, SearchEngineId, CountdownItem } from './types';
+import { AppSettings, SiteShortcut, SearchEngineId, CountdownItem, HomeContentMode } from './types';
 import { 
   loadSettings, 
   saveSettings, 
@@ -22,6 +22,7 @@ import {
   isStorageHydrationDegraded,
   markStorageHydrated,
   isAuthoritativeStorageReadable,
+  deprecatedHomeContentMirror,
   SETTINGS_KEY,
   SHORTCUTS_KEY,
   SEARCH_HISTORY_KEY
@@ -44,6 +45,8 @@ import { Wallpaper } from './components/Wallpaper';
 import { Clock } from './components/Clock';
 import { SearchBox } from './components/SearchBox';
 import { Shortcuts } from './components/Shortcuts';
+import { HomeStageBar } from './components/HomeStageBar';
+import { useHomeStageWidth } from './utils/homeStage';
 import { TopBookmarkBar } from './components/TopBookmarkBar';
 import { Weather } from './components/Weather';
 import { SettingsModal } from './components/SettingsModal';
@@ -522,6 +525,31 @@ export const App: React.FC = () => {
     handleUpdateSettings({ pinnedRecentUrls: nextPinned });
   };
 
+  /**
+   * 主屏内容三态切换的唯一写入口。
+   *
+   * 三个状态（关闭 / 快捷方式 / 最近访问）的入口分散在共用工具条与设置面板，
+   * 但都必须连同两个废弃字段一起写回：归一化会读取它们来识别「这份配置是否出自
+   * 新版」，只改 homeContentMode 而留下上一轮的旧值，会让归一化把用户的选择
+   * 判成旧数据并压回原状（表现为「切过去又自己跳回来」）。
+   */
+  const handleUpdateHomeContentMode = (homeContentMode: HomeContentMode) => {
+    handleUpdateSettings(deprecatedHomeContentMirror(homeContentMode));
+  };
+
+  /**
+   * 主屏中央舞台宽度：全页唯一来源（= 搜索框宽度）。
+   *
+   * 快捷方式与最近访问共用这块区域，宽度必须同源，否则切换状态时左右边界会跳变。
+   * `enabled` 要等配置水合完成：首帧 App 返回 null，此刻量不到搜索框，只能拿到
+   * 视口回退值；用它去推导网格会把错误宽度固化进布局。
+   */
+  const homeStageRef = React.useRef<HTMLDivElement | null>(null);
+  const { width: homeStageWidth, measured: homeStageMeasured } = useHomeStageWidth(
+    homeStageRef,
+    initialized && !!settings
+  );
+
   if (!initialized || !settings) return null;
 
   const isDark =
@@ -758,9 +786,17 @@ export const App: React.FC = () => {
             />
           </div>
 
-          {/* Main Content Area - 快捷方式 vs 最近访问卡片式流 */}
-          {(settings.homeContentMode ?? 'shortcuts') === 'shortcuts' && (
-            <div className="w-full flex justify-center flex-shrink-0 min-h-[96px]">
+          {/* Main Content Area - 快捷方式 / 最近访问 共用同一舞台（宽度同源 = 搜索框） */}
+          <div
+            ref={homeStageRef}
+            className="home-stage-slot w-full flex justify-center flex-shrink-0"
+            style={
+              homeStageMeasured && homeStageWidth > 0
+                ? ({ '--home-stage-width': `${homeStageWidth}px` } as React.CSSProperties)
+                : undefined
+            }
+          >
+            {(settings.homeContentMode ?? 'shortcuts') === 'shortcuts' && (
               <Shortcuts
                 shortcuts={shortcuts}
                 language={settings.language}
@@ -774,23 +810,14 @@ export const App: React.FC = () => {
                 onToggleAutoFill={(autoFill) => handleUpdateSettings({ shortcutAutoFill: autoFill })}
                 desktopPageCount={settings.desktopPageCount || 1}
                 onUpdatePageCount={(count) => handleUpdateSettings({ desktopPageCount: count })}
-                homeContentMode={settings.homeContentMode}
-                onUpdateHomeContentMode={(homeContentMode) => handleUpdateSettings({
-                  homeContentMode,
-                  showQuickLinks: homeContentMode !== 'off',
-                })}
+                homeContentMode="shortcuts"
+                onUpdateHomeContentMode={handleUpdateHomeContentMode}
+                stageWidth={homeStageWidth}
+                stageMeasured={homeStageMeasured}
               />
-            </div>
-          )}
+            )}
 
-          {(settings.homeContentMode ?? 'shortcuts') === 'recent' && (
-            <div
-              className="recent-cards-slot w-full flex justify-center flex-shrink-0 min-h-[110px]"
-              style={{
-                transform: `translateY(${settings.recentVerticalOffset || 0}px)`,
-                transition: 'transform 0.25s cubic-bezier(0.2, 0, 0, 1)',
-              }}
-            >
+            {(settings.homeContentMode ?? 'shortcuts') === 'recent' && (
               <RecentCards
                 language={settings.language}
                 theme={settings.theme}
@@ -800,9 +827,22 @@ export const App: React.FC = () => {
                 verticalOffset={settings.recentVerticalOffset || 0}
                 onUpdateVerticalOffset={(val) => handleUpdateSettings({ recentVerticalOffset: val })}
                 onTogglePin={handleTogglePinRecent}
+                homeContentMode="recent"
+                onUpdateHomeContentMode={handleUpdateHomeContentMode}
               />
-            </div>
-          )}
+            )}
+
+            {(settings.homeContentMode ?? 'shortcuts') === 'off' && (
+              <HomeStageBar
+                language={settings.language}
+                theme={settings.theme}
+                blur={settings.glassStyle.blur}
+                homeContentMode="off"
+                onUpdateHomeContentMode={handleUpdateHomeContentMode}
+                ghost
+              />
+            )}
+          </div>
         </main>
 
         <UtilityDrawer

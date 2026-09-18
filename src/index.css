@@ -614,8 +614,8 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
 /* 快捷方式拖拽意图反馈：边缘表示排序插入，中心呼吸光环表示文件夹吸附。 */
 
 /* 快捷方式区域的尺寸变量。
-   宽度上限为「搜索框宽度」（见下方 .shortcut-area 规则），因此快捷方式区域
-   永远不会比搜索框更宽，两者的左右边界对齐。
+   宽度上限为「搜索框宽度」（由 .home-stage-shell 分组统一约束，见文件末尾），
+   因此快捷方式区域永远不会比搜索框更宽，两者的左右边界对齐。
    此前桌面网格被 max-w-[680px] + 固定 7 列写死：1600px 窗口两侧各空出约
    460px，1874px 更是各空 597px，明明能一行放下的图标被迫换行。
    注意这里用 --viewport-width（已除以缩放倍数）而非 100vw：
@@ -635,23 +635,12 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
   --shortcut-columns: 4;
   --shortcut-rows: 3;
   --shortcut-row-height: 80px;
-  /* 桌面下由 JS 写入真实搜索框宽度，使区域/工具栏与搜索框两端对齐 */
-  --shortcut-area-width: 100%;
 }
 
-/* 区域宽度 = 搜索框宽度（由 JS 注入 --shortcut-area-width），
+/* 区域宽度 = 搜索框宽度（由 App 测量后写入 --home-stage-width），
    因此工具栏的「快捷方式设置 / 添加快捷站点」两端始终与搜索框左右对齐；
-   网格自身按 cols*cell+(cols-1)*gap 定宽并居中，图标少时不会散得过开。 */
-.shortcut-area {
-  max-width: var(--shortcut-area-width, 100%);
-  margin-inline: auto;
-}
+   宽度规则统一在下方 .home-stage-shell 分组中定义。 */
 
-/* 固定快捷方式网格：移动端 4 列；桌面列数与「列」间距由 JS 按「不超过搜索框宽度」
-   推导后以 --shortcut-columns / --shortcut-grid-gap 注入（见 Shortcuts.tsx）。
-   单元格宽度只在必要时小幅收紧（下限保护），以免破坏缩放的比例关系。
-   注意这里用 --viewport-width（已除以缩放倍数）而非 100vw：
-   zoom 生效后 100vw 仍返回未缩放的物理视口宽度，会算偏单元格与间距。 */
 .shortcut-grid {
   width: calc(var(--shortcut-columns) * var(--shortcut-cell-width) + (var(--shortcut-columns) - 1) * var(--shortcut-grid-gap));
   height: calc(var(--shortcut-rows) * var(--shortcut-row-height) + (var(--shortcut-rows) - 1) * var(--shortcut-row-gap));
@@ -784,10 +773,6 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
   margin-bottom: 14px !important;
 }
 
-.vh-compact .recent-cards-slot {
-  margin-top: 1.25rem !important;
-}
-
 .vh-compact .desktop-pagination-container {
   margin-top: 8px !important;
 }
@@ -896,10 +881,6 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
 
 .vh-tight .searchbox-slot-responsive {
   margin-bottom: 8px !important;
-}
-
-.vh-tight .recent-cards-slot {
-  margin-top: 0.5rem !important;
 }
 
 .vh-tight .hitokoto-container {
@@ -1124,20 +1105,38 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
   box-shadow: 0 20px 48px -8px rgba(0, 0, 0, 0.18) !important;
 }
 
-/* 最近访问卡片流整体下沉排版（拉开呼吸间隙，随屏幕高度智能伸缩） */
-.recent-cards-slot {
-  margin-top: 3.5rem; /* ~56px 基础下沉间距 */
+/* ===== 主屏中央「舞台」：快捷方式与最近访问共用的协调基准 =====
+
+   两个状态交替占用同一块中央区域，因此必须共享三件事，否则切换时会「跳页」：
+     1. 宽度 —— 同为搜索框宽度（由 App 测量后写入 --home-stage-width）；
+     2. 工具条位置 —— 由共用的 HomeStageBar 渲染，两态天然同高同位；
+     3. 内容起始基线 —— 工具条下方间距同源，卡片与网格从同一条线开始。
+
+   此前三者各不相同：快捷方式锁搜索框宽度，最近访问用响应式 max-width（1874px
+   窗口下宽出近 600px）；最近访问的整块区域还额外下沉 56~112px，于是切换状态时
+   标题栏与内容同时错位，读起来像两个不相干的页面。 */
+.home-stage-slot {
+  --home-stage-width: 100%;
 }
 
-/* 大屏下沉间距按「真实布局视口高度」判定（消费 JS 打标），
-   不再使用 @media (min-height)，避免缩放后把矮布局误判为大屏。 */
-.vh-tall .recent-cards-slot {
-  margin-top: 5.5rem; /* ~88px 常规 1080p 桌面屏幕舒适沉淀间距 */
+/* 舞台内的各状态容器都把宽度收敛到搜索框宽度，左右边界与搜索框对齐。 */
+.home-stage-shell,
+.recent-cards-stage,
+.shortcut-area {
+  width: 100%;
+  max-width: var(--home-stage-width, 100%);
+  margin-inline: auto;
 }
 
-.vh-extra-tall .recent-cards-slot {
-  margin-top: 7rem; /* ~112px 大屏/2K/4K 优雅下沉 */
+/* 工具条下方的内容起始间距：两态同源，保证卡片流与图标网格从同一基线开始，
+   且与工具栏此前的 12px 间距一致（工具条取代了最近访问原先 56~112px 的整块下沉，
+   那两个数值是用来在没有工具条时制造呼吸间隙的，现在由工具条本身提供）。 */
+.home-stage-content {
+  margin-top: 0.75rem;
 }
 
-
+.vh-compact .home-stage-content,
+.vh-tight .home-stage-content {
+  margin-top: 0.5rem;
+}
 

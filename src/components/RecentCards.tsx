@@ -1,9 +1,12 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Pin, RefreshCw, History, MoveVertical } from 'lucide-react';
-import { Tooltip, Popover, Slider } from 'antd';
-import { BrowserHistoryItem, Language, ThemeMode, GlassStyle } from '../types';
+import { Tooltip, Popover } from 'antd';
+import { BrowserHistoryItem, Language, ThemeMode, GlassStyle, HomeContentMode } from '../types';
 import { fetchBrowserHistory } from '../utils/history';
 import { ShortcutIconView } from './Shortcuts';
+import { HomeStageBar } from './HomeStageBar';
+import { useResolvedIsDark } from '../theme';
+import { VerticalOffsetControl } from './VerticalOffsetControl';
 import { parseDomainAndOrigin } from '../utils/favicon';
 import { i18n } from '../i18n';
 
@@ -16,53 +19,35 @@ export interface RecentCardsProps {
   verticalOffset?: number;
   onUpdateVerticalOffset?: (offset: number) => void;
   onTogglePin: (item: BrowserHistoryItem) => void;
+  /** 主屏内容三态；本组件即「最近访问」态，开关由共用工具条渲染以保持随时可切换 */
+  homeContentMode: HomeContentMode;
+  onUpdateHomeContentMode: (mode: HomeContentMode) => void;
 }
 
-// 柔和马卡龙外框主题调色板（完美还原设计稿细节）
-const CARD_THEMES = [
-  {
-    light: 'bg-[#edf3fc] border-[#d7e4f8] hover:border-blue-400 hover:shadow-blue-500/10', // 柔蓝
-    dark: 'bg-blue-950/25 border-blue-800/40 hover:border-blue-400/80 hover:shadow-blue-400/10',
-    accent: '#3b82f6',
-  },
-  {
-    light: 'bg-[#f8f0fc] border-[#ebd6f5] hover:border-purple-400 hover:shadow-purple-500/10', // 柔紫
-    dark: 'bg-purple-950/25 border-purple-800/40 hover:border-purple-400/80 hover:shadow-purple-400/10',
-    accent: '#a855f7',
-  },
-  {
-    light: 'bg-[#fcf0f2] border-[#f8d7dc] hover:border-rose-400 hover:shadow-rose-500/10', // 柔粉 / 玫瑰
-    dark: 'bg-rose-950/25 border-rose-800/40 hover:border-rose-400/80 hover:shadow-rose-400/10',
-    accent: '#f43f5e',
-  },
-  {
-    light: 'bg-[#fcf7e8] border-[#f7e6b8] hover:border-amber-400 hover:shadow-amber-500/10', // 柔金 / 奶黄
-    dark: 'bg-amber-950/25 border-amber-800/40 hover:border-amber-400/80 hover:shadow-amber-400/10',
-    accent: '#f59e0b',
-  },
-  {
-    light: 'bg-[#edfcf2] border-[#d3f5dd] hover:border-emerald-400 hover:shadow-emerald-500/10', // 柔绿
-    dark: 'bg-emerald-950/25 border-emerald-800/40 hover:border-emerald-400/80 hover:shadow-emerald-400/10',
-    accent: '#10b981',
-  },
-  {
-    light: 'bg-[#f2f4f7] border-[#dde2e8] hover:border-slate-400 hover:shadow-slate-500/10', // 柔灰 / 浅冷灰
-    dark: 'bg-slate-900/35 border-slate-700/45 hover:border-slate-400/80 hover:shadow-slate-400/10',
-    accent: '#64748b',
-  },
-];
-
 /**
- * 根据 URL 计算哈希并确定卡片主题色
+ * 卡片材质：与舞台其余内容块同源（快捷方式图标盒、搜索框、天气胶囊、
+ * 同组件的工具条按钮都使用这套中性毛玻璃）。
+ *
+ * 此前卡片是全站唯一的例外：按 URL 哈希在 6 套马卡龙色（蓝/紫/粉/金/绿/灰）
+ * 之间轮换底色。问题有两层：
+ *  1. 颜色与站点毫无关系 —— 同一个站点的不同路径会拿到不同颜色（实测同一
+ *     localhost 的三个页面分别是绿、黄、蓝），读起来像分类着色，实际纯属哈希噪音；
+ *  2. 材质与全站割裂 —— 卡片是唯一带彩色底的组件，与正上方同组件的工具条按钮
+ *     都不是一套材质，同一块舞台内出现两种视觉语言。
+ *
+ * 统一为中性玻璃后，卡片之间颜色恒定，且与快捷方式图标盒（两者在同一插槽
+ * 交替出现）读作同一套材质。悬停反馈改由描边增亮承担，不再靠换色。
  */
-function getCardTheme(url: string, index: number) {
-  let hash = 0;
-  for (let i = 0; i < url.length; i++) {
-    hash = (hash << 5) - hash + url.charCodeAt(i);
-    hash |= 0;
-  }
-  const themeIndex = Math.abs(hash + index) % CARD_THEMES.length;
-  return CARD_THEMES[themeIndex];
+function getCardMaterial(isDark: boolean, blur: number): React.CSSProperties {
+  return {
+    backgroundColor: isDark ? 'rgba(18, 22, 30, 0.65)' : 'rgba(255, 255, 255, 0.68)',
+    // 与 Shortcuts 图标盒同一手法：给模糊下限，低模糊设置下仍保证文字背后可读
+    backdropFilter: `blur(${Math.max(blur, 16)}px) saturate(180%)`,
+    WebkitBackdropFilter: `blur(${Math.max(blur, 16)}px) saturate(180%)`,
+    boxShadow: isDark
+      ? '0 10px 25px -5px rgba(0, 0, 0, 0.4), inset 0 1px 1px 0 rgba(255, 255, 255, 0.1)'
+      : '0 10px 25px -5px rgba(0, 0, 0, 0.08), inset 0 1px 1px 0 rgba(255, 255, 255, 0.8)',
+  };
 }
 
 /**
@@ -147,14 +132,14 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
   verticalOffset = 0,
   onUpdateVerticalOffset,
   onTogglePin,
+  homeContentMode,
+  onUpdateHomeContentMode,
 }) => {
   const t = i18n[language];
   const zh = language === 'zh';
-  const isDark =
-    theme === 'dark' ||
-    (theme === 'auto' &&
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-color-scheme: dark)').matches);
+  // 与工具条、快捷方式网格共用同一解析（theme.ts）：三态切换时中央区域
+  // 的配色判定必须同源，否则切换过程中会出现一闪而过的反色。
+  const isDark = useResolvedIsDark(theme);
 
   const [historyItems, setHistoryItems] = useState<BrowserHistoryItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -330,147 +315,96 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
   };
 
   return (
-    <div className="w-full max-w-5xl xl:max-w-6xl 2xl:max-w-7xl mx-auto px-2 select-none pointer-events-auto">
-      {/* 顶部标题栏：Recent / 最近访问（精致毛玻璃胶囊，全壁纸高清晰度对比） */}
-      <div className="flex items-center justify-between mb-3 px-1">
-        <div
-          className="inline-flex items-center gap-2 px-2.5 py-1 rounded-full border shadow-sm select-none transition-all"
-          style={{
-            backgroundColor: isDark ? 'rgba(0, 0, 0, 0.42)' : 'rgba(255, 255, 255, 0.68)',
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.55)',
-            backdropFilter: `blur(${glassStyle.blur}px)`,
-            WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
-          }}
-        >
-          <span className="text-xs font-semibold tracking-wide text-neutral-800 dark:text-neutral-100">
-            {t.recentTitle}
-          </span>
-          {displayItems.length > 0 && (
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-black/8 dark:bg-white/15 text-neutral-700 dark:text-neutral-200 font-semibold leading-none">
+    <div className="recent-cards-stage w-full select-none pointer-events-auto">
+      {/* 舞台工具条：与快捷方式共用同一组件，三态开关在此状态下同样可达 */}
+      <HomeStageBar
+        language={language}
+        theme={theme}
+        blur={glassStyle.blur}
+        homeContentMode={homeContentMode}
+        onUpdateHomeContentMode={onUpdateHomeContentMode}
+        badge={
+          displayItems.length > 0 ? (
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-black/8 dark:bg-white/15 font-semibold leading-none">
               {displayItems.length}
             </span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          {onUpdateVerticalOffset && (
-            <Popover
-              trigger="click"
-              placement="bottomRight"
-              arrow={false}
-              content={
-                <div className="w-60 p-1 flex flex-col gap-2.5 select-none">
-                  <div className="flex items-center justify-between border-b pb-1.5 dark:border-white/10">
-                    <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-100">
-                      {t.recentVerticalOffset}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => onUpdateVerticalOffset(0)}
-                      className="text-[11px] text-blue-500 hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer font-medium"
-                    >
-                      {zh ? '恢复默认' : 'Reset'}
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Slider
-                      className="flex-1 my-1"
-                      min={-120}
-                      max={120}
-                      step={2}
+          ) : undefined
+        }
+        actions={
+          <>
+            {onUpdateVerticalOffset && (
+              <Popover
+                trigger="click"
+                placement="bottomRight"
+                arrow={false}
+                content={
+                  <div className="w-60 p-1">
+                    <VerticalOffsetControl
+                      variant="popover"
+                      label={t.recentVerticalOffset}
                       value={verticalOffset}
-                      onChange={(v) => onUpdateVerticalOffset(v)}
-                      tooltip={{
-                        formatter: (val) => `${val && val > 0 ? `+${val}` : val ?? 0}px`,
+                      onChange={onUpdateVerticalOffset}
+                      resetTitle={zh ? '恢复默认' : 'Reset'}
+                      presetLabels={{
+                        top: t.recentVerticalTop,
+                        center: t.recentVerticalCenter,
+                        bottom: t.recentVerticalBottom,
                       }}
                     />
-                    <span className="text-xs font-mono w-12 text-right opacity-70">
-                      {verticalOffset > 0 ? `+${verticalOffset}` : verticalOffset}px
-                    </span>
                   </div>
+                }
+              >
+                <Tooltip title={zh ? '调节垂直位置' : 'Adjust vertical position'} placement="top">
+                  <button
+                    type="button"
+                    className={`w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer border shadow-sm ${
+                      verticalOffset !== 0
+                        ? 'text-blue-500 dark:text-blue-400 font-bold'
+                        : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white'
+                    } active:scale-95`}
+                    style={{
+                      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.42)' : 'rgba(255, 255, 255, 0.68)',
+                      borderColor: verticalOffset !== 0
+                        ? 'rgba(59, 130, 246, 0.5)'
+                        : isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.55)',
+                      backdropFilter: `blur(${glassStyle.blur}px)`,
+                      WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
+                    }}
+                  >
+                    <MoveVertical size={13} />
+                  </button>
+                </Tooltip>
+              </Popover>
+            )}
 
-                  <div className="grid grid-cols-3 gap-1 pt-0.5">
-                    <button
-                      type="button"
-                      onClick={() => onUpdateVerticalOffset(-40)}
-                      className={`text-[11px] py-1 px-1.5 rounded-md border transition-all cursor-pointer text-center ${
-                        verticalOffset <= -25
-                          ? 'bg-blue-500 text-white border-blue-500 font-semibold shadow-sm'
-                          : 'border-black/10 dark:border-white/15 text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
-                      }`}
-                    >
-                      {t.recentVerticalTop}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onUpdateVerticalOffset(0)}
-                      className={`text-[11px] py-1 px-1.5 rounded-md border transition-all cursor-pointer text-center ${
-                        verticalOffset > -25 && verticalOffset < 25
-                          ? 'bg-blue-500 text-white border-blue-500 font-semibold shadow-sm'
-                          : 'border-black/10 dark:border-white/15 text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
-                      }`}
-                    >
-                      {t.recentVerticalCenter}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onUpdateVerticalOffset(40)}
-                      className={`text-[11px] py-1 px-1.5 rounded-md border transition-all cursor-pointer text-center ${
-                        verticalOffset >= 25
-                          ? 'bg-blue-500 text-white border-blue-500 font-semibold shadow-sm'
-                          : 'border-black/10 dark:border-white/15 text-neutral-700 dark:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
-                      }`}
-                    >
-                      {t.recentVerticalBottom}
-                    </button>
-                  </div>
-                </div>
-              }
-            >
-              <Tooltip title={zh ? '调节垂直位置' : 'Adjust vertical position'} placement="top">
-                <button
-                  type="button"
-                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer border shadow-sm ${
-                    verticalOffset !== 0
-                      ? 'text-blue-500 dark:text-blue-400 font-bold'
-                      : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white'
-                  } active:scale-95`}
-                  style={{
-                    backgroundColor: isDark ? 'rgba(0, 0, 0, 0.42)' : 'rgba(255, 255, 255, 0.68)',
-                    borderColor: verticalOffset !== 0
-                      ? 'rgba(59, 130, 246, 0.5)'
-                      : isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.55)',
-                    backdropFilter: `blur(${glassStyle.blur}px)`,
-                    WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
-                  }}
-                >
-                  <MoveVertical size={12} />
-                </button>
-              </Tooltip>
-            </Popover>
-          )}
+            <Tooltip title={zh ? '刷新最近访问' : 'Refresh recent'} placement="top">
+              <button
+                type="button"
+                onClick={loadHistory}
+                className="w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer border shadow-sm text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white active:scale-95"
+                style={{
+                  backgroundColor: isDark ? 'rgba(0, 0, 0, 0.42)' : 'rgba(255, 255, 255, 0.68)',
+                  borderColor: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.55)',
+                  backdropFilter: `blur(${glassStyle.blur}px)`,
+                  WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
+                }}
+              >
+                <RefreshCw size={13} className={loading ? 'animate-spin text-blue-500' : ''} />
+              </button>
+            </Tooltip>
+          </>
+        }
+      />
 
-          <Tooltip title={zh ? '刷新最近访问' : 'Refresh recent'} placement="top">
-            <button
-              type="button"
-              onClick={loadHistory}
-              className="w-7 h-7 rounded-full flex items-center justify-center transition-all cursor-pointer border shadow-sm text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white active:scale-95"
-              style={{
-                backgroundColor: isDark ? 'rgba(0, 0, 0, 0.42)' : 'rgba(255, 255, 255, 0.68)',
-                borderColor: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.55)',
-                backdropFilter: `blur(${glassStyle.blur}px)`,
-                WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
-              }}
-            >
-              <RefreshCw size={12} className={loading ? 'animate-spin text-blue-500' : ''} />
-            </button>
-          </Tooltip>
-        </div>
-      </div>
-
-      {/* 卡片滚动容器外壳（附带左右边缘渐变遮罩提示） */}
-      <div className="relative group">
+      {/* 卡片滚动容器外壳（附带左右边缘渐变遮罩提示）
+          垂直偏移只作用于卡片区，工具条保持与快捷方式状态同一条基线 */}
+      <div
+        className="relative group home-stage-content"
+        style={{
+          transform: verticalOffset ? `translateY(${verticalOffset}px)` : undefined,
+          transition: 'transform 0.25s cubic-bezier(0.2, 0, 0, 1)',
+        }}
+      >
         {/* 左侧平滑微渐变遮罩 */}
         {canScrollLeft && (
           <div
@@ -499,8 +433,7 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
               <span>{t.recentEmpty}</span>
             </div>
           ) : (
-            displayItems.map((item, index) => {
-              const themeStyle = getCardTheme(item.url, index);
+            displayItems.map((item) => {
               const brand = extractBrandName(item.url, item.title);
               const displayUrl = formatDisplayUrl(item.url);
               const isPinned = pinnedUrls.includes(item.url);
@@ -510,13 +443,12 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
                   key={item.id || item.url}
                   onClick={() => handleCardClick(item.url)}
                   title={`${item.title}\n${item.url}`}
-                  className={`w-[205px] h-[104px] shrink-0 rounded-[18px] p-1.5 flex flex-col justify-between border transition-all duration-200 shadow-sm select-none cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
-                    isDark ? themeStyle.dark : themeStyle.light
+                  className={`w-[205px] h-[104px] shrink-0 rounded-[18px] p-1.5 flex flex-col justify-between border transition-all duration-200 select-none cursor-pointer hover:scale-[1.02] active:scale-[0.98] ${
+                    isDark
+                      ? 'border-white/16 hover:border-white/60'
+                      : 'border-white/75 hover:border-white'
                   }`}
-                  style={{
-                    backdropFilter: `blur(${glassStyle.blur}px)`,
-                    WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
-                  }}
+                  style={getCardMaterial(isDark, glassStyle.blur)}
                 >
                   {/* 上半部：内嵌实体小盒（纯白/纯暗高对比度），承载 Favicon 与完整标题 */}
                   <div className="rounded-[13px] bg-white/95 dark:bg-[#181a20]/95 p-2 shadow-[0_1px_3px_rgba(0,0,0,0.04)] border border-black/[0.04] dark:border-white/[0.06] flex flex-col justify-between h-[66px] overflow-hidden">
