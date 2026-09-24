@@ -558,6 +558,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
                         url={result.bookmark.url || ''}
                         title={result.bookmark.title}
                         sizeClass="w-6 h-6 shrink-0"
+                        roundedClass="rounded-none"
                       />
                       <div className="min-w-0 flex-1">
                         <div className="text-xs sm:text-sm font-medium truncate group-hover:text-blue-400 transition-colors">
@@ -650,6 +651,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
                           url={bm.url || ''}
                           title={bm.title}
                           sizeClass="w-5 h-5 sm:w-6 sm:h-6 shrink-0"
+                          roundedClass="rounded-none"
                         />
                         <div className="min-w-0 flex-1">
                           <div className="text-xs sm:text-sm font-medium truncate group-hover:text-blue-400 transition-colors leading-tight">

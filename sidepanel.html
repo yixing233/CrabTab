@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>CrabTab 书签侧边栏</title>
+    <link rel="icon" type="image/png" href="./icon.png" />
+    <style>
+      html, body, #sidepanel-root {
+        width: 100% !important;
+        height: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        box-sizing: border-box;
+      }
+    </style>
+  </head>
+  <body class="m-0 p-0 select-none bg-transparent">
+    <div id="sidepanel-root"></div>
+    <script type="module" src="/src/sidepanel.tsx"></script>
+  </body>
+</html>

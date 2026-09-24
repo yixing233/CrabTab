@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>CrabTab 扩展菜单</title>
+    <link rel="icon" type="image/png" href="./icon.png" />
+    <style>
+      html, body {
+        width: 320px !important;
+        min-width: 320px !important;
+        max-width: 320px !important;
+        height: 345px !important;
+        min-height: 345px !important;
+        max-height: 345px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+        overflow-x: hidden !important;
+        overflow-y: hidden !important;
+        background-color: #12161f;
+        box-sizing: border-box;
+      }
+      #popup-root {
+        width: 320px !important;
+        height: 345px !important;
+        min-height: 345px !important;
+        display: block !important;
+        overflow: hidden !important;
+        box-sizing: border-box;
+      }
+      ::-webkit-scrollbar {
+        display: none !important;
+        width: 0 !important;
+        height: 0 !important;
+      }
+    </style>
+  </head>
+  <body class="m-0 p-0 select-none bg-transparent">
+    <div id="popup-root"></div>
+    <script type="module" src="/src/popup.tsx"></script>
+  </body>
+</html>

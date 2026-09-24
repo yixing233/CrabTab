@@ -54,11 +54,18 @@ type GridContextMenu = {
 /**
  * 支持本地 IndexedDB 缓存、极速 Chrome 原生与多级降级兜底的快捷图标组件
  */
-export const ShortcutIconView: React.FC<{ url: string; icon?: string; title: string; sizeClass?: string }> = ({
+export const ShortcutIconView: React.FC<{
+  url: string;
+  icon?: string;
+  title: string;
+  sizeClass?: string;
+  roundedClass?: string;
+}> = ({
   url,
   icon,
   title,
   sizeClass = 'w-7 h-7 sm:w-8 sm:h-8',
+  roundedClass,
 }) => {
   // 订阅本地 IndexedDB 缓存加载与更新事件
   const [cacheVersion, setCacheVersion] = useState<number>(0);
@@ -101,15 +108,22 @@ export const ShortcutIconView: React.FC<{ url: string; icon?: string; title: str
     });
   };
 
+  const isTiny =
+    sizeClass.includes('w-3') ||
+    sizeClass.includes('w-4') ||
+    sizeClass.includes('w-5') ||
+    sizeClass.includes('w-6');
+  const appliedRadius = roundedClass ?? (isTiny ? 'rounded-none' : 'rounded-lg');
+
   if (icon === 'avatar:letter' || !currentSrc || hasError) {
     const palette = getAvatarPalette(title || url);
     const char = (title || url || 'A').trim().charAt(0).toUpperCase();
-    const isTiny = sizeClass.includes('w-3') || sizeClass.includes('w-4');
+    const avatarRadius = roundedClass ?? (isTiny ? 'rounded-[3px]' : 'rounded-xl');
     return (
       <div
         style={{ background: palette.background, color: palette.color }}
-        className={`${sizeClass} ${
-          isTiny ? 'rounded text-[9.5px] leading-none font-bold' : 'rounded-xl text-xs sm:text-sm font-bold'
+        className={`${sizeClass} ${avatarRadius} ${
+          isTiny ? 'text-[9.5px] leading-none font-bold' : 'text-xs sm:text-sm font-bold'
         } flex items-center justify-center shadow-sm select-none transition-transform duration-200 shrink-0`}
       >
         {char}
@@ -124,7 +138,7 @@ export const ShortcutIconView: React.FC<{ url: string; icon?: string; title: str
       loading="eager"
       decoding="async"
       draggable={false}
-      className={`${sizeClass} object-contain rounded-lg select-none pointer-events-none`}
+      className={`${sizeClass} object-contain ${appliedRadius} select-none pointer-events-none`}
       onLoad={handleImageLoad}
       onError={handleImageError}
     />

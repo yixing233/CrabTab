@@ -68,6 +68,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
 }) => {
   const [keyword, setKeyword] = useState<string>('');
   const [isFocused, setIsFocused] = useState<boolean>(false);
+  const [allowDropdown, setAllowDropdown] = useState<boolean>(false);
   const [settingsPopoverOpen, setSettingsPopoverOpen] = useState<boolean>(false);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [matchedBookmarks, setMatchedBookmarks] = useState<BookmarkSearchResult[]>([]);
@@ -251,17 +252,88 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
     const handleClickOutside = (e: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
         setIsFocused(false);
+        setAllowDropdown(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // 全局快捷键监听：按 `/` 键或 `Ctrl+K` / `Cmd+K` 直接聚焦到搜索框；按 Escape 退出
+  // 打开新标签页时对抗 Chromium 地址栏强行夺焦的多阶段智能聚焦流水线
+  useEffect(() => {
+    let cancelled = false;
+
+    const performFocus = () => {
+      if (cancelled) return;
+      const el = inputRef.current;
+      if (!el) return;
+
+      // 如果当前焦点已经在某个模态框、抽屉或其他输入控件内部，不强行夺取
+      const activeEl = document.activeElement;
+      const isOtherInputActive =
+        activeEl &&
+        activeEl !== el &&
+        (activeEl.tagName === 'INPUT' ||
+          activeEl.tagName === 'TEXTAREA' ||
+          (activeEl as HTMLElement).isContentEditable ||
+          activeEl.closest('.ant-modal') ||
+          activeEl.closest('.ant-drawer'));
+
+      if (isOtherInputActive) return;
+
+      // 唤醒当前窗口并聚焦搜索框
+      try {
+        if (typeof window !== 'undefined') {
+          window.focus();
+        }
+      } catch {}
+
+      el.focus({ preventScroll: true });
+      setIsFocused(true);
+    };
+
+    // 1. 立即执行首帧聚焦
+    performFocus();
+
+    // 2. 双 rAF 动画帧保障
+    const rafId = requestAnimationFrame(() => {
+      requestAnimationFrame(performFocus);
+    });
+
+    // 3. 多阶段延时重试梯队：全面覆盖 Chromium 异步将焦点置于 Omnibox 的时序窗口（10ms ~ 500ms）
+    const timeouts = [20, 60, 120, 240, 480].map((delay) =>
+      setTimeout(performFocus, delay)
+    );
+
+    // 4. 监听窗口重新获得焦点与标签页可见性切换
+    const onWindowFocus = () => {
+      performFocus();
+    };
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        performFocus();
+      }
+    };
+
+    window.addEventListener('focus', onWindowFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(rafId);
+      timeouts.forEach(clearTimeout);
+      window.removeEventListener('focus', onWindowFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, []);
+
+  // 全局快捷键与即打即搜（Type-to-Search）：按 /、Ctrl+K 或直接打字瞬间接引焦点至搜索框
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         setIsFocused(false);
+        setAllowDropdown(false);
         inputRef.current?.blur();
         return;
       }
@@ -273,21 +345,40 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
           target.tagName === 'TEXTAREA' ||
           target.isContentEditable ||
           target.closest('.ant-modal') ||
-          target.closest('.ant-drawer'));
+          target.closest('.ant-drawer') ||
+          target.closest('.weather-popover-card'));
 
+      // Ctrl+K / Cmd+K 全选聚焦并展开联想卡片
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         inputRef.current?.focus();
         inputRef.current?.select();
         setIsFocused(true);
+        setAllowDropdown(true);
         return;
       }
 
+      // 按 / 键聚焦并展开联想卡片
       if (e.key === '/' && !isInputFocused && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         inputRef.current?.focus();
         setIsFocused(true);
+        setAllowDropdown(true);
         return;
+      }
+
+      // 即打即搜（Type-to-Search）：当用户在页面任何地方直接敲击键盘时，自动将焦点移入搜索框并键入
+      if (!isInputFocused && !e.ctrlKey && !e.metaKey && !e.altKey && !e.isComposing) {
+        if (e.key.length === 1 && e.key !== 'Tab') {
+          const el = inputRef.current;
+          if (el && document.activeElement !== el) {
+            el.focus({ preventScroll: true });
+            setIsFocused(true);
+            setAllowDropdown(true);
+            setKeyword((prev) => prev + e.key);
+            e.preventDefault();
+          }
+        }
       }
     };
 
@@ -300,6 +391,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
     if (trimmed) {
       onSearch(trimmed);
       setIsFocused(false);
+      setAllowDropdown(false);
     }
   };
 
@@ -307,6 +399,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
     setKeyword(text);
     onSearch(text);
     setIsFocused(false);
+    setAllowDropdown(false);
   };
 
   const handleOpenUrl = (url?: string) => {
@@ -319,6 +412,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
       window.location.href = url;
     }
     setIsFocused(false);
+    setAllowDropdown(false);
   };
 
   const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -364,13 +458,14 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
     }
   };
 
-  // 判断是否展示浮层卡片
+  // 判断是否展示浮层卡片：默认自动聚焦不呼出联想框，仅在鼠标手动聚焦或输入文本后才展示
   const hasBookmarks = matchedBookmarks.length > 0;
   const hasHistoryItems = matchedHistoryItems.length > 0;
   const hasHistory = matchedHistory.length > 0;
   const hasSuggestions = suggestions.length > 0;
   const showDropdown =
     isFocused &&
+    (allowDropdown || trimmed.length > 0) &&
     (hasBookmarks ||
       hasHistoryItems ||
       hasHistory ||
@@ -493,13 +588,16 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
     </div>
   );
 
+  // 视觉激活态：仅在鼠标手动聚焦或输入文字时才点亮强外环
+  const isVisualActive = isFocused && (allowDropdown || trimmed.length > 0);
+
   return (
     <div ref={containerRef} className="relative w-full max-w-2xl mx-auto flex flex-col items-center">
       {/* Search Input Bar */}
       <form
         onSubmit={handleSubmit}
         className={`w-full relative transition-all duration-300 rounded-2xl flex items-center shadow-lg ${
-          isFocused ? 'ring-2 ring-blue-500/80 shadow-2xl' : 'hover:shadow-xl'
+          isVisualActive ? 'ring-2 ring-blue-500/80 shadow-2xl' : 'hover:shadow-xl'
         }`}
         style={{
           backgroundColor: glassBackgroundColor,
@@ -526,8 +624,14 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
           <input
             ref={inputRef}
             type="text"
+            autoFocus
             value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
+            onMouseDown={() => setAllowDropdown(true)}
+            onClick={() => setAllowDropdown(true)}
+            onChange={(e) => {
+              setKeyword(e.target.value);
+              setAllowDropdown(true);
+            }}
             onFocus={() => setIsFocused(true)}
             onKeyDown={handleInputKeyDown}
             placeholder={t.searchPlaceholder}
@@ -549,6 +653,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
               type="button"
               onClick={() => {
                 setKeyword('');
+                setAllowDropdown(true);
                 inputRef.current?.focus();
               }}
               className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer transition-colors mr-0.5"

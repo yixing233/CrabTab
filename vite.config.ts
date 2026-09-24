@@ -4,6 +4,7 @@ import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'path';
 
 export default defineConfig({
+  base: './',
   plugins: [
     react(),
     tailwindcss(),
@@ -29,6 +30,8 @@ export default defineConfig({
     rollupOptions: {
       input: {
         index: resolve(import.meta.dirname, 'index.html'),
+        popup: resolve(import.meta.dirname, 'popup.html'),
+        sidepanel: resolve(import.meta.dirname, 'sidepanel.html'),
       },
       output: {
         entryFileNames: 'assets/[name].js',

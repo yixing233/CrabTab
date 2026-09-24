@@ -130,15 +130,16 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
             key: node.id,
             label: (
               <div
-                className="flex items-center gap-2 py-0.5 max-w-[280px] select-none"
+                className="flex items-center gap-2.5 py-0 max-w-[360px] select-none"
                 title={`${node.title}\n${node.url}`}
               >
                 <ShortcutIconView
                   url={node.url}
                   title={node.title}
-                  sizeClass="w-4 h-4 shrink-0"
+                  sizeClass="w-4.5 h-4.5 shrink-0"
+                  roundedClass="rounded-none"
                 />
-                <span className="truncate text-xs text-inherit">{node.title || node.url}</span>
+                <span className="truncate text-[14px] leading-snug text-inherit">{node.title || node.url}</span>
               </div>
             ),
             onClick: () => handleOpenBookmark(node.url!),
@@ -152,7 +153,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                 {
                   key: `${node.id}-empty`,
                   label: (
-                    <span className="text-xs opacity-50 px-2 py-1 select-none">
+                    <span className="text-[14px] opacity-50 px-3 py-1.5 select-none">
                       {t.emptyBookmarkFolder}
                     </span>
                   ),
@@ -163,9 +164,9 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
         return {
           key: node.id,
           label: (
-            <div className="flex items-center gap-2 py-0.5 max-w-[280px] select-none">
-              <Folder size={14} className="text-amber-500 dark:text-amber-400 shrink-0" fill="currentColor" />
-              <span className="truncate text-xs font-medium text-inherit">{node.title}</span>
+            <div className="flex items-center gap-2.5 py-0 max-w-[360px] select-none">
+              <Folder size={16} className="text-amber-500 dark:text-amber-400 shrink-0" fill="currentColor" />
+              <span className="truncate text-[14px] font-medium leading-snug text-inherit">{node.title}</span>
             </div>
           ),
           children: childItems,
@@ -406,7 +407,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
       {/* 顶部极简吸顶/轻量悬浮书签栏（自适应内容宽度与最大可用宽度，数量多时横向滚动） */}
       <div className="w-fit max-w-full min-w-0 pointer-events-auto transition-all duration-300">
         <div
-          className={`h-9 px-1.5 sm:px-2.5 rounded-2xl border flex items-center justify-between gap-1 shadow-sm transition-all duration-200 select-none max-w-full ${
+          className={`h-10 px-2 sm:px-3 rounded-2xl border flex items-center justify-between gap-1 shadow-sm transition-all duration-200 select-none max-w-full ${
             isDark
               ? 'bg-black/35 hover:bg-black/45 border-white/12 text-white/90 shadow-black/20'
               : 'bg-white/65 hover:bg-white/80 border-black/8 text-gray-800 shadow-black/5'
@@ -420,7 +421,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
             {/* 左侧平滑微渐变遮罩 */}
             {canScrollLeft && (
               <div
-                className={`absolute left-0 top-0 bottom-0 w-4 z-10 pointer-events-none transition-opacity duration-200 ${
+                className={`absolute left-0 top-0 bottom-0 w-5 z-10 pointer-events-none transition-opacity duration-200 ${
                   isDark
                     ? 'bg-gradient-to-r from-[#141820]/90 to-transparent'
                     : 'bg-gradient-to-r from-white/90 to-transparent'
@@ -442,7 +443,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                   e.preventDefault();
                 }
               }}
-              className={`flex-1 min-w-0 flex items-center gap-0.5 overflow-x-auto scrollbar-none py-1 overscroll-contain select-none transition-[cursor] ${
+              className={`flex-1 min-w-0 flex items-center gap-1 overflow-x-auto scrollbar-none py-1 overscroll-contain select-none transition-[cursor] ${
                 isDragging
                   ? 'cursor-grabbing'
                   : canScrollLeft || canScrollRight
@@ -451,17 +452,17 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
               }`}
             >
               {loading ? (
-                <div className="flex items-center gap-1.5 px-2 text-xs opacity-50">
-                  <RefreshCw size={12} className="animate-spin text-blue-400" />
+                <div className="flex items-center gap-1.5 px-2 text-[14px] opacity-50">
+                  <RefreshCw size={14} className="animate-spin text-blue-400" />
                   <span>{t.refreshBookmarks}...</span>
                 </div>
               ) : !permissionGranted ? (
-                <div className="flex items-center gap-1 px-2 text-xs text-amber-500">
-                  <AlertCircle size={13} className="shrink-0" />
+                <div className="flex items-center gap-1.5 px-2 text-[14px] text-amber-500">
+                  <AlertCircle size={15} className="shrink-0" />
                   <span>{t.bookmarkPermissionNotGranted}</span>
                 </div>
               ) : barItems.length === 0 ? (
-                <div className="px-2 text-xs opacity-40 italic">{t.bookmarkBarEmpty}</div>
+                <div className="px-2 text-[14px] opacity-40 italic">{t.bookmarkBarEmpty}</div>
               ) : (
                 barItems.map((item) => {
                   // 1. 文件夹项：触发下拉/级联菜单
@@ -480,7 +481,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                       >
                         <button
                           type="button"
-                          className={`px-1.5 py-1 rounded-lg flex items-center gap-1 text-xs font-medium shrink-0 transition-all ${
+                          className={`px-2 py-1.5 rounded-xl flex items-center gap-1.5 text-[14px] font-medium shrink-0 transition-all ${
                             isDragging ? 'pointer-events-none' : 'cursor-pointer'
                           } ${
                             isDark
@@ -489,11 +490,11 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                           }`}
                         >
                           <Folder
-                            size={13}
+                            size={15}
                             className="text-amber-500 dark:text-amber-400 shrink-0"
                             fill="currentColor"
                           />
-                          <span className="truncate max-w-[130px]">{item.title}</span>
+                          <span className="truncate max-w-[160px]">{item.title}</span>
                         </button>
                       </Dropdown>
                     );
@@ -506,7 +507,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                       type="button"
                       onClick={() => handleOpenBookmark(item.url || '')}
                       title={`${item.title}\n${item.url}`}
-                      className={`px-1.5 py-1 rounded-lg flex items-center gap-1 text-xs shrink-0 transition-all ${
+                      className={`px-2 py-1.5 rounded-xl flex items-center gap-1.5 text-[14px] shrink-0 transition-all ${
                         isDragging ? 'pointer-events-none' : 'cursor-pointer'
                       } ${
                         isDark
@@ -517,9 +518,10 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                       <ShortcutIconView
                         url={item.url || ''}
                         title={item.title}
-                        sizeClass="w-3.5 h-3.5 shrink-0"
+                        sizeClass="w-4 h-4 shrink-0"
+                        roundedClass="rounded-none"
                       />
-                      <span className="truncate max-w-[140px]">
+                      <span className="truncate max-w-[160px]">
                         {item.title || item.url || 'Untitled'}
                       </span>
                     </button>
@@ -531,7 +533,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
             {/* 右侧平滑微渐变遮罩 */}
             {canScrollRight && (
               <div
-                className={`absolute right-0 top-0 bottom-0 w-4 z-10 pointer-events-none transition-opacity duration-200 ${
+                className={`absolute right-0 top-0 bottom-0 w-5 z-10 pointer-events-none transition-opacity duration-200 ${
                   isDark
                     ? 'bg-gradient-to-l from-[#141820]/90 to-transparent'
                     : 'bg-gradient-to-l from-white/90 to-transparent'
@@ -542,7 +544,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
 
           {/* 右侧固定功能区：「其他书签」+「快速搜索书签」 */}
           <div
-            className={`shrink-0 flex items-center gap-0.5 pl-1 border-l ${
+            className={`shrink-0 flex items-center gap-1 pl-1.5 border-l ${
               isDark ? 'border-white/10' : 'border-black/10'
             }`}
           >
@@ -558,14 +560,14 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
               >
                 <button
                   type="button"
-                  className={`px-1.5 py-1 rounded-lg flex items-center gap-1 text-xs font-medium shrink-0 transition-all cursor-pointer ${
+                  className={`px-2 py-1.5 rounded-xl flex items-center gap-1.5 text-[14px] font-medium shrink-0 transition-all cursor-pointer ${
                     isDark
                       ? 'hover:bg-white/15 text-white/85 hover:text-white'
                       : 'hover:bg-black/8 text-gray-700 hover:text-gray-900'
                   }`}
                 >
                   <Folder
-                    size={13}
+                    size={15}
                     className="text-amber-500 dark:text-amber-400 shrink-0"
                     fill="currentColor"
                   />
@@ -578,13 +580,13 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
               <button
                 type="button"
                 onClick={() => setSearchModalOpen(true)}
-                className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
                   isDark
                     ? 'hover:bg-white/15 text-white/70 hover:text-white'
                     : 'hover:bg-black/8 text-gray-600 hover:text-gray-900'
                 }`}
               >
-                <Search size={13} />
+                <Search size={15} />
               </button>
             </Tooltip>
           </div>
@@ -675,6 +677,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                         url={res.bookmark.url || ''}
                         title={res.bookmark.title}
                         sizeClass="w-5 h-5 shrink-0"
+                        roundedClass="rounded-none"
                       />
                       <div className="min-w-0 flex-1">
                         <div

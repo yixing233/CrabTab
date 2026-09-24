@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ConfigProvider, Tooltip, message } from 'antd';
 import { 
-  SunOutlined, 
-  MoonOutlined, 
-  TranslationOutlined, 
   SettingOutlined, 
   HistoryOutlined, 
   ReloadOutlined,
@@ -370,23 +367,6 @@ export const App: React.FC = () => {
     });
   };
 
-  // Switch Language
-  const handleToggleLanguage = () => {
-    if (!settings) return;
-    const nextLang = settings.language === 'zh' ? 'en' : 'zh';
-    handleUpdateSettings({ language: nextLang });
-  };
-
-  // Switch Theme (Dark / Light)
-  const handleToggleTheme = () => {
-    if (!settings) return;
-    const currentIsDark =
-      settings.theme === 'dark' ||
-      (settings.theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-    const nextTheme = currentIsDark ? 'light' : 'dark';
-    handleUpdateSettings({ theme: nextTheme });
-  };
-
   // Search Action
   const handleSearch = (keyword: string) => {
     if (!keyword.trim() || !settings) return;
@@ -569,12 +549,12 @@ export const App: React.FC = () => {
         {/* Dynamic Multi-source Wallpaper */}
         <Wallpaper config={settings.wallpaper} theme={settings.theme} />
 
-        {/* Top Navigation Bar: 天气（左） + 书签栏（中） + 操作按钮（右）- 整合于同一行 */}
+        {/* Top Navigation Bar: 天气（左） + 书签栏（居中） + 操作按钮（右）- 整合于同一行 */}
         <header
-          className="header-bar-responsive relative z-30 w-full px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3 pointer-events-auto transition-all"
+          className="header-bar-responsive relative z-30 w-full px-4 sm:px-6 py-3.5 flex items-center justify-between pointer-events-auto transition-all"
         >
           {/* 1. Left: Weather Widget */}
-          <div className="shrink-0 flex items-center">
+          <div className="shrink-0 flex items-center z-10 min-w-0">
             {settings.showWeather && (
               <Weather
                 language={settings.language}
@@ -584,22 +564,22 @@ export const App: React.FC = () => {
             )}
           </div>
 
-          {/* 2. Center: Bookmark Bar (同一行自适应宽度展示，充分利用大屏空间，与两侧组件保持安全间距) */}
-          {(settings.showBookmarkBar ?? true) ? (
-            <div className="flex-1 min-w-0 flex justify-center px-1 sm:px-3">
-              <TopBookmarkBar
-                language={settings.language}
-                theme={settings.theme}
-                glassStyle={settings.glassStyle}
-                openInNewTab={settings.openInNewTab}
-              />
+          {/* 2. Center: Bookmark Bar (绝对居中于顶部，确保与页面垂直中心轴严格对齐) */}
+          {(settings.showBookmarkBar ?? true) && (
+            <div className="absolute left-1/2 -translate-x-1/2 top-1/2 -translate-y-1/2 flex justify-center items-center pointer-events-none z-20 w-fit max-w-[calc(100%-18rem)] sm:max-w-[calc(100%-23rem)] md:max-w-[calc(100%-27rem)] min-w-0">
+              <div className="pointer-events-auto max-w-full flex justify-center min-w-0">
+                <TopBookmarkBar
+                  language={settings.language}
+                  theme={settings.theme}
+                  glassStyle={settings.glassStyle}
+                  openInNewTab={settings.openInNewTab}
+                />
+              </div>
             </div>
-          ) : (
-            <div className="flex-1 min-w-0" />
           )}
 
           {/* 3. Right: Quick Action Buttons (统一胶囊形态与毛玻璃材质) */}
-          <div className="shrink-0 flex items-center">
+          <div className="shrink-0 flex items-center z-10 min-w-0 ml-auto">
             <div
               className={`h-9 px-1.5 rounded-full border flex items-center gap-1 shadow-sm transition-all duration-200 select-none ${
                 isDark
@@ -622,36 +602,6 @@ export const App: React.FC = () => {
                   }`}
                 >
                   <ReloadOutlined className={`text-xs transition-transform duration-700 ${refreshingWallpaper ? "animate-spin text-blue-400" : ""}`} />
-                </button>
-              </Tooltip>
-
-              {/* Theme Toggle Button */}
-              <Tooltip title={settings.theme === 'dark' ? (settings.language === 'zh' ? '切换为浅色' : 'Light Mode') : (settings.language === 'zh' ? '切换为深色' : 'Dark Mode')} placement="bottom">
-                <button
-                  type="button"
-                  onClick={handleToggleTheme}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
-                    isDark
-                      ? 'hover:bg-white/15 text-white/85 hover:text-white active:bg-white/20'
-                      : 'hover:bg-black/8 text-gray-700 hover:text-gray-950 active:bg-black/12'
-                  }`}
-                >
-                  {settings.theme === 'dark' ? <SunOutlined className="text-xs" /> : <MoonOutlined className="text-xs" />}
-                </button>
-              </Tooltip>
-
-              {/* Language Toggle Button */}
-              <Tooltip title={settings.language === 'zh' ? 'Switch to English' : '切换为简体中文'} placement="bottom">
-                <button
-                  type="button"
-                  onClick={handleToggleLanguage}
-                  className={`w-7 h-7 rounded-full flex items-center justify-center transition-all duration-200 cursor-pointer ${
-                    isDark
-                      ? 'hover:bg-white/15 text-white/85 hover:text-white active:bg-white/20'
-                      : 'hover:bg-black/8 text-gray-700 hover:text-gray-950 active:bg-black/12'
-                  }`}
-                >
-                  <TranslationOutlined className="text-xs" />
                 </button>
               </Tooltip>
 
@@ -786,15 +736,17 @@ export const App: React.FC = () => {
             />
           </div>
 
-          {/* Main Content Area - 快捷方式 / 最近访问 共用同一舞台（宽度同源 = 搜索框） */}
+          {/* Main Content Area - 快捷方式 / 最近访问 共用同一舞台（宽度同源 = 搜索框，随搜索框垂直位移联动下推） */}
           <div
             ref={homeStageRef}
             className="home-stage-slot w-full flex justify-center flex-shrink-0"
-            style={
-              homeStageMeasured && homeStageWidth > 0
-                ? ({ '--home-stage-width': `${homeStageWidth}px` } as React.CSSProperties)
-                : undefined
-            }
+            style={{
+              ...(homeStageMeasured && homeStageWidth > 0
+                ? { '--home-stage-width': `${homeStageWidth}px` }
+                : {}),
+              transform: `translateY(${settings.searchVerticalOffset || 0}px)`,
+              transition: 'transform 0.25s cubic-bezier(0.2, 0, 0, 1)',
+            }}
           >
             {(settings.homeContentMode ?? 'shortcuts') === 'shortcuts' && (
               <Shortcuts

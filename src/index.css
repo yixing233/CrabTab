@@ -999,13 +999,38 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
 .crab-bookmark-dropdown .ant-dropdown-menu,
 .ant-dropdown-menu-submenu-popup .ant-dropdown-menu,
 .crab-bookmark-dropdown-menu {
-  max-height: 480px;
+  max-height: 520px;
   overflow-y: auto !important;
   overflow-x: hidden !important;
   border-radius: 14px !important;
   padding: 6px !important;
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
+}
+
+/* 具体书签条目高度与内边距紧凑优化 */
+.crab-bookmark-dropdown .ant-dropdown-menu-item,
+.crab-bookmark-dropdown .ant-dropdown-menu-submenu-title,
+.ant-dropdown-menu-submenu-popup .ant-dropdown-menu-item,
+.ant-dropdown-menu-submenu-popup .ant-dropdown-menu-submenu-title,
+.crab-bookmark-dropdown-menu .ant-dropdown-menu-item,
+.crab-bookmark-dropdown-menu .ant-dropdown-menu-submenu-title {
+  min-height: 33px !important;
+  padding: 4px 8px !important;
+  border-radius: 7px !important;
+  margin-bottom: 1px !important;
+  display: flex !important;
+  align-items: center !important;
+  transition: background-color 0.15s ease, color 0.15s ease !important;
+}
+
+.crab-bookmark-dropdown .ant-dropdown-menu-item:last-child,
+.crab-bookmark-dropdown .ant-dropdown-menu-submenu-title:last-child,
+.ant-dropdown-menu-submenu-popup .ant-dropdown-menu-item:last-child,
+.ant-dropdown-menu-submenu-popup .ant-dropdown-menu-submenu-title:last-child,
+.crab-bookmark-dropdown-menu .ant-dropdown-menu-item:last-child,
+.crab-bookmark-dropdown-menu .ant-dropdown-menu-submenu-title:last-child {
+  margin-bottom: 0 !important;
 }
 
 /* 浅色纯白与深色纯色卡片背景与精细边框 */
