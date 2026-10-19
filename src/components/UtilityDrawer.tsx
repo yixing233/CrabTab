@@ -1165,53 +1165,73 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
         onClick={() => setOpen(false)}
       />
 
-      {/* 底部左下角独立待办胶囊区（抽屉未展开时显示在视口左下角，不与中央工具把手挤在一起） */}
+      {/* 底部左下角独立待办胶囊区（抽屉未展开时显示在视口左下角，不与中央工具把手挤在一起）
+          与右下角倒数日胶囊共用同一套尺寸语言：定宽、32px 行高、两端对齐，
+          并且同为纵向堆叠 —— 横向排布时条目一多就往右溢出到屏幕之外，
+          纵向堆叠则只需向下生长，超出高度上限时在区域内滚动。
+          条目不再截断为 3 条（原「+N」角标随之取消），全部未完成项都可见。 */}
       {!open && uncompletedTodos.length > 0 && (
-        <div className="fixed left-6 bottom-4 z-40 flex items-center gap-2 max-w-[calc(var(--viewport-width)*0.45)] overflow-x-auto custom-scrollbar pointer-events-auto py-1">
-          {uncompletedTodos.slice(0, 3).map((item) => (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => handlePillClick(item)}
-              className={`flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium shadow-lg transition-colors border cursor-pointer select-none backdrop-blur-md ${
-                isDark
-                  ? 'bg-[#181a20]/80 hover:bg-[#181a20]/95 text-white/90 border-white/10 hover:border-white/20'
-                  : 'bg-white/80 hover:bg-white/95 text-neutral-800 border-black/10 hover:border-black/20'
-              }`}
-              style={{
-                backdropFilter: `blur(${glassStyle.blur}px)`,
-                WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
-              }}
-            >
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleTodo(item.id);
+        <div className="pinned-todo-container fixed left-6 bottom-4 z-40 flex flex-col items-start gap-1.5 max-h-[calc(var(--viewport-height)*0.42)] overflow-y-auto custom-scrollbar p-1 select-none pointer-events-auto">
+          {uncompletedTodos.map((item) => {
+            const dueDay = item.dueDate ? dayjs(item.dueDate).startOf('day') : null;
+            const today = dayjs().startOf('day');
+            const isOverdue = dueDay ? dueDay.isBefore(today) : false;
+            const isToday = dueDay ? dueDay.isSame(today) : false;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => handlePillClick(item)}
+                title={zh ? `${item.title}（点击查看详情）` : `${item.title} (View details)`}
+                className={`pinned-todo-pill h-8 flex items-center justify-between pl-1.5 pr-3.5 rounded-full text-xs font-medium shadow-md transition-colors border cursor-pointer select-none backdrop-blur-md shrink-0 ${
+                  isDark
+                    ? 'bg-[#181a20]/80 hover:bg-[#181a20]/95 text-white/90 border-white/10 hover:border-white/30'
+                    : 'bg-white/80 hover:bg-white/95 text-neutral-800 border-black/10 hover:border-black/20'
+                }`}
+                style={{
+                  backdropFilter: `blur(${glassStyle.blur}px)`,
+                  WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
                 }}
-                className="w-3.5 h-3.5 rounded-full border border-current opacity-60 hover:opacity-100 flex items-center justify-center cursor-pointer transition-opacity"
-              />
-              <span className="max-w-[120px] truncate">{item.title}</span>
-              {item.dueDate && (
-                <span className="text-[10px] opacity-50 flex items-center gap-0.5">
-                  <Calendar size={10} />
-                  {item.dueDate.slice(5)}
-                </span>
-              )}
-            </button>
-          ))}
+              >
+                {/* 左侧：待勾选圆形与标题（圆形尺寸 20px，与倒数日胶囊的图标底色同心） */}
+                <div className="flex items-center gap-2 min-w-0 pr-2">
+                  <span
+                    aria-hidden="true"
+                    title={zh ? '标记为已完成' : 'Mark as done'}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleTodo(item.id);
+                    }}
+                    className={`group/check w-5 h-5 rounded-full flex items-center justify-center shrink-0 border transition-colors ${
+                      isDark
+                        ? 'border-white/25 text-white/60 hover:border-blue-400 hover:text-blue-400 hover:bg-blue-500/15'
+                        : 'border-black/25 text-neutral-400 hover:border-blue-500 hover:text-blue-500 hover:bg-blue-500/10'
+                    }`}
+                  >
+                    <Check size={11} strokeWidth={3} className="opacity-0 group-hover/check:opacity-100 transition-opacity" />
+                  </span>
+                  <span className="truncate max-w-[110px] text-neutral-800 dark:text-neutral-100">
+                    {item.title}
+                  </span>
+                </div>
 
-          {uncompletedTodos.length > 3 && (
-            <button
-              type="button"
-              onClick={() => {
-                setTab('todo');
-                setOpen(true);
-              }}
-              className="px-2.5 py-1 rounded-full text-[11px] font-semibold bg-blue-500/20 text-blue-500 border border-blue-500/30 cursor-pointer backdrop-blur-md"
-            >
-              +{uncompletedTodos.length - 3}
-            </button>
-          )}
+                {/* 右侧：到期状态（逾期/今天用语义色，其余保持等宽日期，视觉权重与倒数日天数一致） */}
+                {item.dueDate && (
+                  <span
+                    className={`text-[11px] font-semibold shrink-0 tabular-nums ${
+                      isOverdue
+                        ? 'text-red-500'
+                        : isToday
+                        ? 'text-amber-500'
+                        : 'text-neutral-500 dark:text-neutral-400'
+                    }`}
+                  >
+                    {isOverdue ? (zh ? '逾期' : 'Late') : isToday ? (zh ? '今天' : 'Today') : item.dueDate.slice(5)}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
       )}
 

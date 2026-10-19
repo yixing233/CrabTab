@@ -801,6 +801,23 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
   padding-bottom: 4px !important;
 }
 
+/* 左下角待办胶囊：与倒数日胶囊完全共用同一套尺寸语言（定宽 / 行高 / 纵向堆叠），
+   两边一左一右、一上一下地对称收口。宽屏时可容纳更多条目，故给到略宽的基础值，
+   但同样在矮屏档同步收窄，保证与右下方倒数日胶囊的视觉重量一致。 */
+.pinned-todo-container {
+  --todo-pill-width: 260px;
+}
+
+.pinned-todo-container .pinned-todo-pill {
+  width: var(--todo-pill-width) !important;
+}
+
+.vh-compact .pinned-todo-container {
+  --todo-pill-width: 220px;
+  bottom: 12px !important;
+  gap: 6px !important;
+}
+
 @media (min-width: 768px) {
   /* 矮屏只压缩「垂直节奏」（行高 / 行间距），绝不改动单元格宽度。
      原因：高度分级由「真实布局高度 = innerHeight / uiScale」触发，
