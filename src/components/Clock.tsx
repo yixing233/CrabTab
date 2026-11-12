@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import {
+  IconAlignBoxCenterMiddle,
+  IconBold,
+  IconColorSwatch,
+  IconQuote,
+  IconRotateClockwise,
+  IconSettings,
+  IconTypography,
+} from '@tabler/icons-react';
 import { Popover, Segmented, Slider, InputNumber } from 'antd';
-import { 
-  SettingOutlined,
-  VerticalAlignMiddleOutlined,
-  FontSizeOutlined,
-  FontColorsOutlined,
-  BoldOutlined
-} from '@ant-design/icons';
-import { RotateCw, Quote } from 'lucide-react';
 import { CLOCK_VERTICAL_OFFSET_RANGE, clampVerticalOffset } from './VerticalOffsetControl';
 import { i18n } from '../i18n';
 import { Language, ClockStyleConfig, ThemeMode, HitokotoType } from '../types';
@@ -212,7 +213,7 @@ export const Clock: React.FC<ClockProps> = ({
     <div className={`w-80 p-2 space-y-4 ${isDark ? 'text-white/90' : 'text-neutral-700'}`}>
       <div className={`flex items-center justify-between pb-2 border-b ${panelDivider}`}>
         <span className={`font-semibold text-sm flex items-center gap-1.5 ${panelTitle}`}>
-          <SettingOutlined />
+          <IconSettings size={14} />
           {t.clockCustomization}
         </span>
         <span className={`text-xs ${panelSubtle}`}>{fontFamilyLabels[clockStyle.fontFamily] || clockStyle.fontFamily}</span>
@@ -222,7 +223,7 @@ export const Clock: React.FC<ClockProps> = ({
       <div className="space-y-1.5">
         <div className={`flex items-center justify-between text-xs ${panelLabel}`}>
           <span className="flex items-center gap-1.5">
-            <FontSizeOutlined />
+            <IconTypography size={14} />
             {t.clockSize}
           </span>
           <span className={`text-xs font-mono ${panelValue}`}>{currentSizePx}px</span>
@@ -265,7 +266,7 @@ export const Clock: React.FC<ClockProps> = ({
       <div className="space-y-1.5">
         <div className={`flex items-center justify-between text-xs ${panelLabel}`}>
           <span className="flex items-center gap-1.5">
-            <VerticalAlignMiddleOutlined />
+            <IconAlignBoxCenterMiddle size={14} />
             {t.clockVerticalOffset}
           </span>
           <span className={`text-xs font-mono ${panelValue}`}>
@@ -310,7 +311,7 @@ export const Clock: React.FC<ClockProps> = ({
       {/* 3. Font Family Selection */}
       <div className="space-y-1.5">
         <div className={`flex items-center gap-1.5 text-xs ${panelLabel}`}>
-          <FontColorsOutlined />
+          <IconColorSwatch size={14} />
           <span>{t.clockFontFamily}</span>
         </div>
         <Segmented
@@ -331,7 +332,7 @@ export const Clock: React.FC<ClockProps> = ({
       {/* 4. Font Weight Selection */}
       <div className="space-y-1.5">
         <div className={`flex items-center gap-1.5 text-xs ${panelLabel}`}>
-          <BoldOutlined />
+          <IconBold size={14} />
           <span>{t.clockWeight}</span>
         </div>
         <Segmented
@@ -413,7 +414,7 @@ export const Clock: React.FC<ClockProps> = ({
           }}
           title={t.hitokotoRefresh}
         >
-          <Quote className="w-3 h-3 text-white/50 group-hover:text-white/80 shrink-0 rotate-180 transition-colors" />
+          <IconQuote className="w-3 h-3 text-white/50 group-hover:text-white/80 shrink-0 rotate-180 transition-colors" />
           <span className="truncate drop-shadow-sm text-white/90">
             {hitokoto?.hitokoto || '保持热爱，奔赴山海。'}
           </span>
@@ -422,7 +423,7 @@ export const Clock: React.FC<ClockProps> = ({
               —— {authorAndSource}
             </span>
           )}
-          <RotateCw 
+          <IconRotateClockwise 
             className={`w-3 h-3 ml-0.5 text-white/40 group-hover:text-white/80 shrink-0 transition-transform duration-500 ${
               isRefreshingSentence ? 'animate-spin text-white/90' : 'opacity-0 group-hover:opacity-100'
             }`} 

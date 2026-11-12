@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Pin, RefreshCw, History, MoveVertical } from 'lucide-react';
+import {
+  IconArrowsMoveVertical,
+  IconHistory,
+  IconPin,
+  IconRefresh,
+} from '@tabler/icons-react';
 import { Tooltip, Popover } from 'antd';
 import { BrowserHistoryItem, Language, ThemeMode, GlassStyle, HomeContentMode } from '../types';
 import { fetchBrowserHistory } from '../utils/history';
@@ -7,6 +12,7 @@ import { ShortcutIconView } from './Shortcuts';
 import { HomeStageBar } from './HomeStageBar';
 import { useResolvedIsDark } from '../theme';
 import { VerticalOffsetControl } from './VerticalOffsetControl';
+import { getSurfaceMaterial } from '../theme';
 import { parseDomainAndOrigin } from '../utils/favicon';
 import { i18n } from '../i18n';
 
@@ -40,10 +46,8 @@ export interface RecentCardsProps {
  */
 function getCardMaterial(isDark: boolean, blur: number): React.CSSProperties {
   return {
-    backgroundColor: isDark ? 'rgba(18, 22, 30, 0.65)' : 'rgba(255, 255, 255, 0.68)',
-    // 与 Shortcuts 图标盒同一手法：给模糊下限，低模糊设置下仍保证文字背后可读
-    backdropFilter: `blur(${Math.max(blur, 16)}px) saturate(180%)`,
-    WebkitBackdropFilter: `blur(${Math.max(blur, 16)}px) saturate(180%)`,
+    // 底色与模糊统一走 getSurfaceMaterial，和搜索框/工具条完全同源
+    ...getSurfaceMaterial(isDark, blur),
     boxShadow: isDark
       ? '0 10px 25px -5px rgba(0, 0, 0, 0.4), inset 0 1px 1px 0 rgba(255, 255, 255, 0.1)'
       : '0 10px 25px -5px rgba(0, 0, 0, 0.08), inset 0 1px 1px 0 rgba(255, 255, 255, 0.8)',
@@ -363,15 +367,14 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
                         : 'text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white'
                     } active:scale-95`}
                     style={{
-                      backgroundColor: isDark ? 'rgba(0, 0, 0, 0.42)' : 'rgba(255, 255, 255, 0.68)',
+                      // 与搜索框/卡片同一配方，避免并排时深浅不一
+                      ...getSurfaceMaterial(isDark, glassStyle.blur),
                       borderColor: verticalOffset !== 0
                         ? 'rgba(59, 130, 246, 0.5)'
                         : isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.55)',
-                      backdropFilter: `blur(${glassStyle.blur}px)`,
-                      WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
                     }}
                   >
-                    <MoveVertical size={13} />
+                    <IconArrowsMoveVertical size={13} />
                   </button>
                 </Tooltip>
               </Popover>
@@ -383,13 +386,11 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
                 onClick={loadHistory}
                 className="w-8 h-8 rounded-full flex items-center justify-center transition-all cursor-pointer border shadow-sm text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white active:scale-95"
                 style={{
-                  backgroundColor: isDark ? 'rgba(0, 0, 0, 0.42)' : 'rgba(255, 255, 255, 0.68)',
+                  ...getSurfaceMaterial(isDark, glassStyle.blur),
                   borderColor: isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(255, 255, 255, 0.55)',
-                  backdropFilter: `blur(${glassStyle.blur}px)`,
-                  WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
                 }}
               >
-                <RefreshCw size={13} className={loading ? 'animate-spin text-blue-500' : ''} />
+                <IconRefresh size={13} className={loading ? 'animate-spin text-blue-500' : ''} />
               </button>
             </Tooltip>
           </>
@@ -424,12 +425,12 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
         >
           {loading && displayItems.length === 0 ? (
             <div className="w-full flex items-center justify-center py-6 text-xs text-neutral-400 gap-2">
-              <RefreshCw size={13} className="animate-spin text-blue-400" />
+              <IconRefresh size={13} className="animate-spin text-blue-400" />
               <span>{zh ? '正在读取最近访问...' : 'Loading recent visits...'}</span>
             </div>
           ) : displayItems.length === 0 ? (
             <div className="w-full flex flex-col items-center justify-center py-8 text-xs text-neutral-400 gap-1.5 opacity-60">
-              <History size={18} />
+              <IconHistory size={18} />
               <span>{t.recentEmpty}</span>
             </div>
           ) : (
@@ -494,7 +495,7 @@ export const RecentCards: React.FC<RecentCardsProps> = ({
                             : 'opacity-50 hover:opacity-100 text-neutral-600 dark:text-neutral-300 hover:text-blue-600 dark:hover:text-blue-400'
                         }`}
                       >
-                        <Pin
+                        <IconPin
                           size={11}
                           className={`transition-transform duration-150 ${
                             isPinned ? 'fill-blue-500/20 rotate-45' : ''

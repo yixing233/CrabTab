@@ -1,23 +1,22 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { createPortal } from 'react-dom';
 import {
-  Folder,
-  Search,
-  RefreshCw,
-  ExternalLink,
-  X,
-  AlertCircle,
-  Pencil,
-  Trash2,
-  FolderPlus,
-  BookmarkPlus,
-  Scissors,
-  Copy,
-  ClipboardPaste,
-  SquareArrowOutUpRight,
-  AppWindow,
-  EyeOff,
-} from 'lucide-react';
+  IconAlertCircle,
+  IconAppWindow,
+  IconBookmarkPlus,
+  IconClipboard,
+  IconCopy,
+  IconExternalLink,
+  IconEyeOff,
+  IconFolder,
+  IconFolderPlus,
+  IconPencil,
+  IconRefresh,
+  IconScissors,
+  IconSearch,
+  IconTrash,
+  IconX,
+} from '@tabler/icons-react';
+import { createPortal } from 'react-dom';
 import { Dropdown, Tooltip, Modal, message } from 'antd';
 import type { ItemType } from 'antd/es/menu/interface';
 import { BookmarkNode, Language, ThemeMode, GlassStyle } from '../types';
@@ -501,19 +500,19 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
         items.push({
           key: 'open-new-tab',
           label: t.bmMenuOpenNewTab,
-          icon: <SquareArrowOutUpRight size={13} />,
+          icon: <IconExternalLink size={13} />,
           onClick: () => handleOpenWithMode(node.url!, 'tab'),
         });
         items.push({
           key: 'open-new-window',
           label: t.bmMenuOpenNewWindow,
-          icon: <AppWindow size={13} />,
+          icon: <IconAppWindow size={13} />,
           onClick: () => handleOpenWithMode(node.url!, 'window'),
         });
         items.push({
           key: 'open-incognito',
           label: t.bmMenuOpenIncognito,
-          icon: <EyeOff size={13} />,
+          icon: <IconEyeOff size={13} />,
           onClick: () => handleOpenWithMode(node.url!, 'incognito'),
         });
         items.push({ type: 'divider' });
@@ -525,13 +524,13 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
           items.push({
             key: 'new-bookmark',
             label: t.bmMenuNewBookmark,
-            icon: <BookmarkPlus size={13} />,
+            icon: <IconBookmarkPlus size={13} />,
             onClick: () => handleNewInside({ id: node.id, title: node.title }, 'bookmark'),
           });
           items.push({
             key: 'new-folder',
             label: t.bmMenuNewFolder,
-            icon: <FolderPlus size={13} />,
+            icon: <IconFolderPlus size={13} />,
             onClick: () => handleNewInside({ id: node.id, title: node.title }, 'folder'),
           });
           items.push({ type: 'divider' });
@@ -541,7 +540,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
         items.push({
           key: 'edit',
           label: t.bmMenuEdit,
-          icon: <Pencil size={13} />,
+          icon: <IconPencil size={13} />,
           onClick: () => handleEditNode(node),
         });
         items.push({ type: 'divider' });
@@ -553,13 +552,13 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
         items.push({
           key: 'cut',
           label: t.bmMenuCut,
-          icon: <Scissors size={13} />,
+          icon: <IconScissors size={13} />,
           onClick: () => handleCopyNode(node, 'cut'),
         });
         items.push({
           key: 'copy',
           label: t.bmMenuCopy,
-          icon: <Copy size={13} />,
+          icon: <IconCopy size={13} />,
           onClick: () => handleCopyNode(node, 'copy'),
         });
         items.push({
@@ -567,7 +566,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
           label: isFolder
             ? t.bmPasteInto.replace('{name}', node.title)
             : t.bmMenuPaste,
-          icon: <ClipboardPaste size={13} />,
+          icon: <IconClipboard size={13} />,
           disabled: !canPaste,
           onClick: () => {
             if (canPaste) handlePasteBeside(node);
@@ -580,7 +579,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
           key: 'delete',
           label: t.bmMenuDelete,
           danger: true,
-          icon: <Trash2 size={13} />,
+          icon: <IconTrash size={13} />,
           onClick: () => setDeleteTarget(node),
         });
       }
@@ -606,20 +605,20 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
       items.push({
         key: 'new-bookmark',
         label: t.bmMenuNewBookmark,
-        icon: <BookmarkPlus size={13} />,
+        icon: <IconBookmarkPlus size={13} />,
         onClick: () => handleNewInside({ id: barFolderId, title: t.bookmarkBarTitle }, 'bookmark'),
       });
       items.push({
         key: 'new-folder',
         label: t.bmMenuNewFolder,
-        icon: <FolderPlus size={13} />,
+        icon: <IconFolderPlus size={13} />,
         onClick: () => handleNewInside({ id: barFolderId, title: t.bookmarkBarTitle }, 'folder'),
       });
       if (clipboard) {
         items.push({
           key: 'paste',
           label: t.bmPasteToBar,
-          icon: <ClipboardPaste size={13} />,
+          icon: <IconClipboard size={13} />,
           onClick: () => void handlePasteInto(barFolderId),
         });
       }
@@ -628,7 +627,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
     items.push({
       key: 'refresh',
       label: t.bmMenuRefresh,
-      icon: <RefreshCw size={13} />,
+      icon: <IconRefresh size={13} />,
       onClick: () => loadBookmarks(),
     });
     return items;
@@ -1133,7 +1132,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                 handleItemPointerDown(e, node);
               }}
             >
-              <Folder size={16} className="text-amber-500 dark:text-amber-400 shrink-0" fill="currentColor" />
+              <IconFolder size={16} className="text-amber-500 dark:text-amber-400 shrink-0" fill="currentColor" />
               <span className="truncate text-[14px] font-medium leading-snug text-inherit">{node.title}</span>
             </div>
           ),
@@ -1554,12 +1553,12 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
             >
               {loading ? (
                 <div className="flex items-center gap-1.5 px-2 text-[14px] opacity-50">
-                  <RefreshCw size={14} className="animate-spin text-blue-400" />
+                  <IconRefresh size={14} className="animate-spin text-blue-400" />
                   <span>{t.refreshBookmarks}...</span>
                 </div>
               ) : !permissionGranted ? (
                 <div className="flex items-center gap-1.5 px-2 text-[14px] text-amber-500">
-                  <AlertCircle size={15} className="shrink-0" />
+                  <IconAlertCircle size={15} className="shrink-0" />
                   <span>{t.bookmarkPermissionNotGranted}</span>
                 </div>
               ) : barItems.length === 0 ? (
@@ -1659,7 +1658,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                               : 'hover:bg-black/8 text-gray-700 hover:text-gray-900 active:bg-black/12'
                           }`}
                         >
-                          <Folder
+                          <IconFolder
                             size={15}
                             className="text-amber-500 dark:text-amber-400 shrink-0"
                             fill="currentColor"
@@ -1739,7 +1738,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                       : 'hover:bg-black/8 text-gray-700 hover:text-gray-900'
                   }`}
                 >
-                  <Folder
+                  <IconFolder
                     size={15}
                     className="text-amber-500 dark:text-amber-400 shrink-0"
                     fill="currentColor"
@@ -1759,7 +1758,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                     : 'hover:bg-black/8 text-gray-600 hover:text-gray-900'
                 }`}
               >
-                <Search size={15} />
+                <IconSearch size={15} />
               </button>
             </Tooltip>
           </div>
@@ -1791,7 +1790,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
               isDark ? 'border-white/10' : 'border-black/5'
             }`}
           >
-            <Search size={16} className={isDark ? 'text-white/40' : 'text-gray-400'} />
+            <IconSearch size={16} className={isDark ? 'text-white/40' : 'text-gray-400'} />
             <input
               type="text"
               autoFocus
@@ -1808,7 +1807,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                 onClick={() => setSearchQuery('')}
                 className="p-1 hover:opacity-100 opacity-50 cursor-pointer"
               >
-                <X size={14} />
+                <IconX size={14} />
               </button>
             )}
             <span
@@ -1826,7 +1825,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
           <div className="flex-1 overflow-y-auto p-2 custom-scrollbar max-h-[440px]">
             {!searchQuery.trim() ? (
               <div className="py-12 flex flex-col items-center justify-center gap-2 opacity-40 select-none">
-                <Search size={32} />
+                <IconSearch size={32} />
                 <span className="text-xs">{t.searchBookmarksPlaceholder}</span>
               </div>
             ) : searchResults.length === 0 ? (
@@ -1862,13 +1861,13 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                         </div>
                         {res.path.length > 0 && (
                           <div className="text-[10px] opacity-50 truncate mt-0.5 flex items-center gap-1">
-                            <Folder size={10} className="shrink-0 text-amber-400" fill="currentColor" />
+                            <IconFolder size={10} className="shrink-0 text-amber-400" fill="currentColor" />
                             <span>{res.path.join(' / ')}</span>
                           </div>
                         )}
                       </div>
                     </div>
-                    <ExternalLink size={12} className="shrink-0 opacity-40" />
+                    <IconExternalLink size={12} className="shrink-0 opacity-40" />
                   </div>
                 ))}
               </div>
@@ -1965,7 +1964,7 @@ export const TopBookmarkBar: React.FC<TopBookmarkBarProps> = ({
                   roundedClass="rounded-none"
                 />
               ) : (
-                <Folder
+                <IconFolder
                   size={15}
                   className="text-amber-500 dark:text-amber-400 shrink-0"
                   fill="currentColor"

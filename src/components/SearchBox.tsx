@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import {
+  IconArrowUpRight,
+  IconBookmark,
+  IconChevronDown,
+  IconClock,
+  IconHistory,
+  IconSearch,
+  IconTrash,
+  IconX,
+} from '@tabler/icons-react';
 import { Dropdown, Tooltip, Popover, Switch } from 'antd';
 import type { MenuProps } from 'antd';
-import {
-  Search,
-  ChevronDown,
-  X,
-  History,
-  Trash2,
-  ArrowUpRight,
-  Bookmark,
-  Clock,
-} from 'lucide-react';
 import { SearchEngineId, SuggestionEngineId, Language, BrowserHistoryItem } from '../types';
 import { SEARCH_ENGINES } from '../constants';
 import { i18n } from '../i18n';
@@ -20,6 +20,7 @@ import { searchBrowserHistory } from '../utils/history';
 import { SearchEngineIcon } from './SearchEngineIcons';
 import { ShortcutIconView } from './Shortcuts';
 import { VerticalOffsetControl } from './VerticalOffsetControl';
+import { getSurfaceMaterial } from '../theme';
 
 interface SearchBoxProps {
   currentEngineId: SearchEngineId;
@@ -529,9 +530,10 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
     },
   }));
 
-  // 统一定义搜索框与下拉联想卡片的毛玻璃材质样式，确保二者在任何壁纸与主题下材质、透明度、模糊度与色彩完全绝对一致
-  const glassBackgroundColor = isDark ? 'rgba(18, 22, 30, 0.65)' : 'rgba(255, 255, 255, 0.68)';
-  const glassBackdropFilter = `blur(${Math.max(glassStyle.blur, 16)}px) saturate(180%)`;
+  // 搜索框与下拉联想卡片共用统一材质，且与主屏其它浮层（内容模式胶囊、
+  // 最近访问工具按钮、卡片）同源 —— 底色与模糊都来自 getSurfaceMaterial，
+  // 避免并排出现时深浅不一。
+  const glassSurface = getSurfaceMaterial(isDark, glassStyle.blur);
   const glassBorder = `1px solid ${isDark ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.75)'}`;
 
   // 搜索偏好与位置调节下拉浮层内容（极简轻量版）
@@ -542,7 +544,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
         {/* 书签快速开关 */}
         <div className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
           <div className="flex items-center gap-2 text-xs font-medium text-neutral-700 dark:text-neutral-200">
-            <Bookmark className="w-3.5 h-3.5 text-emerald-500" />
+            <IconBookmark className="w-3.5 h-3.5 text-emerald-500" />
             <span>{t.searchBookmarks}</span>
           </div>
           <Switch
@@ -555,7 +557,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
         {/* 历史记录快速开关 */}
         <div className="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
           <div className="flex items-center gap-2 text-xs font-medium text-neutral-700 dark:text-neutral-200">
-            <Clock className="w-3.5 h-3.5 text-purple-500" />
+            <IconClock className="w-3.5 h-3.5 text-purple-500" />
             <span>{t.searchHistory}</span>
           </div>
           <Switch
@@ -600,9 +602,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
           isVisualActive ? 'ring-2 ring-blue-500/80 shadow-2xl' : 'hover:shadow-xl'
         }`}
         style={{
-          backgroundColor: glassBackgroundColor,
-          backdropFilter: glassBackdropFilter,
-          WebkitBackdropFilter: glassBackdropFilter,
+          ...glassSurface,
           border: glassBorder,
         }}
       >
@@ -615,7 +615,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
             title={`当前搜索引擎：${currentEngine.name}`}
           >
             <SearchEngineIcon engineId={currentEngine.id} size={18} />
-            <ChevronDown className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 transition-transform ml-0.5" />
+            <IconChevronDown className="w-3.5 h-3.5 text-gray-400 group-hover:text-gray-600 transition-transform ml-0.5" />
           </button>
         </Dropdown>
 
@@ -659,7 +659,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
               className="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 cursor-pointer transition-colors mr-0.5"
               aria-label="清空输入"
             >
-              <X className="w-4 h-4" />
+              <IconX className="w-4 h-4" />
             </button>
           )}
 
@@ -686,7 +686,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                 } active:scale-95`}
                 aria-label={t.searchPreferences}
               >
-                <ChevronDown
+                <IconChevronDown
                   className={`w-4 h-4 transition-transform duration-200 ${
                     settingsPopoverOpen ? 'rotate-180 text-blue-500' : ''
                   }`}
@@ -701,7 +701,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
             className="w-8 h-8 rounded-xl bg-blue-600 hover:bg-blue-500 active:bg-blue-700 text-white flex items-center justify-center transition-all shadow-md cursor-pointer flex-shrink-0 ml-1"
             aria-label="执行搜索"
           >
-            <Search className="w-4 h-4 stroke-[2.2]" />
+            <IconSearch className="w-4 h-4 stroke-[2.2]" />
           </button>
         </div>
       </form>
@@ -717,9 +717,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
               ? 'none'
               : 'height 0.22s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.2s, border-color 0.2s',
             willChange: 'height',
-            backgroundColor: glassBackgroundColor,
-            backdropFilter: glassBackdropFilter,
-            WebkitBackdropFilter: glassBackdropFilter,
+            ...glassSurface,
             border: glassBorder,
             boxShadow: isDark
               ? '0 20px 40px -12px rgba(0,0,0,0.5)'
@@ -785,7 +783,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                             ↵
                           </span>
                         ) : (
-                          <ArrowUpRight className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <IconArrowUpRight className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                         )}
                       </div>
                     </div>
@@ -849,7 +847,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                             ↵
                           </span>
                         ) : (
-                          <ArrowUpRight className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <IconArrowUpRight className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                         )}
                       </div>
                     </div>
@@ -886,7 +884,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        <Search className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-500 transition-colors flex-shrink-0" />
+                        <IconSearch className="w-3.5 h-3.5 text-gray-400 group-hover:text-blue-500 transition-colors flex-shrink-0" />
                         <span className="text-sm truncate font-normal">
                           {highlightKeyword(item, trimmed)}
                         </span>
@@ -896,7 +894,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                         {isActive ? (
                           <span className="text-[10px] font-mono opacity-80">↵</span>
                         ) : (
-                          <ArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <IconArrowUpRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
                         )}
                       </div>
                     </div>
@@ -934,7 +932,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                       }`}
                     >
                       <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                        <History className="w-3.5 h-3.5 text-amber-500/75 group-hover:text-amber-500 transition-colors flex-shrink-0" />
+                        <IconHistory className="w-3.5 h-3.5 text-amber-500/75 group-hover:text-amber-500 transition-colors flex-shrink-0" />
                         <span className="text-sm truncate font-normal">
                           {highlightKeyword(item, trimmed)}
                         </span>
@@ -947,7 +945,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                           </span>
                         ) : (
                           <span className="text-xs text-gray-400 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <ArrowUpRight className="w-3 h-3" />
+                            <IconArrowUpRight className="w-3 h-3" />
                           </span>
                         )}
                         <button
@@ -965,7 +963,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                           className="p-1 rounded-md text-gray-400 hover:text-red-500 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
                           title={language === 'zh' ? '删除此条记录' : 'Remove entry'}
                         >
-                          <X className="w-3.5 h-3.5" />
+                          <IconX className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
@@ -983,7 +981,7 @@ export const SearchBox: React.FC<SearchBoxProps> = ({
                       }}
                       className="flex items-center gap-1 text-xs text-gray-400 hover:text-red-500 dark:hover:text-red-400 transition-colors cursor-pointer px-1.5 py-0.5 rounded"
                     >
-                      <Trash2 className="w-3 h-3" />
+                      <IconTrash className="w-3 h-3" />
                       {t.clearHistory}
                     </button>
                   </div>

@@ -116,6 +116,37 @@ html, body, #root {
   will-change: opacity;
 }
 
+/* Segmented 圆角同心：内层滑块圆角 = 容器圆角 − padding(2px)。
+ *
+ * 背景问题：容器圆角被各处单独改过 —— 壁纸子标签用 `!rounded-xl`（12px），
+ * 其余用 antd 默认 8px；而内层选中块由 antd 按 token 算出 6px。
+ * 于是 12px 容器里套着 6px 的滑块，差 6px，视觉上「外圈大圆、里面小圆」不同心，
+ * 一看就割裂。
+ *
+ * 解法：容器圆角统一抽成 --seg-radius，内层用 calc 推导，改容器即自动带动内层。
+ * 注意 Tailwind 的 `!rounded-xl` 类名带前导感叹号（编译后写作 `\!rounded-xl`），
+ * 选择器必须按实际类名书写，否则匹配不到。
+ */
+.ant-segmented {
+  --seg-radius: 8px;
+  --seg-padding: 2px;
+  border-radius: var(--seg-radius) !important;
+  padding: var(--seg-padding) !important;
+}
+
+/* `!rounded-xl`（12px）：把容器圆角写入变量，内层随之算成 10px */
+.ant-segmented.\!rounded-xl {
+  --seg-radius: 12px;
+}
+
+/* 内层（选中块 / hover 块 / 滑块）统一按「容器圆角 − padding」同心 */
+.ant-segmented .ant-segmented-item,
+.ant-segmented .ant-segmented-item-selected,
+.ant-segmented .ant-segmented-thumb,
+.ant-segmented .ant-segmented-thumb-motion {
+  border-radius: calc(var(--seg-radius) - var(--seg-padding)) !important;
+}
+
 /* 保证 Ant Design Segmented 内部图文绝对垂直与水平居中，并强化选中状态的对比度与清晰度 */
 .ant-segmented .ant-segmented-item-label {
   display: flex !important;
@@ -172,7 +203,6 @@ html, body, #root {
   border: none !important;
   outline: none !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
-  border-radius: 7px !important;
 }
 
 /* 选中项文字与无动效时的选中状态 */
@@ -193,7 +223,6 @@ html:not(.dark) .ant-segmented-thumb-motion {
   border: none !important;
   outline: none !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
-  border-radius: 8px !important;
 }
 
 html:not(.dark) .ant-segmented .ant-segmented-item-selected {
@@ -269,7 +298,6 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
   border: none !important;
   outline: none !important;
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4) !important;
-  border-radius: 7px !important;
 }
 
 .dark .custom-settings-modal .ant-segmented .ant-segmented-item:active,

@@ -1,14 +1,14 @@
 ﻿import React, { useRef, useState } from 'react';
-import {
-  Sun,
-  Cloud,
-  CloudSun,
-  CloudRain,
-  CloudLightning,
-  CloudSnow,
-  CloudFog,
-} from 'lucide-react';
 import { WeatherDailyForecast } from '../utils/weather';
+import {
+  IconCloud,
+  IconCloudFog,
+  IconCloudRain,
+  IconCloudSnow,
+  IconCloudStorm,
+  IconSun,
+  IconSunHigh,
+} from '@tabler/icons-react';
 import { Language } from '../types';
 
 interface WeatherDailyChartProps {
@@ -21,28 +21,28 @@ interface WeatherDailyChartProps {
 function getConditionIcon(weatherDesc: string = '', conditionCode?: number, className = 'w-4 h-4', isDark = true) {
   const desc = weatherDesc.toLowerCase();
   // 优先依据描述判断，避免不同数据源对 1/2 编码的含义不一致。
-  if (desc.includes('雷') || desc.includes('thunder')) return <CloudLightning className={`${className} ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />;
-  if (desc.includes('雪') || desc.includes('snow')) return <CloudSnow className={`${className} ${isDark ? 'text-indigo-300' : 'text-indigo-500'}`} />;
-  if (desc.includes('雨') || desc.includes('rain') || desc.includes('shower')) return <CloudRain className={`${className} ${isDark ? 'text-sky-400' : 'text-sky-500'}`} />;
-  if (desc.includes('雾') || desc.includes('霾') || desc.includes('fog')) return <CloudFog className={`${className} ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />;
+  if (desc.includes('雷') || desc.includes('thunder')) return <IconCloudStorm className={`${className} ${isDark ? 'text-amber-400' : 'text-amber-600'}`} />;
+  if (desc.includes('雪') || desc.includes('snow')) return <IconCloudSnow className={`${className} ${isDark ? 'text-indigo-300' : 'text-indigo-500'}`} />;
+  if (desc.includes('雨') || desc.includes('rain') || desc.includes('shower')) return <IconCloudRain className={`${className} ${isDark ? 'text-sky-400' : 'text-sky-500'}`} />;
+  if (desc.includes('雾') || desc.includes('霾') || desc.includes('fog')) return <IconCloudFog className={`${className} ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />;
   if (desc.includes('晴间多云') || desc.includes('多云') || desc.includes('partly cloud') || desc.includes('mainly clear')) {
-    return <CloudSun className={`${className} ${isDark ? 'text-amber-300' : 'text-amber-500'}`} />;
+    return <IconSunHigh className={`${className} ${isDark ? 'text-amber-300' : 'text-amber-500'}`} />;
   }
   if (desc.includes('阴') || desc.includes('overcast') || desc.includes('cloudy')) {
-    return <Cloud className={`${className} ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />;
+    return <IconCloud className={`${className} ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />;
   }
   if (conditionCode !== undefined) {
-    if (conditionCode === 0) return <Sun className={`${className} ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />;
-    if (conditionCode === 1 || conditionCode === 2) return <CloudSun className={`${className} ${isDark ? 'text-amber-300' : 'text-amber-500'}`} />;
-    if (conditionCode === 3) return <Cloud className={`${className} ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />;
-    if (conditionCode >= 45 && conditionCode <= 48) return <CloudFog className={`${className} ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />;
-    if (conditionCode >= 51 && conditionCode <= 67) return <CloudRain className={`${className} ${isDark ? 'text-sky-400' : 'text-sky-500'}`} />;
-    if (conditionCode >= 71 && conditionCode <= 77) return <CloudSnow className={`${className} ${isDark ? 'text-indigo-300' : 'text-indigo-500'}`} />;
-    if (conditionCode >= 80 && conditionCode <= 82) return <CloudRain className={`${className} ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />;
-    if (conditionCode >= 85 && conditionCode <= 86) return <CloudSnow className={`${className} ${isDark ? 'text-indigo-300' : 'text-indigo-500'}`} />;
-    if (conditionCode >= 95) return <CloudLightning className={`${className} ${isDark ? 'text-amber-500' : 'text-amber-600'}`} />;
+    if (conditionCode === 0) return <IconSun className={`${className} ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />;
+    if (conditionCode === 1 || conditionCode === 2) return <IconSunHigh className={`${className} ${isDark ? 'text-amber-300' : 'text-amber-500'}`} />;
+    if (conditionCode === 3) return <IconCloud className={`${className} ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />;
+    if (conditionCode >= 45 && conditionCode <= 48) return <IconCloudFog className={`${className} ${isDark ? 'text-neutral-400' : 'text-neutral-500'}`} />;
+    if (conditionCode >= 51 && conditionCode <= 67) return <IconCloudRain className={`${className} ${isDark ? 'text-sky-400' : 'text-sky-500'}`} />;
+    if (conditionCode >= 71 && conditionCode <= 77) return <IconCloudSnow className={`${className} ${isDark ? 'text-indigo-300' : 'text-indigo-500'}`} />;
+    if (conditionCode >= 80 && conditionCode <= 82) return <IconCloudRain className={`${className} ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />;
+    if (conditionCode >= 85 && conditionCode <= 86) return <IconCloudSnow className={`${className} ${isDark ? 'text-indigo-300' : 'text-indigo-500'}`} />;
+    if (conditionCode >= 95) return <IconCloudStorm className={`${className} ${isDark ? 'text-amber-500' : 'text-amber-600'}`} />;
   }
-  return <Sun className={`${className} ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />;
+  return <IconSun className={`${className} ${isDark ? 'text-amber-400' : 'text-amber-500'}`} />;
 }
 
 // 从 tempRange 解析出高低温度数字（例如 "25℃~15℃" 或 "25°/15°"）

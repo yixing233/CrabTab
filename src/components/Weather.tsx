@@ -1,25 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Spin, Tooltip } from 'antd';
 import {
-  MapPin,
-  RotateCw,
-  Sun,
-  Cloud,
-  CloudSun,
-  CloudRain,
-  CloudLightning,
-  CloudSnow,
-  CloudFog,
-  Gauge,
-  Compass,
-  Droplets,
-  AlertTriangle,
-  Activity,
-  ChevronDown,
-  ChevronUp,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
+  IconActivity,
+  IconAlertTriangle,
+  IconChevronDown,
+  IconChevronLeft,
+  IconChevronRight,
+  IconChevronUp,
+  IconCloud,
+  IconCloudFog,
+  IconCloudRain,
+  IconCloudSnow,
+  IconCloudStorm,
+  IconCompass,
+  IconDroplets,
+  IconGauge,
+  IconMapPin,
+  IconRotateClockwise,
+  IconSun,
+  IconSunHigh,
+} from '@tabler/icons-react';
+import { Spin, Tooltip } from 'antd';
 import { Language } from '../types';
 import { fetchCurrentWeather, getCachedWeather, WeatherData } from '../utils/weather';
 import { WeatherHourlyChart } from './WeatherHourlyChart';
@@ -71,6 +71,15 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
   const [data, setData] = useState<WeatherData | null>(() => getCachedWeather(language));
   const [loading, setLoading] = useState<boolean>(() => !getCachedWeather(language));
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  /**
+   * 胶囊自身的「后台刷新中」标记。
+   *
+   * 与上面的 isRefreshing 区分开：那个只用于详情卡片里的手动刷新按钮。
+   * 胶囊需要在任何一次数据获取期间（手动刷新、30 分钟定时刷新、语言切换）
+   * 都给出轻量提示，且**始终保留刷新前的旧数据**，等新数据到位后再整体替换，
+   * 避免出现「先清空成骨架再填回来」的闪烁。
+   */
+  const [isCapsuleRefreshing, setIsCapsuleRefreshing] = useState<boolean>(false);
   const [isOpen, setIsOpen] = useState<boolean>(false);
   // 关闭时保留浮层，待退场动画完成后再卸载，避免卡片瞬间消失。
   const [isPopoverMounted, setIsPopoverMounted] = useState<boolean>(false);
@@ -79,6 +88,16 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
   const [isAlertExpanded, setIsAlertExpanded] = useState<boolean>(false);
   const [isAlertHovered, setIsAlertHovered] = useState<boolean>(false);
   const weatherContainerRef = useRef<HTMLDivElement>(null);
+  /**
+   * 与 data 同步的 ref。
+   *
+   * loadWeather 会被 useEffect 内的 setInterval 长期持有，闭包里的 data
+   * 会一直停留在「首次渲染时的值」（通常是缓存或 null）。若用闭包里的 data
+   * 判断「有没有旧数据」，定时刷新时就会误判 —— 无缓存场景永远不进刷新态、
+   * 有缓存场景又可能在数据已失效后仍按旧值判断。用 ref 读实时值才准确。
+   */
+  const dataRef = useRef<WeatherData | null>(data);
+  dataRef.current = data;
 
   const t = i18n[language];
   const isDark = theme === 'dark' || (theme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
@@ -156,16 +175,37 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
   const loadWeather = async (showRefreshAnimation = false, forceRefresh = false) => {
     if (showRefreshAnimation) {
       setIsRefreshing(true);
-    } else if (!data) {
+    } else if (!dataRef.current) {
       setLoading(true);
     }
+
+    // 已经有旧数据时，一律进入「后台刷新」态：胶囊继续显示旧内容，
+    // 只在右侧追加一个小转圈，数据回来后再整体替换。
+    // 首次加载（无任何数据）不进入该态，仍走整块 Spin 占位。
+    const hasOldData = Boolean(dataRef.current);
+    if (hasOldData && !showRefreshAnimation) {
+      setIsCapsuleRefreshing(true);
+    }
+
     try {
+      // 记录开始时间：请求若瞬间返回，刷新指示会「闪一下就没」，
+      // 反而让人以为没生效。给一个最短展示时长，观感更稳定。
+      const startedAt = Date.now();
       const res = await fetchCurrentWeather(language, forceRefresh);
       setData(res);
+
+      if (hasOldData) {
+        const MIN_VISIBLE = 480;
+        const elapsed = Date.now() - startedAt;
+        if (elapsed < MIN_VISIBLE) {
+          await new Promise((r) => setTimeout(r, MIN_VISIBLE - elapsed));
+        }
+      }
     } catch (e) {
       console.error('Failed to load weather:', e);
     } finally {
       setLoading(false);
+      if (hasOldData) setIsCapsuleRefreshing(false);
       if (showRefreshAnimation) {
         setTimeout(() => setIsRefreshing(false), 600);
       }
@@ -188,28 +228,28 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
   const renderWeatherIcon = (weatherText: string, code?: number, className = 'w-5 h-5') => {
     const text = weatherText || '';
     if (text.includes('雷') || (code !== undefined && code >= 95)) {
-      return <CloudLightning className={`${className} ${isDark ? 'text-amber-300' : 'text-amber-500'}`} />;
+      return <IconCloudStorm className={`${className} ${isDark ? 'text-amber-300' : 'text-amber-500'}`} />;
     }
     if (text.includes('雪') || (code !== undefined && code >= 71 && code <= 77)) {
-      return <CloudSnow className={`${className} ${isDark ? 'text-sky-200' : 'text-sky-500'}`} />;
+      return <IconCloudSnow className={`${className} ${isDark ? 'text-sky-200' : 'text-sky-500'}`} />;
     }
     if (text.includes('暴雨') || text.includes('大雨') || (code !== undefined && code === 82)) {
-      return <CloudRain className={`${className} ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />;
+      return <IconCloudRain className={`${className} ${isDark ? 'text-blue-400' : 'text-blue-600'}`} />;
     }
     if (text.includes('雨') || (code !== undefined && code >= 51 && code <= 81)) {
-      return <CloudRain className={`${className} ${isDark ? 'text-sky-400' : 'text-sky-500'}`} />;
+      return <IconCloudRain className={`${className} ${isDark ? 'text-sky-400' : 'text-sky-500'}`} />;
     }
     if (text.includes('雾') || (code !== undefined && code >= 45 && code <= 48)) {
-      return <CloudFog className={`${className} ${isDark ? 'text-neutral-300' : 'text-neutral-500'}`} />;
+      return <IconCloudFog className={`${className} ${isDark ? 'text-neutral-300' : 'text-neutral-500'}`} />;
     }
     if (text.includes('多云') || text.includes('阴') || (code !== undefined && (code === 2 || code === 3))) {
-      return <Cloud className={`${className} ${isDark ? 'text-neutral-200' : 'text-neutral-600'}`} />;
+      return <IconCloud className={`${className} ${isDark ? 'text-neutral-200' : 'text-neutral-600'}`} />;
     }
     if (text.includes('晴间多云') || (code !== undefined && code === 1)) {
-      return <CloudSun className={`${className} ${isDark ? 'text-amber-200' : 'text-amber-500'}`} />;
+      return <IconSunHigh className={`${className} ${isDark ? 'text-amber-200' : 'text-amber-500'}`} />;
     }
     // 默认或晴天
-    return <Sun className={`${className} ${isDark ? 'text-amber-300' : 'text-amber-500'}`} />;
+    return <IconSun className={`${className} ${isDark ? 'text-amber-300' : 'text-amber-500'}`} />;
   };
 
   // 渲染今日主天气大图标
@@ -217,22 +257,22 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
     const code = data?.conditionCode ?? 0;
     const text = data?.conditionText || '';
     if (text.includes('雷') || code >= 95) {
-      return <CloudLightning className={`w-9 h-9 stroke-[1.8] ${isDark ? 'text-amber-300' : 'text-amber-500'}`} />;
+      return <IconCloudStorm className={`w-9 h-9 stroke-[1.8] ${isDark ? 'text-amber-300' : 'text-amber-500'}`} />;
     }
     if (text.includes('雪') || (code >= 71 && code <= 77)) {
-      return <CloudSnow className={`w-9 h-9 stroke-[1.8] ${isDark ? 'text-sky-200' : 'text-sky-500'}`} />;
+      return <IconCloudSnow className={`w-9 h-9 stroke-[1.8] ${isDark ? 'text-sky-200' : 'text-sky-500'}`} />;
     }
     if (text.includes('雨') || (code >= 51 && code <= 82)) {
-      return <CloudRain className={`w-9 h-9 stroke-[1.8] ${isDark ? 'text-sky-300' : 'text-sky-500'}`} />;
+      return <IconCloudRain className={`w-9 h-9 stroke-[1.8] ${isDark ? 'text-sky-300' : 'text-sky-500'}`} />;
     }
     if (text.includes('雾') || (code >= 45 && code <= 48)) {
-      return <CloudFog className={`w-9 h-9 stroke-[1.8] ${isDark ? 'text-neutral-200' : 'text-neutral-500'}`} />;
+      return <IconCloudFog className={`w-9 h-9 stroke-[1.8] ${isDark ? 'text-neutral-200' : 'text-neutral-500'}`} />;
     }
     if (text.includes('多云') || text.includes('阴') || code === 2 || code === 3) {
-      return <Cloud className={`w-9 h-9 stroke-[1.8] ${isDark ? 'text-neutral-100' : 'text-neutral-600'}`} />;
+      return <IconCloud className={`w-9 h-9 stroke-[1.8] ${isDark ? 'text-neutral-100' : 'text-neutral-600'}`} />;
     }
     // 晴天显示带放射线的纯净太阳
-    return <Sun className={`w-9 h-9 stroke-[1.8] ${isDark ? 'text-white' : 'text-amber-500'}`} />;
+    return <IconSun className={`w-9 h-9 stroke-[1.8] ${isDark ? 'text-white' : 'text-amber-500'}`} />;
   };
 
   // 主天气卡片详细内容 (对应截屏)
@@ -256,7 +296,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
       {/* 1. 顶部栏：城市、数据源标签、实时刷新 */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <MapPin className="w-4.5 h-4.5 text-[#2f7cf6] stroke-[2]" />
+          <IconMapPin className="w-4.5 h-4.5 text-[#2f7cf6] stroke-[2]" />
           <span className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-neutral-900'}`}>
             {data?.city || (language === 'zh' ? '西安' : 'Xi\'an')}
           </span>
@@ -295,7 +335,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
                 isDark ? 'hover:bg-white/10 text-neutral-400 hover:text-white' : 'hover:bg-black/5 text-neutral-600 hover:text-black'
               }`}
             >
-              <RotateCw
+              <IconRotateClockwise
                 className={`w-4 h-4 transition-transform duration-700 ${
                   isRefreshing ? 'animate-spin text-[#2f7cf6]' : ''
                 }`}
@@ -347,7 +387,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
                 className="flex items-center gap-2 flex-1 min-w-0 cursor-pointer"
                 title={isAlertExpanded ? (language === 'zh' ? '点击收起详情' : 'Click to collapse') : (language === 'zh' ? '点击查看预警详情' : 'Click to expand detail')}
               >
-                <AlertTriangle className={`w-4 h-4 shrink-0 ${iconColor}`} />
+                <IconAlertTriangle className={`w-4 h-4 shrink-0 ${iconColor}`} />
                 <span className="font-semibold tracking-tight truncate">
                   {currentAlert.title}
                 </span>
@@ -366,7 +406,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
                       className="hover:opacity-100 opacity-70 p-0.5 rounded transition-opacity"
                       title={language === 'zh' ? '上一条预警' : 'Previous Alert'}
                     >
-                      <ChevronLeft className="w-3 h-3" />
+                      <IconChevronLeft className="w-3 h-3" />
                     </button>
                     <span className="tabular-nums font-semibold px-0.5">
                       {safeIndex + 1}/{totalAlerts}
@@ -380,7 +420,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
                       className="hover:opacity-100 opacity-70 p-0.5 rounded transition-opacity"
                       title={language === 'zh' ? '下一条预警' : 'Next Alert'}
                     >
-                      <ChevronRight className="w-3 h-3" />
+                      <IconChevronRight className="w-3 h-3" />
                     </button>
                   </div>
                 )}
@@ -393,9 +433,9 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
                 >
                   <span>{isAlertExpanded ? (language === 'zh' ? '收起' : 'Less') : (language === 'zh' ? '详情' : 'More')}</span>
                   {isAlertExpanded ? (
-                    <ChevronUp className="w-3.5 h-3.5" />
+                    <IconChevronUp className="w-3.5 h-3.5" />
                   ) : (
-                    <ChevronDown className="w-3.5 h-3.5" />
+                    <IconChevronDown className="w-3.5 h-3.5" />
                   )}
                 </button>
               </div>
@@ -461,7 +501,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
                 }`}
                 title={data.aqi.suggest}
               >
-                <Activity className="w-3 h-3" />
+                <IconActivity className="w-3 h-3" />
                 <span>AQI {data.aqi.num} {data.aqi.text || '优'}</span>
               </span>
             )}
@@ -491,7 +531,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
         {/* 体感温度 */}
         <div className="flex flex-col items-center justify-center p-1.5 rounded-xl">
           <div className={`flex items-center gap-1 text-[11px] font-medium mb-0.5 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-            <Gauge className="w-3.5 h-3.5 text-[#2f7cf6]" />
+            <IconGauge className="w-3.5 h-3.5 text-[#2f7cf6]" />
             <span>{t.feelsLike}</span>
           </div>
           <div className={`text-xs font-bold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
@@ -502,7 +542,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
         {/* 风速 */}
         <div className="flex flex-col items-center justify-center p-1.5 rounded-xl">
           <div className={`flex items-center gap-1 text-[11px] font-medium mb-0.5 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-            <Compass className="w-3.5 h-3.5 text-[#2f7cf6]" />
+            <IconCompass className="w-3.5 h-3.5 text-[#2f7cf6]" />
             <span>{t.wind}</span>
           </div>
           <div className={`text-xs font-bold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
@@ -513,7 +553,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
         {/* 湿度 */}
         <div className="flex flex-col items-center justify-center p-1.5 rounded-xl">
           <div className={`flex items-center gap-1 text-[11px] font-medium mb-0.5 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-            <Droplets className="w-3.5 h-3.5 text-[#2f7cf6]" />
+            <IconDroplets className="w-3.5 h-3.5 text-[#2f7cf6]" />
             <span>{t.humidity}</span>
           </div>
           <div className={`text-xs font-bold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
@@ -524,7 +564,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
         {/* 气压 */}
         <div className="flex flex-col items-center justify-center p-1.5 rounded-xl">
           <div className={`flex items-center gap-1 text-[11px] font-medium mb-0.5 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-            <Gauge className="w-3.5 h-3.5 text-[#8b5cf6]" />
+            <IconGauge className="w-3.5 h-3.5 text-[#8b5cf6]" />
             <span>{language === 'zh' ? '气压' : 'Pressure'}</span>
           </div>
           <div className={`text-xs font-bold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
@@ -535,7 +575,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
         {/* 紫外线 */}
         <div className="flex flex-col items-center justify-center p-1.5 rounded-xl">
           <div className={`flex items-center gap-1 text-[11px] font-medium mb-0.5 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-            <Sun className="w-3.5 h-3.5 text-[#ec4899]" />
+            <IconSun className="w-3.5 h-3.5 text-[#ec4899]" />
             <span>{language === 'zh' ? '紫外线' : 'UV'}</span>
           </div>
           <div className={`text-xs font-bold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
@@ -546,7 +586,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
         {/* 日出日落 */}
         <div className="flex flex-col items-center justify-center p-1.5 rounded-xl">
           <div className={`flex items-center gap-1 text-[11px] font-medium mb-0.5 ${isDark ? 'text-neutral-400' : 'text-neutral-600'}`}>
-            <Sun className="w-3.5 h-3.5 text-[#f59e0b]" />
+            <IconSun className="w-3.5 h-3.5 text-[#f59e0b]" />
             <span>{t.sunRiseSet}</span>
           </div>
           <div className={`text-xs font-bold tracking-tight ${isDark ? 'text-white' : 'text-neutral-900'}`}>
@@ -674,6 +714,7 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
         }}
       >
         {loading && !data ? (
+          /* 首次加载（本地无缓存）：整块占位，此时没有旧数据可显示 */
           <Spin size="small" />
         ) : (
           <>
@@ -689,6 +730,20 @@ export const Weather: React.FC<WeatherProps> = ({ language, theme, glassStyle })
                 {data?.city || '西安'}
               </span>
             </div>
+            {/* 后台刷新指示：只加在右侧，完整保留左侧旧数据，
+                避免每次刷新都闪一下空白骨架。 */}
+            {isCapsuleRefreshing && (
+              <span
+                className="shrink-0 flex items-center justify-center"
+                aria-label={language === 'zh' ? '正在更新天气' : 'Updating weather'}
+                role="status"
+              >
+                <IconRotateClockwise
+                  size={12}
+                  className="animate-spin opacity-70"
+                />
+              </span>
+            )}
           </>
         )}
       </button>

@@ -739,15 +739,21 @@ export async function exportAllUserData(): Promise<string> {
   const currentSettings = await loadSettings();
   const currentShortcuts = await loadShortcuts();
   const currentTodos = await loadTodosFromStorage();
+  const currentCountdowns = (await loadCountdownsFromStorage()) ?? [];
   const currentSearchHistory = await loadSearchHistory();
 
   const dump = {
     appName: 'CrabTab',
-    version: '1.0.2',
+    // 版本号不再写死：直接取运行时清单版本，避免与发布版本脱节
+    version: typeof chrome !== 'undefined' && chrome.runtime?.getManifest
+      ? chrome.runtime.getManifest().version
+      : 'unknown',
     exportedAt: new Date().toISOString(),
     settings: currentSettings,
     shortcuts: currentShortcuts,
     todos: currentTodos,
+    // 倒数日此前漏导出，导致「备份后恢复」会丢数据；此处补齐
+    countdowns: currentCountdowns,
     searchHistory: currentSearchHistory,
   };
 
@@ -770,6 +776,9 @@ export async function importAllUserData(jsonStr: string): Promise<boolean> {
     }
     if (Array.isArray(parsed.todos)) {
       await saveTodosToStorage(parsed.todos);
+    }
+    if (Array.isArray(parsed.countdowns)) {
+      await saveCountdownsToStorage(parsed.countdowns);
     }
     if (Array.isArray(parsed.searchHistory)) {
       await saveSearchHistory(parsed.searchHistory);

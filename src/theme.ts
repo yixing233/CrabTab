@@ -96,3 +96,32 @@ export function getAntdTheme(mode: 'dark' | 'light' | 'auto'): ThemeConfig {
     },
   };
 }
+
+/**
+ * 主屏浮层统一毛玻璃材质（搜索框 / 内容模式胶囊 / 最近访问工具按钮 / 卡片）。
+ *
+ * 为什么必须收敛到一处：这些控件本质是同一层「悬浮在壁纸上的玻璃」，
+ * 但此前各自硬编码了不同的底色 —— 搜索框与卡片用 rgba(18,22,30,0.65)，
+ * 内容模式胶囊用 bg-white/[0.06]（暗色下几乎全透明），工具按钮又用
+ * rgba(0,0,0,0.42)。三种浓度并排出现时，看上去像三种不同材质拼在一起。
+ *
+ * 这里的取值就是原先搜索框与卡片的配方，即视觉基准，**不引入任何新变量**：
+ * glassStyle.opacity 是历史遗留字段（默认 20，语义是壁纸暗化蒙层，
+ * 并非玻璃底色 alpha，且设置界面里并没有它的开关），
+ * 拿它当底色透明度会让所有浮层骤然变透，观感明显劣化。
+ */
+export function getSurfaceMaterial(
+  isDark: boolean,
+  blur: number
+): React.CSSProperties {
+  const color = isDark ? 'rgba(18, 22, 30, 0.65)' : 'rgba(255, 255, 255, 0.68)';
+
+  // 与卡片/图标盒同一手法：给模糊下限，低模糊设置下仍保证文字背后可读
+  const filter = `blur(${Math.max(blur, 16)}px) saturate(180%)`;
+
+  return {
+    backgroundColor: color,
+    backdropFilter: filter,
+    WebkitBackdropFilter: filter,
+  };
+}

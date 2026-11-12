@@ -4,12 +4,14 @@
 
 ## 1. 图标规范 (Icons Standard)
 - **严禁使用原生 Emoji**（如 🚀, ⚡, ⚠, ✓ 等字符）。不同操作系统、浏览器和深浅色模式对 Emoji 的渲染色彩、基线高度和大小差异极大，极易破坏 UI 的对齐与精致感。
-- **统一使用 `lucide-react` 矢量图标**：
-  - 测速极速/闪电：`<Zap size={...} />`
-  - 高速网络/火箭：`<Rocket size={...} />`
-  - 良好/完成：`<Check size={...} />` 或 `<CheckCircle2 size={...} />`
-  - 告警/较慢：`<AlertTriangle size={...} />`
-  - 更多业务图标均需从 `lucide-react` 选取。
+- **统一使用 `@tabler/icons-react` 矢量图标**（命名一律 `IconXxx`）：
+  - 测速极速/闪电：`<IconBolt size={...} />`
+  - 高速网络/火箭：`<IconRocket size={...} />`
+  - 良好/完成：`<IconCheck size={...} />` 或 `<IconCircleCheck size={...} />`
+  - 告警/较慢：`<IconAlertTriangle size={...} />`
+  - 更多业务图标均需从 `@tabler/icons-react` 选取。
+- **不要再引入其它图标库**：`lucide-react` 与 `@ant-design/icons` 已从依赖中移除，
+  混用会导致描边粗细与视觉重量不统一（Tabler 偏实、antd 偏细）。
 - 图标配合 `shrink-0` 及对应语义颜色类名（如 `text-blue-500`、`text-emerald-500` 等），保持跨平台一致的矢量渲染品质。
 
 ## 2. UI 与布局规范

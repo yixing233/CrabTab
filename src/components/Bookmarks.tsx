@@ -1,17 +1,17 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Tooltip, message } from 'antd';
 import {
-  Folder,
-  FolderOpen,
-  ChevronRight,
-  CornerUpLeft,
-  Search,
-  X,
-  RefreshCw,
-  ExternalLink,
-  BookmarkCheck,
-  ShieldCheck,
-} from 'lucide-react';
+  IconBookmarkFilled,
+  IconChevronRight,
+  IconCornerUpLeft,
+  IconExternalLink,
+  IconFolder,
+  IconFolderOpen,
+  IconRefresh,
+  IconSearch,
+  IconShieldCheck,
+  IconX,
+} from '@tabler/icons-react';
+import { Tooltip, message } from 'antd';
 import { BookmarkNode, Language, ThemeMode, AppSettings } from '../types';
 import { i18n } from '../i18n';
 import {
@@ -292,7 +292,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
           }}
         >
           <div className="w-16 h-16 rounded-2xl bg-blue-500/15 border border-blue-500/25 flex items-center justify-center text-blue-500 dark:text-blue-400 mb-4 shadow-inner">
-            <BookmarkCheck size={32} />
+            <IconBookmarkFilled size={32} />
           </div>
 
           <h3 className="text-base sm:text-lg font-semibold mb-2">
@@ -314,7 +314,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
               onClick={handleRequestPermission}
               className="px-5 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white font-medium text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all cursor-pointer disabled:opacity-50"
             >
-              <ShieldCheck size={16} />
+              <IconShieldCheck size={16} />
               <span>{requesting ? `${t.bookmarkPermissionGrantBtn}...` : t.bookmarkPermissionGrantBtn}</span>
             </button>
 
@@ -382,7 +382,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
                   : 'bg-white/70 hover:bg-white border-black/10 text-gray-700'
               }`}
             >
-              <CornerUpLeft size={14} className="shrink-0" />
+              <IconCornerUpLeft size={14} className="shrink-0" />
             </button>
           )}
 
@@ -406,7 +406,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
                         : 'bg-transparent border-transparent text-gray-500 hover:text-gray-900 hover:bg-black/5'
                     }`}
                   >
-                    <Folder size={14} className={isSelected ? 'text-amber-400' : 'opacity-70'} fill="currentColor" />
+                    <IconFolder size={14} className={isSelected ? 'text-amber-400' : 'opacity-70'} fill="currentColor" />
                     <span>{cat.title || t.rootBookmarks}</span>
                   </button>
                 );
@@ -429,7 +429,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
                 const isLast = idx === folderStack.length - 1;
                 return (
                   <React.Fragment key={folder.id}>
-                    <ChevronRight size={13} className="shrink-0 opacity-40" />
+                    <IconChevronRight size={13} className="shrink-0 opacity-40" />
                     {isLast ? (
                       <span
                         className={`font-semibold truncate max-w-[160px] ${
@@ -456,7 +456,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
           ) : (
             /* 搜索模式状态指示 */
             <div className="flex items-center gap-1.5 text-xs sm:text-sm font-medium">
-              <Search size={14} className="text-blue-400 shrink-0" />
+              <IconSearch size={14} className="text-blue-400 shrink-0" />
               <span>
                 {searchResults.length > 0
                   ? t.itemsCount.replace('{count}', String(searchResults.length))
@@ -476,7 +476,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
                 : 'bg-white/70 border-black/10 focus-within:border-blue-500 focus-within:bg-white'
             }`}
           >
-            <Search size={14} className={`shrink-0 mr-1.5 ${isDark ? 'text-white/40' : 'text-gray-400'}`} />
+            <IconSearch size={14} className={`shrink-0 mr-1.5 ${isDark ? 'text-white/40' : 'text-gray-400'}`} />
             <input
               type="text"
               value={searchQuery}
@@ -490,7 +490,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
                 onClick={() => setSearchQuery('')}
                 className="p-0.5 hover:opacity-100 opacity-60 transition-opacity cursor-pointer ml-1"
               >
-                <X size={13} />
+                <IconX size={13} />
               </button>
             )}
           </div>
@@ -506,7 +506,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
                   : 'bg-white/70 hover:bg-white border-black/10 text-gray-700 hover:text-gray-900'
               }`}
             >
-              <RefreshCw
+              <IconRefresh
                 size={14}
                 className={`transition-transform duration-700 ${refreshing ? 'animate-spin text-blue-400' : ''}`}
               />
@@ -529,14 +529,14 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
         {loading ? (
           /* 加载中状态骨架 */
           <div className="py-12 flex flex-col items-center justify-center gap-3 opacity-60">
-            <RefreshCw size={24} className="animate-spin text-blue-400" />
+            <IconRefresh size={24} className="animate-spin text-blue-400" />
             <span className="text-xs">{t.refreshBookmarks}...</span>
           </div>
         ) : searchQuery.trim() ? (
           /* 搜索结果视图 */
           searchResults.length === 0 ? (
             <div className="py-16 flex flex-col items-center justify-center gap-2 opacity-60 select-none">
-              <Search size={36} className="text-gray-400 mb-1" />
+              <IconSearch size={36} className="text-gray-400 mb-1" />
               <div className="text-sm font-medium">{t.noBookmarksFound}</div>
             </div>
           ) : (
@@ -575,13 +575,13 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
                               isDark ? 'text-white/40 hover:text-white/70' : 'text-gray-400 hover:text-gray-700'
                             }`}
                           >
-                            <Folder size={10} className="shrink-0 text-amber-400" fill="currentColor" />
+                            <IconFolder size={10} className="shrink-0 text-amber-400" fill="currentColor" />
                             <span>{result.path.join(' / ')}</span>
                           </div>
                         )}
                       </div>
                     </div>
-                    <ExternalLink
+                    <IconExternalLink
                       size={12}
                       className="shrink-0 opacity-0 group-hover:opacity-60 transition-opacity"
                     />
@@ -608,7 +608,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
                         : 'bg-white/75 hover:bg-white border-black/8 hover:border-amber-500/50 text-gray-800 shadow-xs hover:shadow-md'
                     }`}
                   >
-                    <Folder
+                    <IconFolder
                       size={14}
                       className="shrink-0 text-amber-500 dark:text-amber-400 group-hover:scale-110 transition-transform"
                       fill="currentColor"
@@ -616,7 +616,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
                     <span className="text-xs sm:text-sm font-medium truncate">
                       {folder.title}
                     </span>
-                    <ChevronRight
+                    <IconChevronRight
                       size={12}
                       className="shrink-0 opacity-30 group-hover:opacity-80 group-hover:translate-x-0.5 transition-all -mr-0.5"
                     />
@@ -668,7 +668,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
                           )}
                         </div>
                       </div>
-                      <ExternalLink
+                      <IconExternalLink
                         size={11}
                         className="shrink-0 opacity-0 group-hover:opacity-60 transition-opacity"
                       />
@@ -682,7 +682,7 @@ export const Bookmarks: React.FC<BookmarksProps> = ({
             {/* 3. 目录为空状态 */}
             {subfolders.length === 0 && bookmarks.length === 0 && (
               <div className="py-16 flex flex-col items-center justify-center gap-2 opacity-50 select-none">
-                <FolderOpen size={36} className="mb-1" />
+                <IconFolderOpen size={36} className="mb-1" />
                 <div className="text-sm">{t.emptyBookmarkFolder}</div>
               </div>
             )}

@@ -1,8 +1,13 @@
 import React from 'react';
-import { LayoutGrid, EyeOff, History as HistoryIcon, ChevronDown } from 'lucide-react';
+import {
+  IconChevronDown,
+  IconEyeOff,
+  IconLayoutGrid,
+  IconHistory as IconHistory,
+} from '@tabler/icons-react';
 import { HomeContentMode, Language, ThemeMode } from '../types';
 import { i18n } from '../i18n';
-import { useResolvedIsDark } from '../theme';
+import { useResolvedIsDark, getSurfaceMaterial } from '../theme';
 
 export interface HomeStageBarProps {
   language: Language;
@@ -28,9 +33,9 @@ export interface HomeStageBarProps {
 }
 
 const MODE_ICON: Record<HomeContentMode, React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>> = {
-  off: EyeOff,
-  shortcuts: LayoutGrid,
-  recent: HistoryIcon,
+  off: IconEyeOff,
+  shortcuts: IconLayoutGrid,
+  recent: IconHistory,
 };
 
 /**
@@ -93,10 +98,19 @@ export const HomeStageBar: React.FC<HomeStageBarProps> = ({
         ? t.homeContentRecent
         : t.homeContentShortcuts;
 
-  const shellStyle: React.CSSProperties = {
-    backdropFilter: `blur(${blur}px)`,
-    WebkitBackdropFilter: `blur(${blur}px)`,
-  };
+  // 统一材质：底色 + 模糊与搜索框/卡片同源，
+  // 此前这里只有 blur、底色靠 Tailwind 的 bg-white/[0.06]，暗色下几乎全透明，
+  // 与紧邻的搜索框明显不同色。
+  const shellStyle: React.CSSProperties = getSurfaceMaterial(isDark, blur);
+
+  // 按钮仍然需要 border 与文字色，但不再自带背景色
+  const shellInteractiveClass = menuOpen
+    ? isDark
+      ? 'border-white/35 text-white'
+      : 'border-black/25 text-neutral-900'
+    : isDark
+      ? 'border-white/15 text-white/75 hover:border-white/35 hover:text-white'
+      : 'border-black/12 text-neutral-600 hover:border-black/25 hover:text-neutral-900';
 
   return (
     <div
@@ -117,21 +131,13 @@ export const HomeStageBar: React.FC<HomeStageBarProps> = ({
             e.stopPropagation();
             setMenuOpen((prev) => !prev);
           }}
-          className={`flex h-8 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-medium shadow-sm transition-all cursor-pointer active:scale-95 ${
-            menuOpen
-              ? isDark
-                ? 'border-white/35 bg-white/15 text-white'
-                : 'border-black/25 bg-white/85 text-neutral-900'
-              : isDark
-                ? 'border-white/15 bg-white/[0.06] text-white/75 hover:border-white/35 hover:bg-white/12 hover:text-white'
-                : 'border-black/12 bg-white/50 text-neutral-600 hover:border-black/25 hover:bg-white/80 hover:text-neutral-900'
-          }`}
+          className={`flex h-8 items-center justify-center gap-1.5 rounded-full border px-3 text-xs font-medium shadow-sm transition-all cursor-pointer active:scale-95 ${shellInteractiveClass}`}
           style={shellStyle}
         >
           <ModeIcon size={14} strokeWidth={2.2} className="shrink-0" />
           <span>{modeLabel}</span>
           {badge}
-          <ChevronDown
+          <IconChevronDown
             size={13}
             strokeWidth={2.4}
             className={`shrink-0 transition-transform duration-200 ${menuOpen ? 'rotate-180' : ''}`}
@@ -155,9 +161,9 @@ export const HomeStageBar: React.FC<HomeStageBarProps> = ({
               <div className="text-[11px] font-semibold opacity-55 mb-1.5">{t.homeContentMode}</div>
               <div className={`flex items-center gap-0.5 rounded-xl p-0.5 ${isDark ? 'bg-white/8' : 'bg-black/6'}`}>
                 {([
-                  { value: 'off' as HomeContentMode, label: t.shortcutModeOff, Icon: EyeOff },
-                  { value: 'shortcuts' as HomeContentMode, label: t.homeContentShortcuts, Icon: LayoutGrid },
-                  { value: 'recent' as HomeContentMode, label: t.homeContentRecent, Icon: HistoryIcon },
+                  { value: 'off' as HomeContentMode, label: t.shortcutModeOff, Icon: IconEyeOff },
+                  { value: 'shortcuts' as HomeContentMode, label: t.homeContentShortcuts, Icon: IconLayoutGrid },
+                  { value: 'recent' as HomeContentMode, label: t.homeContentRecent, Icon: IconHistory },
                 ]).map(({ value, label, Icon }) => {
                   const active = homeContentMode === value;
                   return (

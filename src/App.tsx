@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import {
+  IconBook,
+  IconHistory,
+  IconReload,
+  IconSettings,
+} from '@tabler/icons-react';
 import { ConfigProvider, Tooltip, message } from 'antd';
-import { 
-  SettingOutlined, 
-  HistoryOutlined, 
-  ReloadOutlined,
-  BookOutlined
-} from '@ant-design/icons';
 import { AppSettings, SiteShortcut, SearchEngineId, CountdownItem, HomeContentMode } from './types';
 import { 
   loadSettings, 
@@ -52,6 +52,12 @@ import { UtilityDrawer } from './components/UtilityDrawer';
 import { RecentCards } from './components/RecentCards';
 import { UpdateNotification } from './components/UpdateNotification';
 import { BrowserHistoryItem } from './types';
+import {
+  loadWebDavConfig,
+  runSync,
+  scheduleAutoUpload,
+  touchLocalData,
+} from './utils/webdavSync';
 
 // 防抖设置持久化：避免滑块滑动高频触发 chrome.storage 写入与跨标签页广播风暴
 let saveSettingsTimer: ReturnType<typeof setTimeout> | null = null;
@@ -59,6 +65,9 @@ const debouncedSaveSettings = (s: AppSettings) => {
   if (saveSettingsTimer) clearTimeout(saveSettingsTimer);
   saveSettingsTimer = setTimeout(() => {
     saveSettings(s);
+    // 记住本地确实改过（同步用它判定「谁更新」），再调度远端上传
+    touchLocalData();
+    scheduleAutoUpload();
   }, 150);
 };
 
@@ -90,6 +99,23 @@ export const App: React.FC = () => {
     setIsUpdateBannerDismissed(true);
   };
 
+  /**
+   * WebDAV 从远端拉取数据后，重新把本地数据读回内存。
+   * 远端写入的是同一套存储键，因此只需重读，不必手工合并。
+   */
+  const handleSyncApplied = () => {
+    void (async () => {
+      const [s2, sc2, cd2] = await Promise.all([
+        loadSettings(),
+        loadShortcuts(),
+        loadCountdownsFromStorage<CountdownItem>(),
+      ]);
+      setSettings(s2);
+      setShortcuts(sc2);
+      if (cd2 !== null) setCountdowns(cd2);
+    })();
+  };
+
   const handleOpenUpdateDetails = () => {
     setSettingsInitialTab('about');
     setSettingsOpen(true);
@@ -112,6 +138,54 @@ export const App: React.FC = () => {
     }
     initData();
   }, []);
+
+  /**
+   * 启动时拉取远端数据（WebDAV 自动同步）。
+   *
+   * 只在「远端比本地新」时才应用，避免刚打开页面就把本地改动冲掉。
+   * 拉取期间不阻塞首屏渲染：先渲染本地数据，远端更新到位后再整体替换，
+   * 这样即使同步慢或失败，用户看到的也始终是可用的界面。
+   */
+  useEffect(() => {
+    if (!initialized) return;
+    let cancelled = false;
+
+    const pullOnStartup = async () => {
+      try {
+        const cfg = await loadWebDavConfig();
+        // 未启用、未配置，或存储处于降级状态时不要参与，避免污染真实数据
+        if (!cfg.enabled || !cfg.url.trim()) return;
+        if (cancelled) return;
+        if (isStorageHydrationDegraded()) return;
+
+        const res = await runSync({ direction: 'auto' });
+        if (cancelled || !res.ok) return;
+        if (res.action !== 'downloaded') return;
+
+        // 远端数据已写入本地存储，重新读回内存
+        const [s2, sc2, sh2, cd2] = await Promise.all([
+          loadSettings(),
+          loadShortcuts(),
+          loadSearchHistory(),
+          loadCountdownsFromStorage<CountdownItem>(),
+        ]);
+        if (cancelled) return;
+        setSettings(s2);
+        setShortcuts(sc2);
+        setSearchHistory(sh2);
+        if (cd2 !== null) setCountdowns(cd2);
+        console.info('[WebDAV] 已应用远端数据。');
+      } catch (err) {
+        // 同步失败不能影响主页可用性，仅记录
+        console.warn('[WebDAV] 启动同步失败:', err);
+      }
+    };
+
+    void pullOnStartup();
+    return () => {
+      cancelled = true;
+    };
+  }, [initialized]);
 
   /**
    * 存储降级自愈。
@@ -174,7 +248,10 @@ export const App: React.FC = () => {
 
   const handleUpdateCountdowns = (newCountdowns: CountdownItem[]) => {
     setCountdowns(newCountdowns);
-    saveCountdownsToStorage(newCountdowns);
+    void saveCountdownsToStorage(newCountdowns).then(() => {
+      touchLocalData();
+      scheduleAutoUpload();
+    });
   };
 
   // 全局界面缩放响应（根据设置中的 uiScale 动态调整，默认 100% 保持原生精致尺寸）
@@ -462,7 +539,10 @@ export const App: React.FC = () => {
   const handleAddShortcut = (shortcut: SiteShortcut) => {
     setShortcuts((prev) => {
       const next = [...prev, shortcut];
-      saveShortcuts(next);
+      void saveShortcuts(next).then(() => {
+        touchLocalData();
+        scheduleAutoUpload();
+      });
       return next;
     });
   };
@@ -470,14 +550,20 @@ export const App: React.FC = () => {
   const handleEditShortcut = (updated: SiteShortcut) => {
     setShortcuts((prev) => {
       const next = prev.map((s) => (s.id === updated.id ? updated : s));
-      saveShortcuts(next);
+      void saveShortcuts(next).then(() => {
+        touchLocalData();
+        scheduleAutoUpload();
+      });
       return next;
     });
   };
 
   const handleReorderShortcuts = (reordered: SiteShortcut[]) => {
     setShortcuts(reordered);
-    saveShortcuts(reordered);
+    void saveShortcuts(reordered).then(() => {
+      touchLocalData();
+      scheduleAutoUpload();
+    });
   };
 
   const handleUpdateClockStyle = (newStyle: Partial<AppSettings['clockStyle']>) => {
@@ -601,7 +687,7 @@ export const App: React.FC = () => {
                       : 'hover:bg-black/8 text-gray-700 hover:text-gray-950 active:bg-black/12'
                   }`}
                 >
-                  <ReloadOutlined className={`text-xs transition-transform duration-700 ${refreshingWallpaper ? "animate-spin text-blue-400" : ""}`} />
+                  <IconReload size={16} className={`text-xs transition-transform duration-700 ${refreshingWallpaper ? "animate-spin text-blue-400" : ""}`} />
                 </button>
               </Tooltip>
 
@@ -628,7 +714,7 @@ export const App: React.FC = () => {
                   }`}
                   aria-label="切换浏览器书签栏"
                 >
-                  <BookOutlined className="text-xs" />
+                  <IconBook size={16} className="text-xs" />
                 </button>
               </Tooltip>
 
@@ -643,7 +729,7 @@ export const App: React.FC = () => {
                       : 'hover:bg-black/8 text-gray-700 hover:text-gray-950 active:bg-black/12'
                   }`}
                 >
-                  <HistoryOutlined className="text-xs" />
+                  <IconHistory size={16} className="text-xs" />
                 </button>
               </Tooltip>
 
@@ -674,7 +760,7 @@ export const App: React.FC = () => {
                       : 'hover:bg-black/8 text-gray-700 hover:text-gray-950 active:bg-black/12'
                   }`}
                 >
-                  <SettingOutlined className="text-xs" />
+                  <IconSettings size={16} className="text-xs" />
                   {availableUpdate?.hasUpdate && (
                     <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-blue-500 ring-2 ring-white dark:ring-[#181a20] animate-pulse" />
                   )}
@@ -812,6 +898,7 @@ export const App: React.FC = () => {
           settings={settings}
           onUpdateSettings={handleUpdateSettings}
           onRefreshWallpaper={handleRefreshWallpaper}
+          onSyncApplied={handleSyncApplied}
           initialTab={settingsInitialTab}
         />
 

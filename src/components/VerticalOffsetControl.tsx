@@ -1,6 +1,9 @@
 import React from 'react';
+import {
+  IconArrowsMoveVertical,
+  IconRotate,
+} from '@tabler/icons-react';
 import { Slider, Segmented } from 'antd';
-import { MoveVertical, RotateCcw } from 'lucide-react';
 
 /**
  * 垂直位置调节的取值范围与档位（全站唯一来源）。
@@ -10,10 +13,13 @@ import { MoveVertical, RotateCcw } from 'lucide-react';
  * ±60 而紧挨着的数字输入框是 ±100 —— 后者甚至在同一行内自相矛盾，滑到端点得到的
  * 值与输入框允许的值对不上。这里收敛为唯一来源，任何入口都不再自行写死数字。
  */
-export const VERTICAL_OFFSET_RANGE = { min: -120, max: 120, step: 2 } as const;
+// 向下可调范围特意大于向上：主屏内容（搜索框 / 最近访问）在视觉上常需要
+// 明显下移来避开壁纸主体，而向上能用的空间受时钟挤压，所以下限保持 -120、
+// 上限放宽到 320。旧上限 120 反馈「拖到底还是不够下」。
+export const VERTICAL_OFFSET_RANGE = { min: -120, max: 320, step: 2 } as const;
 
-/** 三个快捷档位的落点 */
-export const VERTICAL_OFFSET_PRESETS = { top: -40, center: 0, bottom: 40 } as const;
+/** 三个快捷档位的落点。底部档随量程上限放宽而加深，否则「下沉」档形同虚设 */
+export const VERTICAL_OFFSET_PRESETS = { top: -40, center: 0, bottom: 160 } as const;
 
 /**
  * 时钟的垂直偏移量程。
@@ -126,7 +132,7 @@ export const VerticalOffsetControl: React.FC<VerticalOffsetControlProps> = ({
       title={resetTitle}
       aria-label={resetTitle}
     >
-      {isCompact ? resetTitle : <RotateCcw className="w-3 h-3" />}
+      {isCompact ? resetTitle : <IconRotate className="w-3 h-3" />}
     </button>
   );
 
@@ -138,7 +144,7 @@ export const VerticalOffsetControl: React.FC<VerticalOffsetControlProps> = ({
       <div className="flex flex-col gap-2 select-none">
         <div className="flex items-center justify-between">
           <span className="flex items-center gap-1.5 text-xs font-medium">
-            <MoveVertical className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+            <IconArrowsMoveVertical className="w-3.5 h-3.5 text-blue-500 shrink-0" />
             <span>{label}</span>
           </span>
           {/* 读数只在滑块旁显示一次：紧凑浮层里同一数值出现两遍纯属噪音 */}
@@ -186,7 +192,7 @@ export const VerticalOffsetControl: React.FC<VerticalOffsetControlProps> = ({
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="text-xs font-semibold flex items-center gap-1.5">
-            <MoveVertical className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+            <IconArrowsMoveVertical className="w-3.5 h-3.5 text-blue-500 shrink-0" />
             <span className="truncate">{label}</span>
           </div>
           {description && <div className="text-[11px] opacity-60 mt-0.5">{description}</div>}

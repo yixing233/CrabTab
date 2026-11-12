@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import {
+  IconCalendar,
+  IconClock,
+  IconCompass,
+  IconExternalLink,
+  IconHistory,
+  IconSearch,
+  IconWorld,
+} from '@tabler/icons-react';
 import { Drawer, Input, Empty, Spin } from 'antd';
-import { 
-  GlobalOutlined, 
-  HistoryOutlined,
-  CompassOutlined
-} from '@ant-design/icons';
-import { Search, ExternalLink, Clock, Calendar } from 'lucide-react';
 import { Language, BrowserHistoryItem, ThemeMode } from '../types';
 import { fetchBrowserHistory } from '../utils/history';
 import { i18n } from '../i18n';
@@ -37,7 +40,7 @@ const HistoryFavicon: React.FC<{ domain: string }> = ({ domain }) => {
           onError={() => setHasError(true)}
         />
       ) : (
-        <GlobalOutlined className="text-xs text-neutral-400 opacity-60" />
+        <IconWorld size={12} className="text-xs text-neutral-400 opacity-60" />
       )}
     </div>
   );
@@ -165,7 +168,7 @@ export const BrowserHistoryDrawer: React.FC<BrowserHistoryDrawerProps> = ({
       title={
         <div className="flex items-center justify-between pr-2">
           <div className="flex items-center gap-2">
-            <HistoryOutlined className="text-base" />
+            <IconHistory size={16} className="text-base" />
             <span className="font-semibold text-sm text-neutral-800 dark:text-white">
               {t.browserHistoryTitle}
             </span>
@@ -175,7 +178,7 @@ export const BrowserHistoryDrawer: React.FC<BrowserHistoryDrawerProps> = ({
             onClick={handleOpenFullHistory}
             className="flex items-center gap-1.5 text-xs text-neutral-400 hover:text-blue-600 dark:hover:text-white transition-colors cursor-pointer bg-transparent border-none p-0"
           >
-            <CompassOutlined className="text-sm" />
+            <IconCompass size={14} className="text-sm" />
             <span>{language === 'zh' ? '完整记录' : 'Full History'}</span>
           </button>
         </div>
@@ -204,7 +207,7 @@ export const BrowserHistoryDrawer: React.FC<BrowserHistoryDrawerProps> = ({
         {/* 顶部搜索输入框 */}
         <div className="relative">
           <Input
-            prefix={<Search className="w-4 h-4 text-neutral-400 mr-1 shrink-0" />}
+            prefix={<IconSearch className="w-4 h-4 text-neutral-400 mr-1 shrink-0" />}
             placeholder={language === 'zh' ? '检索历史记录或网址...' : 'Search history titles or URLs...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -238,7 +241,7 @@ export const BrowserHistoryDrawer: React.FC<BrowserHistoryDrawerProps> = ({
                 <div key={sec.title} className="space-y-1.5">
                   {/* 时间分组标头 */}
                   <div className="flex items-center gap-1.5 px-2 text-[11px] font-medium text-neutral-400 select-none">
-                    <Calendar className="w-3 h-3 opacity-60" />
+                    <IconCalendar className="w-3 h-3 opacity-60" />
                     <span>{sec.title}</span>
                     <span className="text-[10px] text-neutral-500 opacity-60">· {sec.items.length}</span>
                   </div>
@@ -273,11 +276,11 @@ export const BrowserHistoryDrawer: React.FC<BrowserHistoryDrawerProps> = ({
                           {/* 右侧悬停动作或时间显示 */}
                           <div className="shrink-0 flex items-center justify-end text-neutral-400">
                             <div className="group-hover:hidden flex items-center gap-1 text-[11px] font-mono opacity-60">
-                              <Clock className="w-2.5 h-2.5 opacity-60" />
+                              <IconClock className="w-2.5 h-2.5 opacity-60" />
                               <span>{item.lastVisitTime ? (sec.title === (language === 'zh' ? '今天' : 'Today') ? formatClock(item.lastVisitTime) : formatDate(item.lastVisitTime)) : ''}</span>
                             </div>
                             <div className="hidden group-hover:flex items-center gap-0.5 text-blue-500 text-xs">
-                              <ExternalLink className="w-3.5 h-3.5" />
+                              <IconExternalLink className="w-3.5 h-3.5" />
                             </div>
                           </div>
                         </div>

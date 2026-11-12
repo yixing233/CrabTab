@@ -1,35 +1,35 @@
 import React from 'react';
 import {
-  Target,
-  CalendarClock,
-  Sparkles,
-  Rocket,
-  Hourglass,
-  Heart,
-  Plane,
-  Briefcase,
-  Laptop,
-  Cake,
-  Gift,
-  Flag,
-  Flame,
-  Sun,
-} from 'lucide-react';
+  IconBriefcase,
+  IconCake,
+  IconCalendarClock,
+  IconDeviceLaptop,
+  IconFlag,
+  IconFlame,
+  IconGift,
+  IconHeart,
+  IconHourglass,
+  IconPlane,
+  IconRocket,
+  IconSparkles,
+  IconSun,
+  IconTarget,
+} from '@tabler/icons-react';
 
 export const COUNTDOWN_ICON_OPTIONS = [
-  { id: 'target', labelZh: '目标', labelEn: 'Target', Icon: Target },
-  { id: 'cake', labelZh: '生日', labelEn: 'Birthday', Icon: Cake },
-  { id: 'sparkles', labelZh: '节日', labelEn: 'Festival', Icon: Sparkles },
-  { id: 'rocket', labelZh: '起航', labelEn: 'Launch', Icon: Rocket },
-  { id: 'hourglass', labelZh: '时间', labelEn: 'Time', Icon: Hourglass },
-  { id: 'heart', labelZh: '纪念', labelEn: 'Love', Icon: Heart },
-  { id: 'plane', labelZh: '旅行', labelEn: 'Travel', Icon: Plane },
-  { id: 'briefcase', labelZh: '工作', labelEn: 'Work', Icon: Briefcase },
-  { id: 'laptop', labelZh: '开发', labelEn: 'Dev', Icon: Laptop },
-  { id: 'gift', labelZh: '礼物', labelEn: 'Gift', Icon: Gift },
-  { id: 'flag', labelZh: '里程碑', labelEn: 'Milestone', Icon: Flag },
-  { id: 'flame', labelZh: '冲刺', labelEn: 'Sprint', Icon: Flame },
-  { id: 'sun', labelZh: '假期', labelEn: 'Vacation', Icon: Sun },
+  { id: 'target', labelZh: '目标', labelEn: 'Target', Icon: IconTarget },
+  { id: 'cake', labelZh: '生日', labelEn: 'Birthday', Icon: IconCake },
+  { id: 'sparkles', labelZh: '节日', labelEn: 'Festival', Icon: IconSparkles },
+  { id: 'rocket', labelZh: '起航', labelEn: 'Launch', Icon: IconRocket },
+  { id: 'hourglass', labelZh: '时间', labelEn: 'Time', Icon: IconHourglass },
+  { id: 'heart', labelZh: '纪念', labelEn: 'Love', Icon: IconHeart },
+  { id: 'plane', labelZh: '旅行', labelEn: 'Travel', Icon: IconPlane },
+  { id: 'briefcase', labelZh: '工作', labelEn: 'Work', Icon: IconBriefcase },
+  { id: 'laptop', labelZh: '开发', labelEn: 'Dev', Icon: IconDeviceLaptop },
+  { id: 'gift', labelZh: '礼物', labelEn: 'Gift', Icon: IconGift },
+  { id: 'flag', labelZh: '里程碑', labelEn: 'Milestone', Icon: IconFlag },
+  { id: 'flame', labelZh: '冲刺', labelEn: 'Sprint', Icon: IconFlame },
+  { id: 'sun', labelZh: '假期', labelEn: 'Vacation', Icon: IconSun },
 ];
 
 const EMOJI_TO_LUCIDE: Record<string, string> = {
@@ -65,32 +65,32 @@ export const CountdownIcon: React.FC<CountdownIconProps> = ({
 
   switch (normalized) {
     case 'cake':
-      return <Cake size={size} strokeWidth={strokeWidth} className={className} />;
+      return <IconCake size={size} strokeWidth={strokeWidth} className={className} />;
     case 'sparkles':
-      return <Sparkles size={size} strokeWidth={strokeWidth} className={className} />;
+      return <IconSparkles size={size} strokeWidth={strokeWidth} className={className} />;
     case 'rocket':
-      return <Rocket size={size} strokeWidth={strokeWidth} className={className} />;
+      return <IconRocket size={size} strokeWidth={strokeWidth} className={className} />;
     case 'hourglass':
-      return <Hourglass size={size} strokeWidth={strokeWidth} className={className} />;
+      return <IconHourglass size={size} strokeWidth={strokeWidth} className={className} />;
     case 'heart':
-      return <Heart size={size} strokeWidth={strokeWidth} className={className} />;
+      return <IconHeart size={size} strokeWidth={strokeWidth} className={className} />;
     case 'plane':
-      return <Plane size={size} strokeWidth={strokeWidth} className={className} />;
+      return <IconPlane size={size} strokeWidth={strokeWidth} className={className} />;
     case 'briefcase':
-      return <Briefcase size={size} strokeWidth={strokeWidth} className={className} />;
+      return <IconBriefcase size={size} strokeWidth={strokeWidth} className={className} />;
     case 'laptop':
-      return <Laptop size={size} strokeWidth={strokeWidth} className={className} />;
+      return <IconDeviceLaptop size={size} strokeWidth={strokeWidth} className={className} />;
     case 'gift':
-      return <Gift size={size} strokeWidth={strokeWidth} className={className} />;
+      return <IconGift size={size} strokeWidth={strokeWidth} className={className} />;
     case 'flag':
-      return <Flag size={size} strokeWidth={strokeWidth} className={className} />;
+      return <IconFlag size={size} strokeWidth={strokeWidth} className={className} />;
     case 'flame':
-      return <Flame size={size} strokeWidth={strokeWidth} className={className} />;
+      return <IconFlame size={size} strokeWidth={strokeWidth} className={className} />;
     case 'sun':
-      return <Sun size={size} strokeWidth={strokeWidth} className={className} />;
+      return <IconSun size={size} strokeWidth={strokeWidth} className={className} />;
     case 'target':
-      return <Target size={size} strokeWidth={strokeWidth} className={className} />;
+      return <IconTarget size={size} strokeWidth={strokeWidth} className={className} />;
     default:
-      return <CalendarClock size={size} strokeWidth={strokeWidth} className={className} />;
+      return <IconCalendarClock size={size} strokeWidth={strokeWidth} className={className} />;
   }
 };

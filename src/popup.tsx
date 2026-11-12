@@ -1,16 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import {
+  IconAlertTriangle,
+  IconBookmarkFilled,
+  IconBookmarkPlus,
+  IconCheck,
+  IconCompass,
+  IconGlobe,
+  IconRotate,
+  IconSparkles,
+} from '@tabler/icons-react';
 import ReactDOM from 'react-dom/client';
 import { ConfigProvider, Input, Button, Tag, message, theme as antdTheme } from 'antd';
-import {
-  BookmarkPlus,
-  BookmarkCheck,
-  Globe,
-  Sparkles,
-  AlertTriangle,
-  Check,
-  Compass,
-  RotateCcw,
-} from 'lucide-react';
 import { SiteShortcut } from './types';
 import './index.css';
 
@@ -108,7 +108,7 @@ class ErrorBoundary extends React.Component<
     if (this.state.hasError) {
       return (
         <div className="w-[320px] p-5 text-center text-white bg-[#12161f] flex flex-col items-center justify-center gap-3 box-border">
-          <AlertTriangle size={32} className="text-amber-500" />
+          <IconAlertTriangle size={32} className="text-amber-500" />
           <div className="text-sm font-bold">扩展菜单加载出现微小异常</div>
           <div className="text-xs text-gray-400 font-mono text-left max-w-full overflow-hidden truncate">
             {this.state.error?.message || '未知错误'}
@@ -116,7 +116,7 @@ class ErrorBoundary extends React.Component<
           <Button
             type="primary"
             size="small"
-            icon={<RotateCcw size={12} />}
+            icon={<IconRotate size={12} />}
             onClick={() => this.setState({ hasError: false, error: null })}
           >
             重新加载
@@ -390,15 +390,15 @@ export const PopupApp: React.FC = () => {
             </div>
 
             {isExisting ? (
-              <Tag color="warning" icon={<BookmarkCheck size={11} className="inline mr-0.5" />} className="m-0 text-[10.5px] font-medium px-1.5 py-0">
+              <Tag color="warning" icon={<IconBookmarkFilled size={11} className="inline mr-0.5" />} className="m-0 text-[10.5px] font-medium px-1.5 py-0">
                 已在快捷方式
               </Tag>
             ) : isSpecialPage ? (
-              <Tag color="default" icon={<AlertTriangle size={11} className="inline mr-0.5" />} className="m-0 text-[10.5px] px-1.5 py-0">
+              <Tag color="default" icon={<IconAlertTriangle size={11} className="inline mr-0.5" />} className="m-0 text-[10.5px] px-1.5 py-0">
                 手动添加
               </Tag>
             ) : (
-              <Tag color="processing" icon={<Compass size={11} className="inline mr-0.5" />} className="m-0 text-[10.5px] px-1.5 py-0">
+              <Tag color="processing" icon={<IconCompass size={11} className="inline mr-0.5" />} className="m-0 text-[10.5px] px-1.5 py-0">
                 网页直通
               </Tag>
             )}
@@ -408,7 +408,7 @@ export const PopupApp: React.FC = () => {
           <div className="flex flex-col gap-2 mt-0.5">
             <div>
               <div className="text-[11px] text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1">
-                <Sparkles size={11} className="text-amber-500" />
+                <IconSparkles size={11} className="text-amber-500" />
                 <span>标题名称</span>
               </div>
               <Input
@@ -425,7 +425,7 @@ export const PopupApp: React.FC = () => {
 
             <div>
               <div className="text-[11px] text-gray-500 dark:text-gray-400 mb-1 flex items-center gap-1">
-                <Globe size={11} className="text-blue-500" />
+                <IconGlobe size={11} className="text-blue-500" />
                 <span>网页网址 (URL)</span>
               </div>
               <Input
@@ -454,11 +454,11 @@ export const PopupApp: React.FC = () => {
             loading={submitting}
             icon={
               isSuccess ? (
-                <Check size={15} />
+                <IconCheck size={15} />
               ) : isExisting ? (
-                <BookmarkCheck size={15} />
+                <IconBookmarkFilled size={15} />
               ) : (
-                <BookmarkPlus size={15} />
+                <IconBookmarkPlus size={15} />
               )
             }
             onClick={handleSaveShortcut}

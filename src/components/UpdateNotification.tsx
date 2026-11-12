@@ -1,5 +1,9 @@
 import React from 'react';
-import { X, ExternalLink, ChevronRight } from 'lucide-react';
+import {
+  IconChevronRight,
+  IconExternalLink,
+  IconX,
+} from '@tabler/icons-react';
 import { ReleaseInfo } from '../utils/versionCheck';
 import { Language, ThemeMode } from '../types';
 
@@ -81,7 +85,7 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({
               className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-500 hover:bg-blue-600 active:bg-blue-700 text-white shadow-sm transition-all cursor-pointer"
             >
               <span>{zh ? '查看更新' : 'View Update'}</span>
-              <ChevronRight size={12} />
+              <IconChevronRight size={12} />
             </button>
             <a
               href={updateInfo.releaseUrl}
@@ -94,7 +98,7 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({
               }`}
             >
               <span>Release</span>
-              <ExternalLink size={11} />
+              <IconExternalLink size={11} />
             </a>
           </div>
         </div>
@@ -106,7 +110,7 @@ export const UpdateNotification: React.FC<UpdateNotificationProps> = ({
           title={zh ? '暂时忽略此版本' : 'Dismiss this version'}
           className="w-6 h-6 -mr-1 -mt-1 rounded-lg flex items-center justify-center text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/8 dark:hover:bg-white/12 transition-colors cursor-pointer shrink-0"
         >
-          <X size={14} />
+          <IconX size={14} />
         </button>
       </div>
     </aside>

@@ -1,18 +1,18 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import {
+  IconAlertTriangle,
+  IconChevronRight,
+  IconCornerUpLeft,
+  IconExternalLink,
+  IconFolder,
+  IconFolderOpen,
+  IconRefresh,
+  IconRotate,
+  IconSearch,
+  IconX,
+} from '@tabler/icons-react';
 import ReactDOM from 'react-dom/client';
 import { ConfigProvider, Input, Button, Tag, Tooltip, theme as antdTheme } from 'antd';
-import {
-  Search,
-  Folder,
-  FolderOpen,
-  ChevronRight,
-  CornerUpLeft,
-  RefreshCw,
-  ExternalLink,
-  AlertTriangle,
-  RotateCcw,
-  X,
-} from 'lucide-react';
 import { BookmarkNode } from './types';
 import {
   fetchBookmarkTree,
@@ -45,7 +45,7 @@ class SidePanelErrorBoundary extends React.Component<
     if (this.state.hasError) {
       return (
         <div className="w-full h-full p-6 text-center text-white bg-[#12161f] flex flex-col items-center justify-center gap-3">
-          <AlertTriangle size={36} className="text-amber-500" />
+          <IconAlertTriangle size={36} className="text-amber-500" />
           <div className="text-sm font-bold">书签侧边栏加载异常</div>
           <div className="text-xs text-gray-400 font-mono max-w-full overflow-hidden truncate">
             {this.state.error?.message || '未知错误'}
@@ -53,7 +53,7 @@ class SidePanelErrorBoundary extends React.Component<
           <Button
             type="primary"
             size="small"
-            icon={<RotateCcw size={13} />}
+            icon={<IconRotate size={13} />}
             onClick={() => this.setState({ hasError: false, error: null })}
           >
             重新加载
@@ -241,7 +241,7 @@ export const SidePanelApp: React.FC = () => {
               <Button
                 type="text"
                 size="small"
-                icon={<RefreshCw size={13} className={refreshing ? 'animate-spin text-blue-500' : ''} />}
+                icon={<IconRefresh size={13} className={refreshing ? 'animate-spin text-blue-500' : ''} />}
                 onClick={() => loadBookmarks(true)}
                 className="w-7 h-7 flex items-center justify-center p-0 text-gray-500 hover:text-blue-500 dark:text-gray-400"
               />
@@ -250,7 +250,7 @@ export const SidePanelApp: React.FC = () => {
               <Button
                 type="text"
                 size="small"
-                icon={<ExternalLink size={13} />}
+                icon={<IconExternalLink size={13} />}
                 onClick={() => chrome.tabs?.create({ url: chrome.runtime.getURL('index.html') })}
                 className="w-7 h-7 flex items-center justify-center p-0 text-gray-500 hover:text-blue-500 dark:text-gray-400"
               />
@@ -268,7 +268,7 @@ export const SidePanelApp: React.FC = () => {
                 handleOpenBookmark(searchResults[0].bookmark.url);
               }
             }}
-            prefix={<Search size={14} className="text-gray-400 mr-1" />}
+            prefix={<IconSearch size={14} className="text-gray-400 mr-1" />}
             suffix={
               searchQuery ? (
                 <button
@@ -276,7 +276,7 @@ export const SidePanelApp: React.FC = () => {
                   onClick={() => setSearchQuery('')}
                   className="p-0.5 hover:opacity-100 opacity-50 cursor-pointer text-gray-400"
                 >
-                  <X size={13} />
+                  <IconX size={13} />
                 </button>
               ) : null
             }
@@ -296,7 +296,7 @@ export const SidePanelApp: React.FC = () => {
 
             {searchResults.length === 0 ? (
               <div className="py-16 flex flex-col items-center justify-center gap-2 opacity-40 text-center">
-                <Search size={32} />
+                <IconSearch size={32} />
                 <span className="text-xs">未找到匹配的书签</span>
               </div>
             ) : (
@@ -324,7 +324,7 @@ export const SidePanelApp: React.FC = () => {
                         </div>
                         {res.path.length > 0 && (
                           <div className="text-[10px] text-gray-400 truncate flex items-center gap-1 mt-0.5">
-                            <Folder size={10} className="shrink-0 text-amber-500" fill="currentColor" />
+                            <IconFolder size={10} className="shrink-0 text-amber-500" fill="currentColor" />
                             <span>{res.path.join(' / ')}</span>
                           </div>
                         )}
@@ -339,7 +339,7 @@ export const SidePanelApp: React.FC = () => {
                       }}
                       className="opacity-0 group-hover:opacity-60 hover:!opacity-100 p-1 cursor-pointer transition-opacity"
                     >
-                      <ExternalLink size={12} />
+                      <IconExternalLink size={12} />
                     </button>
                   </div>
                 ))}
@@ -390,7 +390,7 @@ export const SidePanelApp: React.FC = () => {
                   </button>
                   {folderStack.map((folder, idx) => (
                     <React.Fragment key={folder.id}>
-                      <ChevronRight size={11} className="opacity-40 shrink-0" />
+                      <IconChevronRight size={11} className="opacity-40 shrink-0" />
                       <button
                         type="button"
                         onClick={() => handleBackToBreadcrumb(idx)}
@@ -407,7 +407,7 @@ export const SidePanelApp: React.FC = () => {
                 <Button
                   type="text"
                   size="small"
-                  icon={<CornerUpLeft size={12} />}
+                  icon={<IconCornerUpLeft size={12} />}
                   onClick={() => handleBackToBreadcrumb(folderStack.length - 2)}
                   className="text-xs p-1 h-6 flex items-center shrink-0"
                 >
@@ -420,12 +420,12 @@ export const SidePanelApp: React.FC = () => {
             <div className="flex-1 overflow-y-auto px-3 py-2 custom-scrollbar">
               {loading ? (
                 <div className="py-16 flex items-center justify-center gap-2 opacity-50 text-xs">
-                  <RefreshCw size={14} className="animate-spin text-blue-500" />
+                  <IconRefresh size={14} className="animate-spin text-blue-500" />
                   <span>正在加载书签...</span>
                 </div>
               ) : currentItems.length === 0 ? (
                 <div className="py-16 flex flex-col items-center justify-center gap-2 opacity-40 text-center">
-                  <FolderOpen size={32} />
+                  <IconFolderOpen size={32} />
                   <span className="text-xs">此文件夹为空</span>
                 </div>
               ) : (
@@ -445,7 +445,7 @@ export const SidePanelApp: React.FC = () => {
                           }`}
                         >
                           <div className="flex items-center gap-2 min-w-0 flex-1">
-                            <Folder size={16} className="text-amber-500 dark:text-amber-400 shrink-0" fill="currentColor" />
+                            <IconFolder size={16} className="text-amber-500 dark:text-amber-400 shrink-0" fill="currentColor" />
                             <span className="text-[13px] font-medium truncate text-gray-800 dark:text-white/90">
                               {item.title}
                             </span>
@@ -454,7 +454,7 @@ export const SidePanelApp: React.FC = () => {
                             <span className="text-[11px] tabular-nums">
                               {item.children?.length || 0}
                             </span>
-                            <ChevronRight size={13} />
+                            <IconChevronRight size={13} />
                           </div>
                         </div>
                       );
@@ -490,7 +490,7 @@ export const SidePanelApp: React.FC = () => {
                           }}
                           className="opacity-0 group-hover:opacity-60 hover:!opacity-100 p-1 cursor-pointer transition-opacity"
                         >
-                          <ExternalLink size={12} />
+                          <IconExternalLink size={12} />
                         </button>
                       </div>
                     );

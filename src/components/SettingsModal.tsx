@@ -1,4 +1,28 @@
 import React, { useState, useEffect } from 'react';
+import {
+  IconAlertCircle,
+  IconBan,
+  IconBrandGithub,
+  IconCheck,
+  IconCloud,
+  IconColorSwatch,
+  IconCopy,
+  IconExternalLink,
+  IconFolderHeart,
+  IconFolderOpen,
+  IconHeart,
+  IconInfoCircle,
+  IconLink,
+  IconMoon,
+  IconPhoto,
+  IconRefresh,
+  IconRotateClockwise,
+  IconSettings,
+  IconSparkles,
+  IconSun,
+  IconTrash,
+  IconVideo,
+} from '@tabler/icons-react';
 import { 
   Modal, 
   Tabs, 
@@ -16,32 +40,6 @@ import {
   Tooltip
 } from 'antd';
 import type { UploadProps } from 'antd';
-import { 
-  PictureOutlined, 
-  SettingOutlined, 
-  BgColorsOutlined, 
-  InfoCircleOutlined,
-  LinkOutlined,
-  GithubOutlined
-} from '@ant-design/icons';
-import { 
-  RotateCw, 
-  Check, 
-  Image as ImageIcon, 
-  Video, 
-  Trash2 as TrashIcon, 
-  Moon, 
-  Sun,
-  Heart,
-  Ban,
-  ExternalLink,
-  Copy,
-  FolderHeart,
-  Sparkles,
-  FolderOpen,
-  AlertCircle,
-  RefreshCw,
-} from 'lucide-react';
 import { VerticalOffsetControl } from './VerticalOffsetControl';
 import { AppSettings, Language, WallpaperProviderId, HitokotoType, HomeContentMode } from '../types';
 import { SEARCH_ENGINES, DEFAULT_LOCAL_WALLPAPER, DEFAULT_SETTINGS } from '../constants';
@@ -64,6 +62,16 @@ import {
 } from '../utils/wallpaperStorage';
 import { checkLatestVersion, ReleaseInfo, CURRENT_VERSION, GITHUB_REPO_URL } from '../utils/versionCheck';
 import { i18n } from '../i18n';
+import { SyncSettingsPanel } from './SyncSettingsPanel';
+
+/**
+ * 全局界面缩放滑块的量程与档位（唯一来源）。
+ *
+ * 刻度文字必须按这些数值在滑块上的真实比例摆放，不能用均分 ——
+ * 详见 uiScale 那一段刻度渲染处的注释。
+ */
+const UI_SCALE_MIN = 80;
+const UI_SCALE_MAX = 140;
 import { SearchEngineIcon } from './SearchEngineIcons';
 
 interface SettingsModalProps {
@@ -72,6 +80,8 @@ interface SettingsModalProps {
   settings: AppSettings;
   onUpdateSettings: (newSettings: Partial<AppSettings>) => void;
   onRefreshWallpaper: () => void;
+  /** 从远端拉取数据后，通知上层重新读取全部本地数据 */
+  onSyncApplied?: () => void;
   initialTab?: string;
 }
 
@@ -81,6 +91,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   settings,
   onUpdateSettings,
   onRefreshWallpaper,
+  onSyncApplied,
   initialTab,
 }) => {
   const [activeTab, setActiveTab] = useState(initialTab || 'wallpaper');
@@ -107,6 +118,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [bookmarkPermGranted, setBookmarkPermGranted] = useState<boolean | null>(null);
   const [updatingPerm, setUpdatingPerm] = useState<boolean>(false);
   const t = i18n[settings.language];
+
+  // 档位与对应文案；顺序即从左到右
+  const uiScaleTicks = [
+    { value: 85, label: t.uiScaleCompact },
+    { value: 100, label: t.uiScaleStandard },
+    { value: 110, label: t.uiScaleComfort },
+    { value: 120, label: t.uiScaleLarge },
+    { value: 130, label: t.uiScaleHuge },
+  ];
   const { Text } = Typography;
 
   useEffect(() => {
@@ -442,7 +462,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       }`}>
         <div className="flex items-center justify-between mb-2">
           <div className="text-xs font-semibold flex items-center gap-1.5">
-            <Sparkles size={14} className="text-amber-400" />
+            <IconSparkles size={14} className="text-amber-400" />
             <span>{t.currentWallpaperPreview}</span>
           </div>
           <div className="flex items-center gap-1.5">
@@ -458,7 +478,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     : '!border-current/20 hover:!border-rose-400 hover:!text-rose-400'
                 }`}
               >
-                <Heart size={13} className={isFavorited ? 'fill-rose-500 text-rose-500' : ''} />
+                <IconHeart size={13} className={isFavorited ? 'fill-rose-500 text-rose-500' : ''} />
                 <span>{isFavorited ? t.favoritedTag : t.favoriteWallpaper}</span>
               </Button>
             </Tooltip>
@@ -479,7 +499,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   danger
                   className="flex items-center gap-1 !text-xs !h-7 !px-2.5 !border-red-500/30 !bg-red-500/10 hover:!bg-red-500/20"
                 >
-                  <Ban size={13} />
+                  <IconBan size={13} />
                   <span>{t.blockWallpaper}</span>
                 </Button>
               </Tooltip>
@@ -493,7 +513,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 onClick={onRefreshWallpaper}
                 className="flex items-center gap-1 !text-xs !h-7 !px-2.5 !border-current/20"
               >
-                <RotateCw size={13} />
+                <IconRotateClockwise size={13} />
                 <span>{t.refreshWallpaper}</span>
               </Button>
             </Tooltip>
@@ -546,7 +566,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   onClick={handleCopyUrl}
                   className="p-1.5 rounded-lg bg-black/60 hover:bg-black/80 text-white/90 backdrop-blur-md border border-white/20 cursor-pointer transition-transform active:scale-95"
                 >
-                  <Copy size={13} />
+                  <IconCopy size={13} />
                 </button>
               </Tooltip>
               <Tooltip title={t.openOriginal}>
@@ -556,7 +576,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   rel="noreferrer"
                   className="p-1.5 rounded-lg bg-black/60 hover:bg-black/80 text-white/90 backdrop-blur-md border border-white/20 cursor-pointer transition-transform active:scale-95 flex items-center"
                 >
-                  <ExternalLink size={13} />
+                  <IconExternalLink size={13} />
                 </a>
               </Tooltip>
             </div>
@@ -575,7 +595,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               value: 'online',
               label: (
                 <span className="flex items-center gap-1.5 px-1 py-0.5">
-                  <PictureOutlined />
+                  <IconPhoto size={14} />
                   <span>{settings.language === 'zh' ? '在线壁纸' : 'Online'}</span>
                 </span>
               ),
@@ -584,7 +604,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               value: 'local',
               label: (
                 <span className="flex items-center gap-1.5 px-1 py-0.5">
-                  <FolderOpen size={13} />
+                  <IconFolderOpen size={13} />
                   <span>{settings.language === 'zh' ? '本地壁纸' : 'Local'}</span>
                 </span>
               ),
@@ -593,7 +613,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               value: 'custom_url',
               label: (
                 <span className="flex items-center gap-1.5 px-1 py-0.5">
-                  <LinkOutlined />
+                  <IconLink size={14} />
                   <span>{settings.language === 'zh' ? '自定义外链' : 'Direct URL'}</span>
                 </span>
               ),
@@ -602,7 +622,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               value: 'favorites',
               label: (
                 <span className="flex items-center gap-1.5 px-1 py-0.5">
-                  <Heart size={13} className="text-rose-400" />
+                  <IconHeart size={13} className="text-rose-400" />
                   <span>{settings.language === 'zh' ? '我的收藏' : 'Favorites'}</span>
                 </span>
               ),
@@ -684,7 +704,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     if (activeSrc) handleSelectLiveSource(activeSrc);
                   }}
                   loading={fetchingSourceId !== null}
-                  icon={<RotateCw size={13} className={fetchingSourceId ? 'animate-spin' : ''} />}
+                  icon={<IconRotateClockwise size={13} className={fetchingSourceId ? 'animate-spin' : ''} />}
                   className="flex items-center justify-center !text-xs !h-8"
                 >
                   {t.refreshWallpaper}
@@ -727,7 +747,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="space-y-3">
           <Upload.Dragger {...uploadProps} disabled={uploading} className="!p-4 sm:!p-6 !rounded-2xl border-dashed">
             <p className="ant-upload-drag-icon flex justify-center mb-2">
-              <ImageIcon className="text-blue-500 w-10 h-10 animate-pulse" />
+              <IconPhoto className="text-blue-500 w-10 h-10 animate-pulse" />
             </p>
             <p className="ant-upload-text text-sm font-medium">
               {t.uploadLocal}
@@ -743,9 +763,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             }`}>
               <div className="flex items-center gap-2.5">
                 {localMedia.isVideo ? (
-                  <Video size={16} className="text-purple-400" />
+                  <IconVideo size={16} className="text-purple-400" />
                 ) : (
-                  <ImageIcon size={16} className="text-blue-400" />
+                  <IconPhoto size={16} className="text-blue-400" />
                 )}
                 <span className="text-xs font-medium truncate max-w-[200px] sm:max-w-[280px]">
                   {localMedia.name || (localMedia.isVideo ? '自定义本地视频' : '自定义本地图片')}
@@ -761,7 +781,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   danger
                   size="small"
                   type="text"
-                  icon={<TrashIcon size={14} />}
+                  icon={<IconTrash size={14} />}
                   onClick={handleClearLocal}
                   className="flex items-center !text-xs text-red-500 hover:text-red-600"
                 >
@@ -804,7 +824,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         <div className="space-y-3">
           <div className="flex items-center justify-between px-1">
             <div className="text-xs text-neutral-400 flex items-center gap-1.5">
-              <FolderHeart size={14} className="text-rose-400" />
+              <IconFolderHeart size={14} className="text-rose-400" />
               <span>
                 {settings.language === 'zh'
                   ? `共收藏 ${favorites.length} 张壁纸`
@@ -875,7 +895,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           onClick={(e) => e.stopPropagation()}
                           className="p-1 rounded bg-black/60 hover:bg-black/80 text-white/90 cursor-pointer flex items-center"
                         >
-                          <ExternalLink size={12} />
+                          <IconExternalLink size={12} />
                         </a>
                       </Tooltip>
                       <Tooltip title={t.unfavoriteWallpaper}>
@@ -884,7 +904,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                           onClick={(e) => handleRemoveFavoriteItem(fav.url, e)}
                           className="p-1 rounded bg-black/60 hover:bg-red-600/80 text-white/90 cursor-pointer transition-colors"
                         >
-                          <TrashIcon size={12} />
+                          <IconTrash size={12} />
                         </button>
                       </Tooltip>
                     </div>
@@ -900,7 +920,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                       </div>
                       {isSelected && (
                         <div className="w-5 h-5 rounded-full bg-rose-500 flex items-center justify-center shrink-0 shadow-sm">
-                          <Check size={12} className="text-white" />
+                          <IconCheck size={12} className="text-white" />
                         </div>
                       )}
                     </div>
@@ -997,7 +1017,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               value: 'dark',
               label: (
                 <span className="flex items-center gap-1.5 px-1 py-0.5">
-                  <Moon size={14} />
+                  <IconMoon size={14} />
                   <span>{t.darkTheme}</span>
                 </span>
               ),
@@ -1006,7 +1026,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               value: 'light',
               label: (
                 <span className="flex items-center gap-1.5 px-1 py-0.5">
-                  <Sun size={14} />
+                  <IconSun size={14} />
                   <span>{t.lightTheme}</span>
                 </span>
               ),
@@ -1068,45 +1088,40 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         </div>
 
         <Slider
-          min={80}
-          max={140}
+          min={UI_SCALE_MIN}
+          max={UI_SCALE_MAX}
           step={5}
           value={settings.uiScale ?? 100}
           onChange={(val) => onUpdateSettings({ uiScale: val })}
           className="m-0"
         />
 
-        <div className="flex justify-between text-[11px] text-neutral-400 px-0.5 select-none">
-          <span
-            className={`cursor-pointer transition-colors hover:text-blue-500 ${(settings.uiScale ?? 100) === 85 ? 'text-blue-500 font-semibold' : ''}`}
-            onClick={() => onUpdateSettings({ uiScale: 85 })}
-          >
-            {t.uiScaleCompact}
-          </span>
-          <span
-            className={`cursor-pointer transition-colors hover:text-blue-500 ${(settings.uiScale ?? 100) === 100 ? 'text-blue-500 font-semibold' : ''}`}
-            onClick={() => onUpdateSettings({ uiScale: 100 })}
-          >
-            {t.uiScaleStandard}
-          </span>
-          <span
-            className={`cursor-pointer transition-colors hover:text-blue-500 ${(settings.uiScale ?? 100) === 110 ? 'text-blue-500 font-semibold' : ''}`}
-            onClick={() => onUpdateSettings({ uiScale: 110 })}
-          >
-            {t.uiScaleComfort}
-          </span>
-          <span
-            className={`cursor-pointer transition-colors hover:text-blue-500 ${(settings.uiScale ?? 100) === 120 ? 'text-blue-500 font-semibold' : ''}`}
-            onClick={() => onUpdateSettings({ uiScale: 120 })}
-          >
-            {t.uiScaleLarge}
-          </span>
-          <span
-            className={`cursor-pointer transition-colors hover:text-blue-500 ${(settings.uiScale ?? 100) === 130 ? 'text-blue-500 font-semibold' : ''}`}
-            onClick={() => onUpdateSettings({ uiScale: 130 })}
-          >
-            {t.uiScaleHuge}
-          </span>
+        {/* 刻度文字按「滑块真实比例」定位，而不是用 justify-between 均分。
+            滑块是 80~140 线性区间，而五个档位 85/100/110/120/130 并非等距：
+            均分会让 85 偏左 8.3%、100 偏左 8.3%、130 偏右 16.7%（只有 110 恰好重合），
+            于是文字与滑轨上的实际位置对不上，看上去就是「对不齐」。
+            这里用相对定位容器 + 每个刻度按 (value-min)/(max-min) 绝对定位，
+            再用 translateX(-50%) 让文字以刻度点为中轴居中。 */}
+        {/* 与滑块轨道左右对齐：antd 的 Slider 轨距容器左右各留 5px（手柄半径），
+            这里用同样的内缩量，刻度才会与轨道的实际起点/终点重合。 */}
+        <div className="relative h-4 text-[11px] text-neutral-400 select-none mx-[5px]">
+          {uiScaleTicks.map((tick) => {
+            const active = (settings.uiScale ?? 100) === tick.value;
+            const ratio =
+              (tick.value - UI_SCALE_MIN) / (UI_SCALE_MAX - UI_SCALE_MIN);
+            return (
+              <span
+                key={tick.value}
+                className={`absolute top-0 whitespace-nowrap -translate-x-1/2 cursor-pointer transition-colors hover:text-blue-500 ${
+                  active ? 'text-blue-500 font-semibold' : ''
+                }`}
+                style={{ left: `${ratio * 100}%` }}
+                onClick={() => onUpdateSettings({ uiScale: tick.value })}
+              >
+                {tick.label}
+              </span>
+            );
+          })}
         </div>
       </div>
 
@@ -1148,7 +1163,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         }`}>
           <div>
             <div className="text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5">
-              <AlertCircle size={13} className="shrink-0" />
+              <IconAlertCircle size={13} className="shrink-0" />
               <span>{t.bookmarkPermissionNotGranted}</span>
             </div>
             <div className="text-[11px] opacity-75 mt-0.5">
@@ -1160,7 +1175,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             size="small"
             loading={updatingPerm}
             onClick={handleGrantBookmarkPermission}
-            icon={<RefreshCw size={12} className={`shrink-0 ${updatingPerm ? 'animate-spin' : ''}`} />}
+            icon={<IconRefresh size={12} className={`shrink-0 ${updatingPerm ? 'animate-spin' : ''}`} />}
           >
             {t.bookmarkPermissionGrantBtn}
           </Button>
@@ -1511,7 +1526,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               size="small"
               loading={checkingUpdate}
               onClick={handleCheckUpdate}
-              icon={!checkingUpdate ? <RotateCw className="w-3 h-3" /> : undefined}
+              icon={!checkingUpdate ? <IconRotateClockwise className="w-3 h-3" /> : undefined}
               className="!text-xs !h-6 !px-2 !rounded-lg"
             >
               {checkingUpdate ? t.checkingUpdate : t.checkUpdate}
@@ -1519,7 +1534,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <Button
               type="text"
               size="small"
-              icon={<GithubOutlined className="text-xs" />}
+              icon={<IconBrandGithub size={12} className="text-xs" />}
               onClick={() => window.open(GITHUB_REPO_URL, '_blank')}
               className="!text-xs !h-6 !px-2 !rounded-lg"
             >
@@ -1564,7 +1579,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
           <Button
             type="primary"
             size="small"
-            icon={<ExternalLink className="w-3 h-3" />}
+            icon={<IconExternalLink className="w-3 h-3" />}
             onClick={() => window.open(releaseInfo.releaseUrl || GITHUB_REPO_URL, '_blank')}
             className="!text-xs !rounded-lg shrink-0"
           >
@@ -1652,7 +1667,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   <span className="px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500 font-mono">
                     {lib.tag}
                   </span>
-                  <ExternalLink size={11} />
+                  <IconExternalLink size={11} />
                 </div>
               </div>
               <div className="text-[11px] opacity-65 mt-1.5 line-clamp-2">
@@ -1715,7 +1730,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 <span className="text-xs font-semibold group-hover:text-blue-500 transition-colors">
                   {api.name}
                 </span>
-                <ExternalLink size={11} className="opacity-50 group-hover:opacity-100 transition-opacity" />
+                <IconExternalLink size={11} className="opacity-50 group-hover:opacity-100 transition-opacity" />
               </div>
               <div className="text-[11px] opacity-65 mt-1.5">
                 {settings.language === 'zh' ? api.descZh : api.descEn}
@@ -1742,12 +1757,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
     </div>
   );
 
+  // 5. Sync Tab Content
+  const syncTabContent = (
+    <SyncSettingsPanel
+      language={settings.language}
+      theme={settings.theme}
+      onApplied={onSyncApplied}
+    />
+  );
+
   const tabItems = [
     {
       key: 'wallpaper',
       label: (
         <span className="flex items-center gap-1.5">
-          <PictureOutlined />
+          <IconPhoto size={14} />
           {t.wallpaper}
         </span>
       ),
@@ -1757,7 +1781,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       key: 'appearance',
       label: (
         <span className="flex items-center gap-1.5">
-          <BgColorsOutlined />
+          <IconColorSwatch size={14} />
           {t.appearance}
         </span>
       ),
@@ -1767,17 +1791,27 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       key: 'general',
       label: (
         <span className="flex items-center gap-1.5">
-          <SettingOutlined />
+          <IconSettings size={14} />
           {t.general}
         </span>
       ),
       children: wrapTabScroll(generalTabContent),
     },
     {
+      key: 'sync',
+      label: (
+        <span className="flex items-center gap-1.5">
+          <IconCloud size={14} />
+          {t.sync}
+        </span>
+      ),
+      children: wrapTabScroll(syncTabContent),
+    },
+    {
       key: 'about',
       label: (
         <span className="flex items-center gap-1.5">
-          <InfoCircleOutlined />
+          <IconInfoCircle size={14} />
           {t.about}
         </span>
       ),

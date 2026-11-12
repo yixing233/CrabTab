@@ -1,5 +1,36 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
+  IconActivity,
+  IconAlertTriangle,
+  IconArrowLeft,
+  IconArrowsRightLeft,
+  IconBolt,
+  IconCalendar,
+  IconCalendarClock,
+  IconCheck,
+  IconChevronDown,
+  IconChevronLeft,
+  IconChevronRight,
+  IconChevronUp,
+  IconCircle,
+  IconCircleCheck,
+  IconCopy,
+  IconDownload,
+  IconEdit,
+  IconExternalLink,
+  IconFileText,
+  IconGauge,
+  IconLanguage,
+  IconPin,
+  IconPlus,
+  IconRocket,
+  IconRotate,
+  IconSquareCheck,
+  IconTrash,
+  IconUpload,
+  IconWifi,
+} from '@tabler/icons-react';
+import {
   Segmented,
   ConfigProvider,
   theme as antdTheme,
@@ -19,37 +50,6 @@ import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
 import zhCN from 'antd/locale/zh_CN';
 import enUS from 'antd/locale/en_US';
-import {
-  Languages,
-  FileText,
-  Activity,
-  CheckSquare,
-  ChevronUp,
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ArrowLeft,
-  Copy,
-  Trash2,
-  Check,
-  CheckCircle2,
-  Circle,
-  ExternalLink,
-  ArrowRightLeft,
-  Calendar,
-  CalendarClock,
-  Edit2,
-  Plus,
-  Pin,
-  Wifi,
-  Download,
-  Upload,
-  Zap,
-  Rocket,
-  AlertTriangle,
-  RotateCcw,
-  Gauge,
-} from 'lucide-react';
 import { Language, ThemeMode, CountdownItem } from '../types';
 import { loadTodosFromStorage, saveTodosToStorage } from '../utils/storage';
 import { calculateCountdownStatus } from '../utils/countdown';
@@ -467,7 +467,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
     if (d >= 300) {
       return {
         color: 'success',
-        icon: <Zap size={12} className="shrink-0" />,
+        icon: <IconBolt size={12} className="shrink-0" />,
         tag: zh ? '千兆极速' : 'Gigabit Ultra',
         desc: zh ? '极速响应，支持 4K/8K 超清流媒体与全屋多设备并发' : 'Gigabit speed, ideal for 8K streaming & multi-device load',
       };
@@ -475,7 +475,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
     if (d >= 100) {
       return {
         color: 'processing',
-        icon: <Rocket size={12} className="shrink-0" />,
+        icon: <IconRocket size={12} className="shrink-0" />,
         tag: zh ? '高速光纤' : 'High Speed',
         desc: zh ? '百兆以上宽带，畅享 4K 观影与大型游戏更新' : 'Fast broadband for smooth 4K streaming & game downloads',
       };
@@ -483,7 +483,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
     if (d >= 30) {
       return {
         color: 'cyan',
-        icon: <Check size={12} className="shrink-0" />,
+        icon: <IconCheck size={12} className="shrink-0" />,
         tag: zh ? '普通宽带' : 'Standard',
         desc: zh ? '满足 1080P 高清视频、在线会议与多任务办公' : 'Standard speed, smooth for 1080P video & daily productivity',
       };
@@ -491,14 +491,14 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
     if (d >= 10) {
       return {
         color: 'default',
-        icon: <Check size={12} className="shrink-0" />,
+        icon: <IconCheck size={12} className="shrink-0" />,
         tag: zh ? '基础网络' : 'Basic',
         desc: zh ? '满足网页浏览、社交通讯与标清流媒体' : 'Basic connection for web surfing & messaging',
       };
     }
     return {
       color: 'warning',
-      icon: <AlertTriangle size={12} className="shrink-0" />,
+      icon: <IconAlertTriangle size={12} className="shrink-0" />,
       tag: zh ? '网络偏慢' : 'Slow',
       desc: zh ? '速率较低，建议检查 WiFi 信号或重试' : 'Low bandwidth, please check WiFi signal or network traffic',
     };
@@ -1172,11 +1172,11 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
   }, [textContent]);
 
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
-    { id: 'translate', label: zh ? '翻译' : 'Translate', icon: <Languages size={15} /> },
-    { id: 'text', label: zh ? '文本处理' : 'Text', icon: <FileText size={15} /> },
-    { id: 'network', label: zh ? '网络测速' : 'Speedtest', icon: <Gauge size={15} /> },
-    { id: 'todo', label: zh ? '待办事项' : 'Tasks', icon: <CheckSquare size={15} /> },
-    { id: 'countdown', label: zh ? '倒数日' : 'Countdown', icon: <CalendarClock size={15} /> },
+    { id: 'translate', label: zh ? '翻译' : 'Translate', icon: <IconLanguage size={15} /> },
+    { id: 'text', label: zh ? '文本处理' : 'Text', icon: <IconFileText size={15} /> },
+    { id: 'network', label: zh ? '网络测速' : 'Speedtest', icon: <IconGauge size={15} /> },
+    { id: 'todo', label: zh ? '待办事项' : 'Tasks', icon: <IconSquareCheck size={15} /> },
+    { id: 'countdown', label: zh ? '倒数日' : 'Countdown', icon: <IconCalendarClock size={15} /> },
   ];
 
   return (
@@ -1236,7 +1236,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                         : 'border-black/25 text-neutral-400 hover:border-blue-500 hover:text-blue-500 hover:bg-blue-500/10'
                     }`}
                   >
-                    <Check size={11} strokeWidth={3} className="opacity-0 group-hover/check:opacity-100 transition-opacity" />
+                    <IconCheck size={11} strokeWidth={3} className="opacity-0 group-hover/check:opacity-100 transition-opacity" />
                   </span>
                   <span className="truncate max-w-[110px] text-neutral-800 dark:text-neutral-100">
                     {item.title}
@@ -1288,7 +1288,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                 WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
               }}
             >
-              <ChevronLeft
+              <IconChevronLeft
                 size={13}
                 className="text-neutral-400 group-hover:text-current transition-transform duration-200 group-hover:-translate-x-0.5 shrink-0"
               />
@@ -1348,7 +1348,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                     : 'text-neutral-800 drop-shadow-[0_1px_3px_rgba(255,255,255,0.85)]'
                 }`}
               >
-                <CalendarClock size={12} className="opacity-80 shrink-0" />
+                <IconCalendarClock size={12} className="opacity-80 shrink-0" />
                 <span className="whitespace-nowrap">{zh ? '倒数日' : 'Countdowns'}</span>
                 <span className={`text-[10px] px-1.5 rounded-full tabular-nums font-semibold shrink-0 ${
                   isDark ? 'bg-white/20 text-white' : 'bg-black/12 text-neutral-800'
@@ -1370,7 +1370,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                 }`}
               >
                 <span className="text-[10px]">{zh ? '收起' : 'Collapse'}</span>
-                <ChevronRight size={13} className="shrink-0" />
+                <IconChevronRight size={13} className="shrink-0" />
               </button>
             </div>
 
@@ -1450,7 +1450,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                 WebkitBackdropFilter: `blur(${glassStyle.blur}px)`,
               }}
             >
-              {open ? <ChevronDown size={14} className="opacity-70" /> : <ChevronUp size={14} className="opacity-70" />}
+              {open ? <IconChevronDown size={14} className="opacity-70" /> : <IconChevronUp size={14} className="opacity-70" />}
               <span>{zh ? '实用工具' : 'Tools'}</span>
             </button>
           </div>
@@ -1502,7 +1502,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                           style={{ width: 110 }}
                           popupClassName="utility-ant-dropdown"
                         />
-                        <ArrowRightLeft size={13} className="shrink-0 opacity-50" />
+                        <IconArrowsRightLeft size={13} className="shrink-0 opacity-50" />
                         <Select
                           size="small"
                           value={targetLang}
@@ -1531,7 +1531,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                         className="flex shrink-0 items-center gap-1 text-[11px] opacity-60 hover:opacity-100 transition-opacity"
                       >
                         <span>{translationProviderOptions.find((item) => item.value === translationProvider)?.label}</span>
-                        <ExternalLink size={11} />
+                        <IconExternalLink size={11} />
                       </a>
                     </div>
 
@@ -1585,7 +1585,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                           disabled={!translatedText}
                           className="flex items-center gap-1 px-2.5 py-1 text-xs rounded-lg bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 disabled:opacity-40 cursor-pointer"
                         >
-                          <Copy size={12} />
+                          <IconCopy size={12} />
                           <span>{zh ? '复制' : 'Copy'}</span>
                         </button>
                       </div>
@@ -1605,7 +1605,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                         onClick={() => setTextContent('')}
                         className="flex items-center gap-1 hover:text-red-400 cursor-pointer"
                       >
-                        <Trash2 size={12} />
+                        <IconTrash size={12} />
                         <span>{zh ? '清空' : 'Clear'}</span>
                       </button>
                       <button
@@ -1613,7 +1613,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                         onClick={() => copyToClipboard(textContent)}
                         className="flex items-center gap-1 hover:text-blue-400 cursor-pointer"
                       >
-                        <Copy size={12} />
+                        <IconCopy size={12} />
                         <span>{zh ? '复制' : 'Copy'}</span>
                       </button>
                     </div>
@@ -1701,7 +1701,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                       <div className="flex items-center gap-1.5 min-w-0 truncate text-right">
                         {testPhase !== 'idle' && testPhase !== 'completed' && testPhase !== 'error' ? (
                           <div className="flex items-center gap-1.5 text-blue-500 dark:text-blue-400 text-xs shrink-0">
-                            <RotateCcw size={11} className="animate-spin shrink-0" />
+                            <IconRotate size={11} className="animate-spin shrink-0" />
                             <span className="text-[11px] truncate max-w-[130px]">{speedStatusMsg}</span>
                           </div>
                         ) : speedRating ? (
@@ -1724,7 +1724,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                           <Button
                             danger
                             size="small"
-                            icon={<RotateCcw size={13} className="animate-spin" />}
+                            icon={<IconRotate size={13} className="animate-spin" />}
                             onClick={cancelSpeedTest}
                             className="flex items-center gap-1.5 text-xs font-medium"
                           >
@@ -1734,7 +1734,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                           <Button
                             type="primary"
                             size="small"
-                            icon={<Zap size={13} />}
+                            icon={<IconBolt size={13} />}
                             onClick={runFullSpeedTest}
                             disabled={!online}
                             className="flex items-center gap-1.5 text-xs font-medium shadow-sm"
@@ -1760,7 +1760,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                         <div className="flex items-center justify-between shrink-0 mb-1 z-10">
                           <div className="flex items-center gap-2">
                             <div className="w-5 h-5 rounded-md bg-emerald-500/10 text-emerald-500 flex items-center justify-center">
-                              <Download size={13} />
+                              <IconDownload size={13} />
                             </div>
                             <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
                               {zh ? '下载速率' : 'Download'}
@@ -1848,7 +1848,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                         <div className="flex items-center justify-between shrink-0">
                           <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{zh ? '延迟 Ping' : 'Ping'}</span>
                           <div className="w-5 h-5 rounded-md bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
-                            <Activity size={13} />
+                            <IconActivity size={13} />
                           </div>
                         </div>
                         <div className="my-1.5 flex items-baseline gap-1.5">
@@ -1875,7 +1875,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                         <div className="flex items-center justify-between shrink-0 mb-1 z-10">
                           <div className="flex items-center gap-2">
                             <div className="w-5 h-5 rounded-md bg-purple-500/10 text-purple-400 flex items-center justify-center">
-                              <Upload size={13} />
+                              <IconUpload size={13} />
                             </div>
                             <span className="text-xs font-semibold text-neutral-800 dark:text-neutral-200">
                               {zh ? '上传速率' : 'Upload'}
@@ -1961,7 +1961,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                         <div className="flex items-center justify-between shrink-0">
                           <span className="text-xs font-semibold text-neutral-700 dark:text-neutral-300">{zh ? '网络类型' : 'Network'}</span>
                           <div className="w-5 h-5 rounded-md bg-indigo-500/10 text-indigo-400 flex items-center justify-center shrink-0">
-                            <Wifi size={13} />
+                            <IconWifi size={13} />
                           </div>
                         </div>
                         <div className="my-1.5">
@@ -2004,7 +2004,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                             {zh ? `未完成 ${pendingCount} 项${todos.length ? ` · 共 ${todos.length} 项` : ''}` : `${pendingCount} pending${todos.length ? ` · ${todos.length} total` : ''}`}
                           </div>
                         </div>
-                        <Button type="primary" size="small" icon={<Plus size={14} />} onClick={handleStartCreate} className="flex items-center gap-1.5 text-xs font-medium shadow-sm">
+                        <Button type="primary" size="small" icon={<IconPlus size={14} />} onClick={handleStartCreate} className="flex items-center gap-1.5 text-xs font-medium shadow-sm">
                           {zh ? '新建待办' : 'New task'}
                         </Button>
                       </div>
@@ -2012,23 +2012,23 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                       <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1.5 pr-1">
                         {todos.length === 0 ? (
                           <div className="h-full flex flex-col items-center justify-center gap-2 text-xs opacity-45">
-                            <CheckSquare size={22} strokeWidth={1.5} />
+                            <IconSquareCheck size={22} strokeWidth={1.5} />
                             <span>{zh ? '暂无待办事项' : 'No tasks yet'}</span>
                           </div>
                         ) : (
                           sortedTodos.map((item) => (
                             <div key={item.id} className="group flex items-center gap-2.5 p-2.5 rounded-xl border border-white/5 bg-black/5 dark:bg-white/5 hover:border-blue-400/40 hover:bg-blue-500/5 transition-all cursor-pointer" onClick={() => handleOpenDetail(item)}>
                               <button type="button" onClick={(event) => { event.stopPropagation(); toggleTodo(item.id); }} className={`w-4 h-4 rounded flex items-center justify-center border transition-colors cursor-pointer shrink-0 ${item.completed ? 'bg-blue-500 border-blue-500 text-white' : 'border-white/30 hover:border-blue-400'}`}>
-                                {item.completed && <Check size={11} />}
+                                {item.completed && <IconCheck size={11} />}
                               </button>
                               <div className="flex-1 min-w-0">
                                 <div className={`text-xs font-medium truncate ${item.completed ? 'line-through opacity-40' : ''}`}>{item.title}</div>
                                 <div className="mt-1 flex items-center gap-2 text-[10px] opacity-50">
-                                  {item.dueDate && <span className="flex items-center gap-1"><Calendar size={10} />{item.dueDate}</span>}
+                                  {item.dueDate && <span className="flex items-center gap-1"><IconCalendar size={10} />{item.dueDate}</span>}
                                   {item.content && <span className="truncate">{item.content}</span>}
                                 </div>
                               </div>
-                              <ChevronDown size={14} className="-rotate-90 opacity-35 group-hover:opacity-80 shrink-0" />
+                              <IconChevronDown size={14} className="-rotate-90 opacity-35 group-hover:opacity-80 shrink-0" />
                             </div>
                           ))
                         )}
@@ -2060,7 +2060,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                               onClick={handleBackToList}
                               className="flex items-center gap-1.5 text-xs font-medium opacity-70 hover:opacity-100 hover:text-blue-500 transition-colors cursor-pointer"
                             >
-                              <ArrowLeft size={15} /> {zh ? '全部待办' : 'All Tasks'}
+                              <IconArrowLeft size={15} /> {zh ? '全部待办' : 'All Tasks'}
                             </button>
                             <div className="flex items-center gap-1">
                               <button
@@ -2073,7 +2073,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                                 }`}
                                 title={current.completed ? (zh ? '标记为未完成' : 'Mark incomplete') : (zh ? '标记为已完成' : 'Mark complete')}
                               >
-                                {current.completed ? <CheckCircle2 size={14} /> : <Circle size={14} />}
+                                {current.completed ? <IconCircleCheck size={14} /> : <IconCircle size={14} />}
                                 <span>{current.completed ? (zh ? '已完成' : 'Completed') : (zh ? '未完成' : 'Pending')}</span>
                               </button>
                               <button
@@ -2082,7 +2082,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                                 className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium opacity-75 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/5 transition-colors cursor-pointer"
                                 title={zh ? '编辑事项' : 'Edit task'}
                               >
-                                <Edit2 size={13} />
+                                <IconEdit size={13} />
                                 <span>{zh ? '编辑' : 'Edit'}</span>
                               </button>
                               <button
@@ -2091,7 +2091,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                                 className="p-1 rounded-md text-red-400/80 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
                                 title={zh ? '删除事项' : 'Delete task'}
                               >
-                                <Trash2 size={14} />
+                                <IconTrash size={14} />
                               </button>
                             </div>
                           </div>
@@ -2106,7 +2106,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
 
                             {current.dueDate && (
                               <div className="mt-2 mb-3 flex items-center gap-2 text-xs text-neutral-500 dark:text-neutral-400">
-                                <Calendar size={13} className="shrink-0 opacity-70" />
+                                <IconCalendar size={13} className="shrink-0 opacity-70" />
                                 <span className="font-mono text-[12px]">{current.dueDate}</span>
                                 {current.dueDate === getTodayString() && (
                                   <span className="text-[11px] px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium">
@@ -2143,7 +2143,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                           onClick={handleCancelEdit}
                           className="flex items-center gap-1.5 text-xs font-medium opacity-70 hover:opacity-100 hover:text-blue-500 transition-colors cursor-pointer"
                         >
-                          <ArrowLeft size={15} /> {editingTodoId ? (zh ? '取消' : 'Cancel') : (zh ? '返回' : 'Back')}
+                          <IconArrowLeft size={15} /> {editingTodoId ? (zh ? '取消' : 'Cancel') : (zh ? '返回' : 'Back')}
                         </button>
                         <div className="flex items-center gap-2">
                           {editingTodoId && (
@@ -2153,7 +2153,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                               className="p-1 rounded-md text-red-400/80 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
                               title={zh ? '删除待办' : 'Delete task'}
                             >
-                              <Trash2 size={14} />
+                              <IconTrash size={14} />
                             </button>
                           )}
                           <Button
@@ -2223,7 +2223,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                     <Button
                       type="primary"
                       size="small"
-                      icon={<Plus size={14} />}
+                      icon={<IconPlus size={14} />}
                       onClick={handleOpenAddCountdown}
                       className="flex items-center gap-1.5 text-xs font-medium shadow-sm cursor-pointer"
                     >
@@ -2260,7 +2260,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                   <div className="flex-1 overflow-y-auto custom-scrollbar space-y-2 pr-1">
                     {filteredCountdowns.length === 0 ? (
                       <div className="h-full min-h-[160px] flex flex-col items-center justify-center gap-2.5 text-xs opacity-45">
-                        <CalendarClock size={28} strokeWidth={1.5} />
+                        <IconCalendarClock size={28} strokeWidth={1.5} />
                         <span>{t.countdownEmpty}</span>
                         <Button size="small" onClick={handleOpenAddCountdown}>
                           {t.addCountdown}
@@ -2313,7 +2313,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
 
                               <div className="mt-1.5 flex flex-wrap items-center gap-2 text-xs opacity-60">
                                 <span className="flex items-center gap-1 font-mono text-[11px]">
-                                  <Calendar size={11} />
+                                  <IconCalendar size={11} />
                                   {status.nextDateStr}
                                 </span>
                                 {item.repeat && item.repeat !== 'none' && (
@@ -2357,7 +2357,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                                       : 'border-transparent text-neutral-400 hover:text-neutral-700 dark:hover:text-neutral-200 hover:bg-black/5 dark:hover:bg-white/10'
                                   }`}
                                 >
-                                  <Pin size={15} className={item.isPinned ? 'fill-current' : ''} />
+                                  <IconPin size={15} className={item.isPinned ? 'fill-current' : ''} />
                                 </button>
                               </Tooltip>
 
@@ -2368,7 +2368,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                                   className="p-1.5 rounded-lg text-neutral-400 hover:text-blue-500 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
                                   title={zh ? '编辑' : 'Edit'}
                                 >
-                                  <Edit2 size={14} />
+                                  <IconEdit size={14} />
                                 </button>
                               )}
 
@@ -2378,7 +2378,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                                 className="p-1.5 rounded-lg text-neutral-400 hover:text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer"
                                 title={zh ? '删除' : 'Delete'}
                               >
-                                <Trash2 size={14} />
+                                <IconTrash size={14} />
                               </button>
                             </div>
                           </div>

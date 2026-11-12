@@ -1,4 +1,21 @@
 import React, { useState } from 'react';
+import {
+  IconCheck,
+  IconChevronLeft,
+  IconChevronRight,
+  IconCornerUpLeft,
+  IconEdit,
+  IconExternalLink,
+  IconFolder,
+  IconLayoutGrid,
+  IconLayoutGridRemove,
+  IconLink,
+  IconMaximize,
+  IconMinimize,
+  IconPlus,
+  IconTrash,
+  IconWorld,
+} from '@tabler/icons-react';
 import { Modal, Form, Input, message } from 'antd';
 import { SiteShortcut, Language, HomeContentMode } from '../types';
 import { i18n } from '../i18n';
@@ -20,24 +37,7 @@ import {
   resolveFloatingPosition,
 } from '../utils/viewport';
 import { HomeStageBar } from './HomeStageBar';
-import { useResolvedIsDark } from '../theme';
-import {
-  Folder,
-  Edit2,
-  Trash2,
-  CornerUpLeft,
-  Ungroup,
-  Plus,
-  Maximize2,
-  Minimize2,
-  Check,
-  Globe2,
-  Link,
-  ExternalLink,
-  LayoutGrid,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
+import { useResolvedIsDark, getSurfaceMaterial } from '../theme';
 
 type ShortcutContextMenu = {
   itemId: string;
@@ -183,7 +183,7 @@ const FolderThumbnailView: React.FC<{
       ))}
       {count === 0 && (
         <div className="col-span-full row-span-full text-neutral-400 dark:text-neutral-500 flex items-center justify-center">
-          <Folder size={isLarge ? 24 : 16} />
+          <IconFolder size={isLarge ? 24 : 16} />
         </div>
 
       )}
@@ -446,7 +446,7 @@ const IconCandidatePicker: React.FC<{
                     {(title || siteUrl || 'A').trim().charAt(0).toUpperCase()}
                   </div>
                 ) : hasFailed ? (
-                  <Globe2 size={22} className="text-neutral-400 dark:text-neutral-500" aria-hidden="true" />
+                  <IconWorld size={22} className="text-neutral-400 dark:text-neutral-500" aria-hidden="true" />
                 ) : (
                   <img
                     src={opt.url}
@@ -461,7 +461,7 @@ const IconCandidatePicker: React.FC<{
               </span>
               {isSelected && (
                 <div className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-blue-500 text-white flex items-center justify-center shadow-xs">
-                  <Check size={9} strokeWidth={3} />
+                  <IconCheck size={9} strokeWidth={3} />
                 </div>
               )}
             </button>
@@ -2200,7 +2200,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                   : 'border-black/10 bg-white/80 text-neutral-700 hover:bg-white'
               }`}
             >
-              <ChevronLeft size={20} strokeWidth={2.5} />
+              <IconChevronLeft size={20} strokeWidth={2.5} />
             </button>
           )}
           {currentPage < totalPages && (
@@ -2263,7 +2263,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                   : 'border-black/10 bg-white/80 text-neutral-700 hover:bg-white'
               }`}
             >
-              <ChevronRight size={20} strokeWidth={2.5} />
+              <IconChevronRight size={20} strokeWidth={2.5} />
             </button>
           )}
         </>
@@ -2282,13 +2282,17 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
             onClick={() => handleOpenAdd()}
             aria-label={t.addShortcut}
             title={t.addShortcut}
-            className={`group/addbtn flex h-8 items-center gap-1.5 rounded-full border border-dashed px-3 text-xs font-medium shadow-sm backdrop-blur-xl transition-all cursor-pointer active:scale-95 ${
+            className={`group/addbtn flex h-8 items-center gap-1.5 rounded-full border border-dashed px-3 text-xs font-medium shadow-sm transition-all cursor-pointer active:scale-95 ${
               isDark
-                ? 'border-white/25 bg-white/[0.06] text-white/75 hover:border-white/50 hover:bg-white/12 hover:text-white'
-                : 'border-black/20 bg-white/50 text-neutral-600 hover:border-black/35 hover:bg-white/80 hover:text-neutral-900'
+                ? 'border-white/25 text-white/75 hover:border-white/50 hover:text-white'
+                : 'border-black/20 text-neutral-600 hover:border-black/35 hover:text-neutral-900'
             }`}
+            // 底色与模糊走统一材质：此前这里用 bg-white/50 + backdrop-blur-xl(24px)，
+            // 与紧邻的「快捷方式」胶囊（0.68 + blur16）差了一档浓度与 50% 的模糊，
+            // 并排时明显发虚、发飘，看上去像另一个体系的控件。
+            style={getSurfaceMaterial(isDark, glassStyle.blur)}
           >
-            <Plus size={14} strokeWidth={2.5} className="shrink-0 transition-transform duration-200 group-hover/addbtn:rotate-90" />
+            <IconPlus size={14} strokeWidth={2.5} className="shrink-0 transition-transform duration-200 group-hover/addbtn:rotate-90" />
             <span>{t.addShortcut}</span>
           </button>
         }
@@ -2342,12 +2346,12 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                 }}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <LayoutGrid size={15} className="shrink-0 text-neutral-500 dark:text-neutral-400" />
+                  <IconLayoutGrid size={15} className="shrink-0 text-neutral-500 dark:text-neutral-400" />
                   <span className="truncate font-medium">{t.shortcutAutoFillMenu || '自动补位'}</span>
                 </div>
                 {autoFill ? (
                   <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] bg-blue-500 text-white shadow-xs">
-                    <Check size={12} strokeWidth={3} />
+                    <IconCheck size={12} strokeWidth={3} />
                   </div>
                 ) : (
                   <div className="h-4 w-4 shrink-0 rounded-[5px] border border-neutral-400/60 dark:border-neutral-500/60 bg-transparent" />
@@ -2365,7 +2369,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                 close();
               }}
             >
-              <Maximize2 size={15} className="shrink-0" />
+              <IconMaximize size={15} className="shrink-0" />
               <span>{t.compactGridNow}</span>
             </button>
 
@@ -2396,7 +2400,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                       : 'cursor-pointer hover:bg-black/5 dark:hover:bg-white/10'
                   } ${isDark ? 'border-white/12' : 'border-black/10'}`}
                 >
-                  <Plus size={12} strokeWidth={2.5} />
+                  <IconPlus size={12} strokeWidth={2.5} />
                   <span>{t.addDesktopPage}</span>
                 </button>
                 <button
@@ -2413,7 +2417,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                       : 'cursor-pointer text-red-500 hover:bg-red-500/10'
                   } ${isDark ? 'border-white/12' : 'border-black/10'}`}
                 >
-                  <Trash2 size={12} strokeWidth={2.3} />
+                  <IconTrash size={12} strokeWidth={2.3} />
                   <span>{t.deleteDesktopPage}</span>
                 </button>
               </div>
@@ -2427,7 +2431,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                   }}
                   className="mt-1.5 flex w-full items-center justify-center gap-1 rounded-lg px-2 py-1.5 text-[11px] font-medium text-amber-500 transition-colors cursor-pointer hover:bg-amber-500/10"
                 >
-                  <Trash2 size={12} strokeWidth={2.3} />
+                  <IconTrash size={12} strokeWidth={2.3} />
                   <span>{t.cleanEmptyDesktopPages}</span>
                 </button>
               )}
@@ -2774,7 +2778,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                     : 'h-3.5 w-3.5 text-neutral-400 hover:text-blue-500 dark:text-neutral-400 dark:hover:text-blue-400 hover:bg-black/5 dark:hover:bg-white/10'
                 }`}
               >
-                <Plus size={12} strokeWidth={2.5} />
+                <IconPlus size={12} strokeWidth={2.5} />
               </button>
             )}
           </div>
@@ -2813,7 +2817,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
             className="w-full flex items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-left text-red-500 hover:bg-red-500/10 transition-colors cursor-pointer active:scale-[0.98]"
             onClick={() => handleDeletePage(pageDotContextMenu.page)}
           >
-            <Trash2 size={14} className="shrink-0" />
+            <IconTrash size={14} className="shrink-0" />
             <span className="truncate">{t.deleteDesktopPage}</span>
           </button>
           {totalPages > maxUsedPage && (
@@ -2823,7 +2827,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
               className="w-full flex items-center gap-2 rounded-xl px-2.5 py-2 text-sm text-left text-amber-500 hover:bg-amber-500/10 transition-colors cursor-pointer border-t border-black/5 dark:border-white/10 mt-1 pt-1.5 active:scale-[0.98]"
               onClick={handleCleanEmptyPages}
             >
-              <Trash2 size={14} className="shrink-0" />
+              <IconTrash size={14} className="shrink-0" />
               <span className="truncate">{t.cleanEmptyDesktopPages}</span>
             </button>
           )}
@@ -2849,7 +2853,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
             className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/10"
             onClick={() => handleOpenAdd(gridContextMenu.position)}
           >
-            <Plus size={15} />
+            <IconPlus size={15} />
             <span>{t.addShortcut}</span>
           </button>
 
@@ -2901,12 +2905,12 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
               }}
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <LayoutGrid size={15} className="shrink-0 text-neutral-500 dark:text-neutral-400" />
+                <IconLayoutGrid size={15} className="shrink-0 text-neutral-500 dark:text-neutral-400" />
                 <span className="truncate font-medium">{t.shortcutAutoFillMenu || '自动补位'}</span>
               </div>
               {autoFill ? (
                 <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] bg-blue-500 text-white shadow-xs">
-                  <Check size={12} strokeWidth={3} />
+                  <IconCheck size={12} strokeWidth={3} />
                 </div>
               ) : (
                 <div className="h-4 w-4 shrink-0 rounded-[5px] border border-neutral-400/60 dark:border-neutral-500/60 bg-transparent" />
@@ -2920,7 +2924,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
             className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl px-2.5 py-2 text-left text-sm transition-colors hover:bg-black/5 dark:hover:bg-white/10"
             onClick={handleCompactGrid}
           >
-            <Maximize2 size={15} />
+            <IconMaximize size={15} />
             <span>{t.compactGridNow}</span>
           </button>
         </div>
@@ -2952,7 +2956,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
               else handleLinkClick(contextMenuItem.url);
             }}
           >
-            {contextMenuItem.isFolder ? <Folder size={15} /> : <ExternalLink size={15} />}
+            {contextMenuItem.isFolder ? <IconFolder size={15} /> : <IconExternalLink size={15} />}
             <span>{contextMenuItem.isFolder ? (language === 'zh' ? '打开文件夹' : 'Open folder') : (language === 'zh' ? '打开快捷方式' : 'Open shortcut')}</span>
           </button>
           {contextMenuItem.isFolder ? (
@@ -2966,7 +2970,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                   handleToggleFolderSize(contextMenuItem.id);
                 }}
               >
-                {contextMenuItem.folderSize === '2x2' ? <Minimize2 size={15} /> : <Maximize2 size={15} />}
+                {contextMenuItem.folderSize === '2x2' ? <IconMinimize size={15} /> : <IconMaximize size={15} />}
                 <span>{contextMenuItem.folderSize === '2x2' ? (language === 'zh' ? '缩小为 1×1' : 'Shrink to 1×1') : (language === 'zh' ? '放大为 2×2' : 'Enlarge to 2×2')}</span>
               </button>
               <button
@@ -2978,8 +2982,8 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                   handleUngroupFolder(contextMenuItem.id);
                 }}
               >
-                <Ungroup size={15} />
-                <span>{language === 'zh' ? '解散文件夹' : 'Ungroup folder'}</span>
+                <IconLayoutGridRemove size={15} />
+                <span>{language === 'zh' ? '解散文件夹' : 'IconLayoutGridRemove folder'}</span>
               </button>
             </>
           ) : (
@@ -2992,7 +2996,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                 handleOpenEdit(contextMenuItem);
               }}
             >
-              <Edit2 size={15} />
+              <IconEdit size={15} />
               <span>{language === 'zh' ? '编辑快捷方式' : 'Edit shortcut'}</span>
             </button>
           )}
@@ -3006,7 +3010,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
               confirmDeleteShortcut(contextMenuItem);
             }}
           >
-            <Trash2 size={15} />
+            <IconTrash size={15} />
             <span>{contextMenuItem.isFolder ? (language === 'zh' ? '删除文件夹' : 'Delete folder') : (language === 'zh' ? '删除快捷方式' : 'Delete shortcut')}</span>
           </button>
         </div>
@@ -3043,7 +3047,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
             rules={[{ required: true, message: language === 'zh' ? '请输入站点名称' : 'Please enter site name' }]}
           >
             <Input
-              prefix={<Globe2 size={14} className="text-gray-400" />}
+              prefix={<IconWorld size={14} className="text-gray-400" />}
               placeholder="e.g. GitHub"
               maxLength={20}
             />
@@ -3055,7 +3059,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
             rules={[{ required: true, message: language === 'zh' ? '请输入站点链接' : 'Please enter site URL' }]}
           >
             <Input
-              prefix={<Link size={14} className="text-gray-400" />}
+              prefix={<IconLink size={14} className="text-gray-400" />}
               placeholder="https://example.com"
               onBlur={(e) => handleUrlBlur(e.target.value)}
             />
@@ -3126,7 +3130,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
             {/* 仅在真正拖拽到卡片外时，才显示移出桌面的引导提示 */}
             {draggedChildId && isDraggingOverBackdrop && (
               <div className="absolute top-10 z-20 flex items-center gap-2 px-5 py-2 rounded-full font-medium text-xs shadow-2xl transition-all pointer-events-none bg-blue-500 text-white scale-110 ring-4 ring-blue-500/30 animate-bounce">
-                <CornerUpLeft size={14} />
+                <IconCornerUpLeft size={14} />
                 <span>{language === 'zh' ? '松开鼠标即可移出到桌面' : 'Release to move to desktop'}</span>
               </div>
             )}
@@ -3167,7 +3171,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
             {/* 顶部标题行（支持点击内联重命名） */}
             <div className="flex items-center justify-between pb-3.5 mb-3">
               <div className="flex items-center gap-2 flex-1 min-w-0 mr-2">
-                <Folder size={18} className="text-blue-500 shrink-0" />
+                <IconFolder size={18} className="text-blue-500 shrink-0" />
                 {isRenamingFolder ? (
                   <input
                     type="text"
@@ -3209,7 +3213,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                   className="flex items-center gap-1 text-[11px] font-medium px-2.5 py-1 rounded-full bg-blue-500/15 hover:bg-blue-500/25 text-blue-400 hover:text-blue-300 transition-colors cursor-pointer"
                   title={language === 'zh' ? '添加网址至此文件夹' : 'Add site to folder'}
                 >
-                  <Plus size={12} />
+                  <IconPlus size={12} />
                   <span>{language === 'zh' ? '添加' : 'Add'}</span>
                 </button>
                 <button
@@ -3218,16 +3222,16 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                   className="w-7 h-7 rounded-full flex items-center justify-center opacity-65 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
                   title={displayFolder.folderSize === '2x2' ? (language === 'zh' ? '缩小为 1×1' : 'Shrink to 1×1') : (language === 'zh' ? '放大为 2×2' : 'Enlarge to 2×2')}
                 >
-                  {displayFolder.folderSize === '2x2' ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                  {displayFolder.folderSize === '2x2' ? <IconMinimize size={14} /> : <IconMaximize size={14} />}
                 </button>
                 <button
                   type="button"
                   onClick={() => handleUngroupFolder(displayFolder.id)}
                   className="flex items-center gap-1 text-[11px] px-2.5 py-1 rounded-full opacity-65 hover:opacity-100 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
-                  title={language === 'zh' ? '解散文件夹' : 'Ungroup folder'}
+                  title={language === 'zh' ? '解散文件夹' : 'IconLayoutGridRemove folder'}
                 >
-                  <Ungroup size={13} />
-                  <span>{language === 'zh' ? '解散' : 'Ungroup'}</span>
+                  <IconLayoutGridRemove size={13} />
+                  <span>{language === 'zh' ? '解散' : 'IconLayoutGridRemove'}</span>
                 </button>
               </div>
             </div>
@@ -3284,7 +3288,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                       className="w-4 h-4 rounded-full text-gray-200 hover:text-white flex items-center justify-center text-[10px] cursor-pointer"
                       title={language === 'zh' ? '移出到桌面' : 'Move to desktop'}
                     >
-                      <CornerUpLeft size={11} />
+                      <IconCornerUpLeft size={11} />
                     </button>
                     <button
                       type="button"
@@ -3298,7 +3302,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                       className="w-4 h-4 rounded-full text-gray-200 hover:text-white flex items-center justify-center text-[10px] cursor-pointer"
                       title={language === 'zh' ? '编辑' : 'Edit'}
                     >
-                      <Edit2 size={10} />
+                      <IconEdit size={10} />
                     </button>
                     <button
                       type="button"
@@ -3309,7 +3313,7 @@ export const Shortcuts: React.FC<ShortcutsProps> = ({
                       className="w-4 h-4 rounded-full text-red-400 hover:text-red-500 flex items-center justify-center text-[10px] cursor-pointer"
                       title={language === 'zh' ? '删除' : 'Delete'}
                     >
-                      <Trash2 size={10} />
+                      <IconTrash size={10} />
                     </button>
                   </div>
                 </div>
