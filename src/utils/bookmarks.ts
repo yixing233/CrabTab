@@ -469,3 +469,221 @@ function getMockBookmarkTree(): BookmarkNode[] {
     },
   ];
 }
+
+// ============================================================================
+// 书签写入能力（新建 / 修改 / 删除 / 移动）
+//
+// 全部直接调用 chrome.bookmarks 原生 API，改动实时写入浏览器真实书签库，
+// 与浏览器自带的书签管理器行为完全一致。所有函数在浏览器侧失败时统一
+// 返回 { ok: false, error }，让上层用同一条路径弹提示，不必逐个 try/catch。
+// ============================================================================
+
+export type BookmarkWriteResult<T = void> =
+  | { ok: true; value: T }
+  | { ok: false; error: string; code?: 'no_api' | 'invalid' | 'failed' };
+
+/**
+ * 书签是否可写：必须处于扩展环境且 bookmarks API 已挂载。
+ * 普通网页调试环境和演示数据都是只读的。
+ */
+export function canWriteBookmarks(): boolean {
+  return (
+    isExtensionEnvironment() &&
+    hasBookmarkApi() &&
+    typeof chrome.bookmarks.create === 'function'
+  );
+}
+
+/** 把 chrome.runtime.lastError 转成可读文案 */
+function readLastError(): string {
+  try {
+    return chrome.runtime?.lastError?.message || '';
+  } catch {
+    return '';
+  }
+}
+
+/** 统一包装 chrome.bookmarks 的回调式写入 API */
+function callWriteApi<T>(
+  run: (done: (value: T) => void) => void
+): Promise<BookmarkWriteResult<T>> {
+  if (!canWriteBookmarks()) {
+    return Promise.resolve({ ok: false, error: 'bookmarks API unavailable', code: 'no_api' });
+  }
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (result: BookmarkWriteResult<T>) => {
+      if (settled) return;
+      settled = true;
+      resolve(result);
+    };
+    try {
+      run((value) => {
+        const err = readLastError();
+        if (err) finish({ ok: false, error: err, code: 'failed' });
+        else finish({ ok: true, value });
+      });
+    } catch (e) {
+      finish({ ok: false, error: e instanceof Error ? e.message : String(e), code: 'failed' });
+    }
+  });
+}
+
+/** 新建书签或文件夹。parentId 省略时由浏览器放入「其他书签」。 */
+export async function createBookmark(input: {
+  parentId?: string;
+  title: string;
+  url?: string;
+  index?: number;
+}): Promise<BookmarkWriteResult<BookmarkNode>> {
+  const isFolder = !input.url;
+  const title = input.title.trim();
+  if (!isFolder && !title) {
+    return { ok: false, error: 'title required', code: 'invalid' };
+  }
+  const details: chrome.bookmarks.CreateDetails = {
+    title: isFolder ? title || 'New Folder' : title,
+  };
+  if (input.parentId) details.parentId = input.parentId;
+  if (!isFolder) details.url = input.url;
+  if (typeof input.index === 'number' && input.index >= 0) details.index = input.index;
+
+  return callWriteApi<BookmarkNode>((done) => {
+    chrome.bookmarks.create(details, (node) => done(node as BookmarkNode));
+  });
+}
+
+/** 修改书签标题与网址（文件夹只能改标题） */
+export async function updateBookmark(
+  id: string,
+  changes: { title?: string; url?: string }
+): Promise<BookmarkWriteResult<void>> {
+  if (!id) return { ok: false, error: 'id required', code: 'invalid' };
+  const payload: chrome.bookmarks.UpdateChanges = {};
+  if (typeof changes.title === 'string') payload.title = changes.title;
+  if (typeof changes.url === 'string' && changes.url) payload.url = changes.url;
+  if (Object.keys(payload).length === 0) {
+    return { ok: false, error: 'nothing to update', code: 'invalid' };
+  }
+  return callWriteApi<void>((done) => {
+    chrome.bookmarks.update(id, payload, () => done(undefined));
+  });
+}
+
+/** 删除书签或整个文件夹（文件夹会连同子项一起删除） */
+export async function removeBookmark(id: string): Promise<BookmarkWriteResult<void>> {
+  if (!id) return { ok: false, error: 'id required', code: 'invalid' };
+  return callWriteApi<void>((done) => {
+    chrome.bookmarks.removeTree(id, () => done(undefined));
+  });
+}
+
+/** 删除单个书签（不递归）；用于确知目标是链接时的精确删除 */
+export async function removeBookmarkItem(id: string): Promise<BookmarkWriteResult<void>> {
+  if (!id) return { ok: false, error: 'id required', code: 'invalid' };
+  return callWriteApi<void>((done) => {
+    chrome.bookmarks.remove(id, () => done(undefined));
+  });
+}
+
+// ============================================================================
+// 移动 / 拖拽排序
+// ============================================================================
+
+/**
+ * 计算一次移动应当传给 chrome.bookmarks.move 的 index。
+ *
+ * 这里**不需要**为同父往后拖手动补偿：Chromium 的 BookmarkModel::Move 内部已经
+ * 处理了「同父移动且 index > oldIndex 时先自减」的情形。实测（把 A 拖到 C 之前
+ * 应得 BAC）证明传入 targetIndex + (after ? 1 : 0) 即为正确值；若额外 +1 反而
+ * 会多移一位。保留 sameParent/oldIndex 参数是因为上层判定 no-op 时要用到，
+ * 但索引计算本身不依赖它们。
+ */
+export function resolveMoveIndex(params: {
+  sameParent: boolean;
+  oldIndex: number;
+  targetIndex: number;
+  /** 指示线落在目标项「之后」时为 true */
+  after: boolean;
+}): number {
+  const index = params.targetIndex + (params.after ? 1 : 0);
+  return Math.max(0, index);
+}
+
+/**
+ * 移动书签到指定父目录与位置。
+ * 传 folderId 且不传 index 时追加到文件夹末尾（用于「粘贴到文件夹」）。
+ */
+export async function moveBookmark(input: {
+  id: string;
+  parentId: string;
+  index?: number;
+}): Promise<BookmarkWriteResult<BookmarkNode>> {
+  if (!input.id || !input.parentId) {
+    return { ok: false, error: 'id and parentId required', code: 'invalid' };
+  }
+  const details: chrome.bookmarks.MoveDestination = { parentId: input.parentId };
+  if (typeof input.index === 'number' && input.index >= 0) details.index = input.index;
+
+  return callWriteApi<BookmarkNode>((done) => {
+    chrome.bookmarks.move(input.id, details, (node) => done(node as BookmarkNode));
+  });
+}
+
+/** 判断 candidateId 是否是 ancestorId 自身或其后代（防止把文件夹拖进自己内部） */
+export function isSelfOrDescendant(
+  tree: BookmarkNode[],
+  ancestorId: string,
+  candidateId: string
+): boolean {
+  if (ancestorId === candidateId) return true;
+  const find = (nodes: BookmarkNode[]): BookmarkNode | null => {
+    for (const node of nodes) {
+      if (node.id === ancestorId) return node;
+      if (node.children) {
+        const hit = find(node.children);
+        if (hit) return hit;
+      }
+    }
+    return null;
+  };
+  const ancestor = find(tree);
+  if (!ancestor || !ancestor.children) return false;
+  const contains = (nodes: BookmarkNode[]): boolean =>
+    nodes.some((n) => n.id === candidateId || (n.children ? contains(n.children) : false));
+  return contains(ancestor.children);
+}
+
+/**
+ * 递归复制一个节点（含整个文件夹子树）到指定父目录。
+ *
+ * 原生没有「复制」API，必须自建：先用 create 造出同名节点，再逐层递归搬运子项，
+ * 顺序与创建顺序一致，保证复制结果与原件同构。任一层失败即中止并上报，
+ * 不做半途回滚 —— 与浏览器原生「复制粘贴」失败时的行为一致（已建出的部分保留）。
+ */
+export async function copyBookmarkTree(
+  node: BookmarkNode,
+  parentId: string,
+  index?: number
+): Promise<BookmarkWriteResult<BookmarkNode>> {
+  const created = await createBookmark({
+    parentId,
+    title: node.title,
+    url: node.url,
+    // 仅在顶层粘贴位置指定 index；子项一律追加到新文件夹末尾
+    index,
+  });
+  if (!created.ok) return created;
+
+  const newFolder = created.value;
+  // 叶子节点到此为止
+  if (node.url || !node.children || node.children.length === 0) {
+    return { ok: true, value: newFolder };
+  }
+
+  for (const child of node.children) {
+    const childRes = await copyBookmarkTree(child, newFolder.id);
+    if (!childRes.ok) return childRes;
+  }
+  return { ok: true, value: newFolder };
+}

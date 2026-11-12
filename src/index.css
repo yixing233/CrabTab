@@ -1033,12 +1033,28 @@ html:not(.dark) .ant-segmented .ant-segmented-item-selected {
 .crab-bookmark-dropdown-menu .ant-dropdown-menu-item,
 .crab-bookmark-dropdown-menu .ant-dropdown-menu-submenu-title {
   min-height: 33px !important;
-  padding: 4px 8px !important;
+  /* 水平 padding 归零：右键处理只能挂在 label 的 div 上（antd Menu 不透传
+     onContextMenu），li 自身的水平 padding 会成为右键穿透到外层文件夹菜单的
+     盲区。水平留白改由内部 div 承担，整行宽度都成为可命中区域。 */
+  padding: 4px 0 !important;
   border-radius: 7px !important;
   margin-bottom: 1px !important;
   display: flex !important;
   align-items: center !important;
   transition: background-color 0.15s ease, color 0.15s ease !important;
+}
+
+/* 内部 label 容器接管水平内边距，使整行都可右键命中 */
+.crab-bookmark-dropdown .ant-dropdown-menu-item > div,
+.crab-bookmark-dropdown .ant-dropdown-menu-submenu-title > div,
+.ant-dropdown-menu-submenu-popup .ant-dropdown-menu-item > div,
+.ant-dropdown-menu-submenu-popup .ant-dropdown-menu-submenu-title > div,
+.crab-bookmark-dropdown-menu .ant-dropdown-menu-item > div,
+.crab-bookmark-dropdown-menu .ant-dropdown-menu-submenu-title > div {
+  padding-left: 8px !important;
+  padding-right: 8px !important;
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .crab-bookmark-dropdown .ant-dropdown-menu-item:last-child,

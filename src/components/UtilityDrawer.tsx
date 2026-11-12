@@ -109,6 +109,30 @@ const SPEED_SAMPLE_WINDOW = 750; // 实时读数使用 750ms 滑动窗口，避�
 const SPEED_PHASE_GRACE_DURATION = 5000; // 为网络建连和慢速请求保留的最大宽限时间。
 const SPEED_DOWNLOAD_CHUNK_BYTES = 50_000_000; // Cloudflare 当前公开端点允许的单次下载上限约为 50 MB。
 const getTodayString = () => new Date().toISOString().slice(0, 10);
+
+/**
+ * 待办按到期时间先后排布：越早到期越靠上，逾期项自然浮到最前，无日期项沉底。
+ * 同一天到期时按创建时间先后排，再以 id 兜底，保证任何一次重排都是确定性的
+ * —— 否则等长排序在 V8 里虽稳定，但副本来源（新增时插在头部）会让顺序来回跳动。
+ */
+const sortTodosByDueDate = <T extends { id: string; dueDate?: string; createdAt?: number }>(
+  list: T[]
+): T[] => {
+  const toTime = (value?: string) => {
+    if (!value) return Number.POSITIVE_INFINITY;
+    const time = dayjs(value).startOf('day').valueOf();
+    return Number.isFinite(time) ? time : Number.POSITIVE_INFINITY;
+  };
+  return [...list].sort((a, b) => {
+    const aTime = toTime(a.dueDate);
+    const bTime = toTime(b.dueDate);
+    if (aTime !== bTime) return aTime - bTime;
+    const aCreated = a.createdAt ?? 0;
+    const bCreated = b.createdAt ?? 0;
+    if (aCreated !== bCreated) return aCreated - bCreated;
+    return a.id.localeCompare(b.id);
+  });
+};
 export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
   language,
   theme,
@@ -636,9 +660,13 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
     };
   }, [online, speedResult.download, zh]);
 
-  // 待办统计与分类
-  const uncompletedTodos = useMemo(() => todos.filter((t) => !t.completed), [todos]);
+  // 待办统计与分类。列表统一按到期时间先后呈现（逾期 → 今天 → 未来 → 无日期），
+  // 抽屉内的完整列表与桌面左下角胶囊共用同一份排序结果，两边顺序永远一致。
+  const uncompletedTodos = useMemo(() => sortTodosByDueDate(todos.filter((t) => !t.completed)), [todos]);
   const pendingCount = uncompletedTodos.length;
+  // 抽屉内完整列表：同样严格按到期时间先后，已完成的条目留在原位（划掉显示），
+  // 不另起分组 —— 否则同一个待办在桌面上（已完成即隐藏）与抽屉里位置逻辑不一致。
+  const sortedTodos = useMemo(() => sortTodosByDueDate(todos), [todos]);
 
   const showToast = (msg: string) => {
     setCopiedNotice(msg);
@@ -1988,7 +2016,7 @@ export const UtilityDrawer: React.FC<UtilityDrawerProps> = ({
                             <span>{zh ? '暂无待办事项' : 'No tasks yet'}</span>
                           </div>
                         ) : (
-                          todos.map((item) => (
+                          sortedTodos.map((item) => (
                             <div key={item.id} className="group flex items-center gap-2.5 p-2.5 rounded-xl border border-white/5 bg-black/5 dark:bg-white/5 hover:border-blue-400/40 hover:bg-blue-500/5 transition-all cursor-pointer" onClick={() => handleOpenDetail(item)}>
                               <button type="button" onClick={(event) => { event.stopPropagation(); toggleTodo(item.id); }} className={`w-4 h-4 rounded flex items-center justify-center border transition-colors cursor-pointer shrink-0 ${item.completed ? 'bg-blue-500 border-blue-500 text-white' : 'border-white/30 hover:border-blue-400'}`}>
                                 {item.completed && <Check size={11} />}
